@@ -25,6 +25,7 @@ set(SOURCES
     test_framework.h
     test_main.cpp
     test_metatypes.cpp
+    test_metaclass.cpp
     )
 add_executable(unittest ${SOURCES})
 target_link_libraries(unittest gtest_main mox)

@@ -1,5 +1,5 @@
 #include "test_framework.h"
-#include <mox/globals.hpp>
+#include <mox/utils/globals.hpp>
 #include <gtest/gtest.h>
 
 /******************************************************************************

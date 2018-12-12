@@ -24,11 +24,10 @@
 #include <functional>
 #include <typeindex>
 #include <typeinfo>
-#include <mox/globals.hpp>
+#include <mox/utils/globals.hpp>
 
 namespace mox {
 
-class MetaClass;
 struct MetaTypeTraits;
 /// The MetaType class extends the RTTI of the types in Mox. Provides information
 /// about the type, such as constness, whether is a pointer or enum. It also stores
