@@ -20,7 +20,10 @@
 #define METADATA_P_H
 
 #include <vector>
+#include <unordered_map>
+#include <string>
 #include <mox/metadata/metatype.hpp>
+#include <mox/metadata/metaclass.hpp>
 
 namespace mox {
 
@@ -31,13 +34,19 @@ public:
     ~MetaData();
     void initialize();
 
-    const MetaType& addMetaType(const char* name, const std::type_info& rtti, bool isEnum);
+    const MetaType& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass);
     const MetaType* findMetaType(const std::type_info& rtti);
     const MetaType& getMetaType(MetaType::TypeId type);
 
+    void addMetaClass(const MetaClass& metaClass);
+    void removeMetaClass(const MetaClass& metaClass);
+    const MetaClass* findMetaClass(std::string_view name);
+
     typedef std::vector<std::unique_ptr<MetaType>> MetaTypeContainer;
+    typedef std::unordered_map<std::string, const MetaClass*> MetaClassContainer;
 
     MetaTypeContainer metaTypes;
+    MetaClassContainer metaClasses;
     std::mutex sync;
 };
 

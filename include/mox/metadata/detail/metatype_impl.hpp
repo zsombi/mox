@@ -28,7 +28,7 @@ template <typename Type>
 const MetaType& MetaType::registerMetaType()
 {
     typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
-    return MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>());
+    return MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
 }
 
 template<typename Type>

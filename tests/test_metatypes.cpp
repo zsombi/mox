@@ -189,6 +189,7 @@ TEST_F(Types, test_user_types)
 
     type = &MetaType::get<UserStruct>();
     EXPECT_GE(type->id(), MetaType::TypeId::UserType);
+    EXPECT_TRUE(type->isClass());
 
     type = &MetaType::get<UserClass>();
     EXPECT_GE(type->id(), MetaType::TypeId::UserType);

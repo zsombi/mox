@@ -24,10 +24,11 @@
 namespace mox
 {
 
-MetaType::MetaType(const char* name, int id, const std::type_info& rtti, bool isEnum)
+MetaType::MetaType(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass)
     : m_rtti(&rtti)
     , m_id(TypeId(id))
     , m_isEnum(isEnum)
+    , m_isClass(isClass)
 {
     if (name)
     {
@@ -53,12 +54,12 @@ const MetaType* MetaType::findMetaType(const std::type_info &rtti)
     return metadata().findMetaType(rtti);
 }
 
-const MetaType& MetaType::newMetatype(const std::type_info &rtti, bool isEnum)
+const MetaType& MetaType::newMetatype(const std::type_info &rtti, bool isEnum, bool isClass)
 {
     const MetaType* type = findMetaType(rtti);
     if (!type)
     {
-        const MetaType& newType = metadata().addMetaType(nullptr, rtti, isEnum);
+        const MetaType& newType = metadata().addMetaType(nullptr, rtti, isEnum, isClass);
         ASSERT(newType.id() >= TypeId::UserType, "Type not registered in the user space.");
         type = &newType;
     }
@@ -94,6 +95,11 @@ const char* MetaType::name() const
 bool MetaType::isEnum() const
 {
     return m_isEnum;
+}
+
+bool MetaType::isClass() const
+{
+    return m_isClass;
 }
 
 const std::type_info* MetaType::rtti() const

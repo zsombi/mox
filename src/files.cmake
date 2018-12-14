@@ -17,13 +17,15 @@
 #
 
 set(HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/globals.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/globals.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metatype_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metaclass.hpp
     )
 
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metadata.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metadata_p.h
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metatype.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaclass.cpp
     )
