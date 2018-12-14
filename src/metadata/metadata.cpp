@@ -31,7 +31,7 @@ MetaData::~MetaData()
 
 #define ATOMIC_TYPE(name, Type, typeId) \
 { \
-    const MetaType& metaType = addMetaType(name, typeid(Type), std::is_enum<Type>()); \
+    const MetaType& metaType = addMetaType(name, typeid(Type), std::is_enum<Type>(), std::is_class<Type>()); \
     ASSERT(metaType.id() == typeId, "wrong atomic type registration!"); \
 }
 
@@ -72,11 +72,11 @@ MetaData& metadata()
     return globalMetaData;
 }
 
-const MetaType& MetaData::addMetaType(const char* name, const std::type_info& rtti, bool isEnum)
+const MetaType& MetaData::addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass)
 {
     MutexLock locker(sync);
 
-    metaTypes.emplace_back(new MetaType(name, int(metaTypes.size()), rtti, isEnum));
+    metaTypes.emplace_back(new MetaType(name, int(metaTypes.size()), rtti, isEnum, isClass));
     return *metaTypes.back().get();
 }
 
@@ -100,6 +100,36 @@ const MetaType& MetaData::getMetaType(MetaType::TypeId type)
     MutexLock locker(sync);
     ASSERT(static_cast<size_t>(type) < metaTypes.size(), "Type not registered to be reflectable.");
     return *metaTypes[static_cast<size_t>(type)].get();
+}
+
+void MetaData::addMetaClass(const MetaClass& metaClass)
+{
+    std::string name = MetaType::get(metaClass.metaType()).name();
+
+    MutexLock locker(sync);
+    MetaClassContainer::const_iterator it = metaClasses.find(name);
+    ASSERT(it == metaClasses.cend(), name + " MetaClass already registered!");
+    {
+        metaClasses.insert(std::make_pair(name, &metaClass));
+    }
+}
+
+void MetaData::removeMetaClass(const MetaClass& metaClass)
+{
+    std::string name = MetaType::get(metaClass.metaType()).name();
+
+    MutexLock locker(sync);
+    MetaClassContainer::const_iterator it = metaClasses.find(name);
+    if (it != metaClasses.cend())
+    {
+        metaClasses.erase(it);
+    }
+}
+const MetaClass* MetaData::findMetaClass(std::string_view name)
+{
+    MutexLock locker(sync);
+    MetaClassContainer::const_iterator it = metaClasses.find(std::string(name));
+    return it != metaClasses.cend() ? it->second : nullptr;
 }
 
 } // namespace mox

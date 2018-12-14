@@ -27,4 +27,5 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metadata.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metadata_p.h
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metatype.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaclass.cpp
     )

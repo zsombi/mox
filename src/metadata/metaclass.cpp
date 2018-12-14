@@ -17,17 +17,59 @@
  */
 
 #include <mox/metadata/metaclass.hpp>
+#include "metadata_p.h"
 
 namespace mox
 {
 
-MetaClass::MetaClass(MetaType::TypeId type)
+MetaClass::MetaClass(MetaType::TypeId type, bool abstract)
     : m_type(type)
+    , m_isAbstract(abstract)
 {
+    UNUSED(__padding);
+    metadata().addMetaClass(*this);
 }
 
 MetaClass::~MetaClass()
 {
+    metadata().removeMetaClass(*this);
+}
+
+bool MetaClass::isSuperClassOf(const MetaClass &metaClass) const
+{
+    auto tester = [this, &metaClass] (const MetaClass* mc) -> bool
+    {
+        if (mc == this)
+        {
+            return true;
+        }
+        else
+        {
+            return mc->isSuperClassOf(metaClass);
+        }
+    };
+
+    MetaClassContainer::const_iterator it = std::find_if(metaClass.m_superClasses.cbegin(), metaClass.m_superClasses.cend(), tester);
+    return (it != m_superClasses.cend());
+}
+
+const MetaClass* MetaClass::find(std::string_view className)
+{
+    return metadata().findMetaClass(className);
+}
+
+MetaObject::MetaObject()
+{
+}
+
+MetaObject::~MetaObject()
+{
+}
+
+const MetaClass* MetaObject::getStaticMetaClass()
+{
+    static ObjectMetaClass<MetaObject> metaClass;
+    return &metaClass;
 }
 
 } // namespace mox

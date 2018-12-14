@@ -107,6 +107,9 @@ public:
     /// Returns \e true if the type held by the MetaType is an enumeration.
     bool isEnum() const;
 
+    /// Returns \e true if the type held by this MetaType is a class.
+    bool isClass() const;
+
     /// Returns the RTTI (Run-time Type Information) of the MetaType.
     const std::type_info* rtti() const;
 
@@ -122,17 +125,18 @@ public:
 
 private:
     /// MetaType constructor.
-    explicit MetaType(const char* name, int id, const std::type_info& rtti, bool isEnum);
+    explicit MetaType(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass);
     /// Registers a MetaType associated to the \a rtti.
     /// \param rtti The type info of the type to register.
     /// \param isEnum True if the type defines an enum.
     /// \return the MetaType associated to the \e rtti.
-    static const MetaType& newMetatype(const std::type_info &rtti, bool isEnum);
+    static const MetaType& newMetatype(const std::type_info &rtti, bool isEnum, bool isClass);
 
     char* m_name{nullptr};
     const std::type_info* m_rtti{nullptr};
     TypeId m_id{TypeId::Invalid};
-    bool m_isEnum{false};
+    bool m_isEnum:1;
+    bool m_isClass:1;
 
     friend class MetaData;
     DISABLE_COPY(MetaType)
