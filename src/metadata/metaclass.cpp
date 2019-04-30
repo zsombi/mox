@@ -72,4 +72,9 @@ const MetaClass* MetaObject::getStaticMetaClass()
     return &metaClass;
 }
 
+const MetaClass* MetaObject::getDynamicMetaClass() const
+{
+    return getStaticMetaClass();
+}
+
 } // namespace mox

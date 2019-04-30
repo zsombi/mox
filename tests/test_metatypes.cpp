@@ -142,7 +142,7 @@ TEST_F(Types, test_atomic_types)
     EXPECT_FALSE(type->isEnum());
 
     type = &MetaType::get<std::string>();
-    EXPECT_EQ(MetaType::TypeId::StdString, type->id());
+    EXPECT_EQ(MetaType::TypeId::String, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "std::string"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());

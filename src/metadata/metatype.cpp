@@ -107,4 +107,26 @@ const std::type_info* MetaType::rtti() const
     return m_rtti;
 }
 
-}// namespace Mox
+//----------------------------
+// Converters
+bool MetaType::registerConverterFunction(AbstractConverterSharedPtr converter, TypeId fromType, TypeId toType)
+{
+    if (!metadata().addConverter(converter, fromType, toType))
+    {
+        // LOG a warning.
+        return false;
+    }
+    return true;
+}
+
+void MetaType::unregisterConverterFunction(TypeId fromType, TypeId toType)
+{
+    metadata().removeConverter(fromType, toType);
+}
+
+MetaType::AbstractConverterSharedPtr MetaType::findConverter(TypeId from, TypeId to)
+{
+    return metadata().findConverter(from, to);
+}
+
+}// namespace mox

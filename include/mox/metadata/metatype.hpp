@@ -46,7 +46,9 @@ public:
     enum class TypeId : int
     {
         Invalid = -1,
-        Bool = 0,
+        // void is a weirdo type
+        Void = 0,
+        Bool,
         Char,
         Byte,
         Short,
@@ -59,11 +61,9 @@ public:
         UInt64,
         Float,
         Double,
-        Size,
-        // void is a weirdo type
-        Void,
-        // standard library types
-        StdString,
+        String,
+        MetaObject,
+        VoidPtr,
         // All user types to be installed here
         UserType
     };
@@ -85,6 +85,9 @@ public:
     /// \endcode
     template <typename Type>
     static TypeId typeId();
+
+    template <typename Type>
+    static bool isCustomType();
 
     /// Returns the MetaType of a given type identifier.
     /// \param typeId The type identifier.
@@ -123,6 +126,56 @@ public:
     template <typename Type>
     static const mox::MetaType& registerMetaType();
 
+    /// Converters
+    /// \{
+    struct AbstractConverter : public std::enable_shared_from_this<AbstractConverter>
+    {
+        typedef bool (*ConverterFunction)(const AbstractConverter& /*converter*/, const void*/*from*/, void* /*to*/);
+        explicit AbstractConverter(ConverterFunction function = nullptr) :
+            m_convert(function)
+        {
+        }
+        DISABLE_COPY(AbstractConverter)
+        ConverterFunction m_convert;
+    };
+    typedef std::shared_ptr<AbstractConverter> AbstractConverterSharedPtr;
+
+    template <typename From, typename To, typename Function>
+    struct ConverterFunctor : public MetaType::AbstractConverter
+    {
+        Function m_function;
+
+        explicit ConverterFunctor(Function function) :
+            MetaType::AbstractConverter(convert),
+            m_function(function)
+        {
+        }
+
+        static bool convert(const MetaType::AbstractConverter& converter, const void* from, void* to)
+        {
+            const From* in = reinterpret_cast<const From*>(from);
+            To* out = reinterpret_cast<To*>(to);
+            const ConverterFunctor& that = reinterpret_cast<const ConverterFunctor&>(converter);
+            *out = that.m_function(*in);
+            return true;
+        }
+    };
+
+    template <typename From, typename To, typename Function>
+    static bool registerConverter(Function function)
+    {
+        const MetaType::TypeId fromType = MetaType::typeId<From>();
+        const MetaType::TypeId toType = MetaType::typeId<To>();
+        AbstractConverterSharedPtr converter = make_polymorphic_shared<AbstractConverter, ConverterFunctor<From, To, Function> >(function);
+        return registerConverterFunction(converter, fromType, toType);
+    }
+    /// Look for the converter that converts a type between \a from and \a to.
+    /// \param from The source type.
+    /// \param to The destination type.
+    /// \return The converter found, nullptr if there is no converter registered for the type.
+    static AbstractConverterSharedPtr findConverter(TypeId from, TypeId to);
+    /// \}
+
 private:
     /// MetaType constructor.
     explicit MetaType(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass);
@@ -131,6 +184,11 @@ private:
     /// \param isEnum True if the type defines an enum.
     /// \return the MetaType associated to the \e rtti.
     static const MetaType& newMetatype(const std::type_info &rtti, bool isEnum, bool isClass);
+
+    /// Registers a \a converter that converts a value from \a fromType to \a toType.
+    static bool registerConverterFunction(AbstractConverterSharedPtr converter, TypeId fromType, TypeId toType);
+    /// Removes a converter between \a fromType and \a toType that is registered for the \a forType.
+    static void unregisterConverterFunction(TypeId fromType, TypeId toType);
 
     char* m_name{nullptr};
     const std::type_info* m_rtti{nullptr};

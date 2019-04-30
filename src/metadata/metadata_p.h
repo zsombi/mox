@@ -22,8 +22,30 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <functional>
 #include <mox/metadata/metatype.hpp>
 #include <mox/metadata/metaclass.hpp>
+
+namespace mox
+{
+
+typedef std::pair<MetaType::TypeId, MetaType::TypeId> ConverterKeyType;
+
+} // namespace mox
+
+namespace std
+{
+
+template<>
+struct hash<mox::ConverterKeyType>
+{
+    std::size_t operator()(const mox::ConverterKeyType& arg) const
+    {
+        return hash<int>()(int(arg.first)) ^ (hash<int>()(int(arg.second)) << 1);
+    }
+};
+
+} // namespace std
 
 namespace mox {
 
@@ -42,10 +64,16 @@ public:
     void removeMetaClass(const MetaClass& metaClass);
     const MetaClass* findMetaClass(std::string_view name);
 
+    bool addConverter(MetaType::AbstractConverterSharedPtr converter, MetaType::TypeId fromType, MetaType::TypeId toType);
+    void removeConverter(MetaType::TypeId fromType, MetaType::TypeId toType);
+    MetaType::AbstractConverterSharedPtr findConverter(MetaType::TypeId fromType, MetaType::TypeId toType);
+
     typedef std::vector<std::unique_ptr<MetaType>> MetaTypeContainer;
     typedef std::unordered_map<std::string, const MetaClass*> MetaClassContainer;
+    typedef std::unordered_map<ConverterKeyType, MetaType::AbstractConverterSharedPtr> ConverterContainer;
 
     MetaTypeContainer metaTypes;
+    ConverterContainer converters;
     MetaClassContainer metaClasses;
     std::mutex sync;
 };

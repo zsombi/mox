@@ -36,7 +36,7 @@ const MetaType& MetaType::get()
 {
     typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
     const MetaType* type = findMetaType(typeid(NakedType));
-    ASSERT(type, std::string("MetaType::value<>: unregistered metatype: ") + typeid(Type).name());
+    ASSERT(type, std::string("MetaType::get<>: unregistered metatype: ") + typeid(Type).name());
     return *type;
 }
 
@@ -44,6 +44,12 @@ template <typename Type>
 MetaType::TypeId MetaType::typeId()
 {
     return get<Type>().id();
+}
+
+template <typename Type>
+bool MetaType::isCustomType()
+{
+    return get<Type>().id() >= TypeId::UserType;
 }
 
 } // namespace mox

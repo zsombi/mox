@@ -125,8 +125,11 @@ public:
     /// Destructor.
     virtual ~MetaObject();
 
-    /// Returns the static meta-class of the meta-object.
+    /// Returns the static metaclass of the metaobject.
     static const MetaClass* getStaticMetaClass();
+
+    /// Returns the dynamic metaclass of the metaobject.
+    virtual const MetaClass* getDynamicMetaClass() const;
 
 protected:
     /// Constructor.
@@ -166,6 +169,10 @@ protected:
         static Class##MetaClass metaObject; \
         return &metaObject; \
     } \
-    struct MOX_API Class##MetaClass : mox::ObjectMetaClass<Class, __VA_ARGS__> \
+    const mox::MetaClass* getDynamicMetaClass() const override \
+    { \
+        return getStaticMetaClass(); \
+    } \
+    struct MOX_API Class##MetaClass : mox::ObjectMetaClass<Class, __VA_ARGS__>
 
 #endif // METACLASS_HPP

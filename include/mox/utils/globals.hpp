@@ -20,7 +20,6 @@
 #define GLOBALS_HPP
 
 #include <mutex>
-#include <sstream>
 #include <iostream>
 #include <memory>
 #include <bitset>
@@ -164,22 +163,6 @@ public:
 };
 
 } // namespace mox
-
-#ifdef ANDROID
-namespace std
-{
-
-template<typename T>
-string to_string(T const& value)
-{
-    stringstream stream;
-    stream << value;
-    return stream.str();
-}
-
-} // namespace std
-
-#endif // ANDROID
 
 /// Creates a polymorphic shared pointer.
 template <typename BaseType, typename Type, typename... Args>
