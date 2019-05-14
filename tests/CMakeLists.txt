@@ -27,6 +27,7 @@ set(SOURCES
     test_metatypes.cpp
     test_metaclass.cpp
     test_variant.cpp
+    test_callables.cpp
     )
 add_executable(unittest ${SOURCES})
 target_link_libraries(unittest gtest_main mox)
