@@ -17,6 +17,7 @@
  */
 
 #include <mox/metadata/metaclass.hpp>
+#include <mox/metadata/metamethod.hpp>
 #include "metadata_p.h"
 
 namespace mox
@@ -56,6 +57,33 @@ bool MetaClass::isSuperClassOf(const MetaClass &metaClass) const
 const MetaClass* MetaClass::find(std::string_view className)
 {
     return metadata().findMetaClass(className);
+}
+
+const MetaMethod* MetaClass::visitMethods(const MethodVisitor& visitor) const
+{
+    for (const MetaMethod* method : m_methods)
+    {
+        if (visitor(method))
+        {
+            return method;
+        }
+    }
+
+    for (const MetaClass* super : m_superClasses)
+    {
+        const MetaMethod* method = super->visitMethods(visitor);
+        if (method)
+        {
+            return method;
+        }
+    }
+
+    return nullptr;
+}
+
+void MetaClass::addMethod(MetaMethod *method)
+{
+    m_methods.push_back(method);
 }
 
 MetaObject::MetaObject()

@@ -26,6 +26,8 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metaclass.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/callable.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/callable_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metamethod.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metamethod_impl.hpp
     )
 
 set(SOURCES

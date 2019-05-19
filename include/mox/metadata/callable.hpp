@@ -60,20 +60,21 @@ public:
         Arguments(const Arguments&) = default;
         Arguments(Arguments&&) = default;
 
-        template <typename _Iterator>
-        Arguments(_Iterator ibegin, _Iterator iend)
-            : ArgumentsBase(ibegin, iend)
-        {}
+        /// Packs the \a arguments passed.
+        template <typename... Args>
+        Arguments(Args... arguments);
 
         /// Adds an argument \a value of a \e Type.
         /// \param value The argument value to pass.
         /// \return This argument object.
         template <typename Type>
-        Arguments& add(const Type& value)
-        {
-            push_back(std::any(value));
-            return *this;
-        }
+        Arguments& add(const Type& value);
+
+        /// Prepends the \a value to the argument pack.
+        /// \param value The value to prepend to the argument pack.
+        /// \return This argument object.
+        template <typename Type>
+        Arguments& prepend(Type value);
 
         /// Returns the argument from a given \a index that is less than the count().
         /// \param index The index of the argument requested.
@@ -81,27 +82,20 @@ public:
         /// \throws std::bad_any_cast if the argument at \a index is of a different type.
         /// \throws Callable::invalid_argument if the argument \a index is out of bounds.
         template <typename Type>
-        Type get(size_t index)
-        {
-            if (index >= size())
-            {
-                throw Callable::invalid_argument();
-            }
-            return std::any_cast<Type>(operator[](index));
-        }
+        Type get(size_t index) const;
 
         /// Returns the number of argument values from the container.
         /// \return The number of argument values.
-        size_t count() const
-        {
-            return size();
-        }
+        size_t count() const;
+
+        template <typename Function>
+        auto toTuple() const;
     };
 
     /// Container for the argument types.
     typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
     /// Invoker function type.
-    typedef std::function<std::any(Arguments)> InvokerFunction;
+    typedef std::function<std::any(Arguments const&)> InvokerFunction;
 
     /// Creates a callable for a function, method or functor.
     template <typename Function>
@@ -153,23 +147,14 @@ private:
     bool m_isConst = false;
 };
 
-/// Invokes a callable with arguments. If the callable has a return value, returns that.
+/// Invokes a \a callable with \a arguments. If the callable has a return value, returns that.
 /// Packs the \a arguments and applies those on the \a callable.
+/// If the callable is a method of a class, pass the instance of the class as first argument.
 /// \param callable The callable to invoke.
 /// \param arguments The arguments to pass to the callable.
 /// \return The return value of the callable, undefined if the callable has no return value.
-template <typename Ret, typename... Arguments>
+template <class Ret, typename... Arguments>
 Ret invoke(const Callable& callable, Arguments... arguments);
-
-/// Invokes a \a callable on an \a instance with \a arguments. If the callable has a return
-/// value, returns that. Packs the \a instance with the \a arguments and applies those on the
-/// \a callable.
-/// \param instance The instance the callable belongs to.
-/// \param callable The callable to invoke.
-/// \param arguments The arguments to pass to the callable.
-/// \return The return value of the callable, undefined if the callable has no return value.
-template <typename Ret, class Class, typename... Arguments>
-Ret invoke(Class* instance, const Callable& callable, Arguments... arguments);
 
 } // namespace mox
 

@@ -275,7 +275,7 @@ TEST_F(Callables, test_invoke_method_no_arg)
     Callable callable(&TestFunctor::voidMethod);
 
     functor.invoked = false;
-    mox::invoke<void>(&functor, callable);
+    mox::invoke<void>(callable, &functor);
     EXPECT_TRUE(functor.invoked);
 }
 
@@ -284,7 +284,7 @@ TEST_F(Callables, test_invoke_method_one_arg)
     TestFunctor functor;
     Callable callable(&TestFunctor::voidMethod2);
 
-    mox::invoke<void>(&functor, callable, 101);
+    mox::invoke<void>(callable, &functor, 101);
     EXPECT_TRUE(functor.invoked);
 }
 
@@ -293,7 +293,7 @@ TEST_F(Callables, test_invoke_method_no_arg_ret)
     TestFunctor functor;
     Callable callable(&TestFunctor::retMethod);
 
-    auto result = mox::invoke<int>(&functor, callable);
+    auto result = mox::invoke<int>(callable, &functor);
     EXPECT_EQ(1010, result);
 }
 
@@ -303,7 +303,7 @@ TEST_F(Callables, test_invoke_method_default_arg_ret)
     Callable callable(&TestFunctor::retMethodWithDefArg);
 
     // This fails as the formal arguments are not the same as the actual ones.
-    auto result = mox::invoke<int>(&functor, callable, 100);
+    auto result = mox::invoke<int>(callable, &functor, 100);
     EXPECT_EQ(1000, result);
 }
 
@@ -312,10 +312,10 @@ TEST_F(Callables, test_invoke_method_constret)
     TestFunctor functor;
     Callable callable(&TestFunctor::constRet);
 
-    auto result = mox::invoke<int>(&functor, callable);
+    auto result = mox::invoke<int>(callable, &functor);
     EXPECT_EQ(101, result);
 
-    result = mox::invoke<int>(&functor, callable, "monkey");
+    result = mox::invoke<int>(callable, &functor, "monkey");
     EXPECT_EQ(101, result);
 }
 
@@ -364,7 +364,7 @@ TEST_F(Callables, test_invoke_instance_with_function)
     Callable callable(factorial);
     TestFunctor f;
 
-    EXPECT_THROW(invoke<int>(&f, callable), std::bad_any_cast);
+    EXPECT_THROW(invoke<int>(callable, &f), std::bad_any_cast);
 }
 
 struct AnyClass
@@ -376,7 +376,7 @@ TEST_F(Callables, test_invoke_with_other_instance)
     Callable callable(&TestFunctor::voidMethod);
     AnyClass any;
 
-    EXPECT_THROW(invoke<void>(&any, callable, 10), std::bad_any_cast);
+    EXPECT_THROW(invoke<void>(callable, &any, 10), std::bad_any_cast);
 }
 
 

@@ -19,6 +19,8 @@
 #ifndef METACLASS_HPP
 #define METACLASS_HPP
 
+#include <any>
+
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metatype.hpp>
 
@@ -26,6 +28,7 @@ namespace mox
 {
 
 class MetaObject;
+class MetaMethod;
 
 /// MetaClass represents the type reflection or metadata of a managed structure or class. The metadata consists
 /// of factory functions, methods, properties and signals.
@@ -33,6 +36,9 @@ class MetaObject;
 struct MOX_API MetaClass
 {
 public:
+    /// Method visitor function.
+    typedef std::function<bool(const MetaMethod*)> MethodVisitor;
+
     /// Destructor.
     virtual ~MetaClass();
 
@@ -41,6 +47,12 @@ public:
 
     /// Returns the MetaClass that manages the \a className class.
     static const MetaClass* find(std::string_view className);
+
+    /// Visits the metaclass passing the methods to the \a visitor.
+    /// \param visitor The visitor.
+    /// \return The MetaMethod instance for which the visitor returns \e true, \e nullptr if
+    /// no method is identified by the visitor.
+    const MetaMethod* visitMethods(const MethodVisitor& visitor) const;
 
     /// Returns the MetaType of the MetaClass.
     MetaType::TypeId metaType() const
@@ -57,14 +69,26 @@ public:
     /// Check whether the MetaClass is the class of the passed MetaObject.
     virtual bool isClassOf(const MetaObject&) const = 0;
 
+    /// Casts the instance to a std::any using the class type reflected by the metaclass.
+    /// \param instance The instance to convert.
+    /// \return The std::any holding the value casted using the class type reflected.
+    virtual std::any castInstance(void* instance) const = 0;
+
 protected:
     /// Creates a metaclass with a registered MetaType identifier.
     explicit MetaClass(MetaType::TypeId type, bool abstract);
 
+    void addMethod(MetaMethod* method);
+
     typedef std::vector<const MetaClass*> MetaClassContainer;
+    typedef std::vector<const MetaMethod*> MetaMethodContainer;
+
     MetaClassContainer m_superClasses;
+    MetaMethodContainer m_methods;
     MetaType::TypeId m_type;
     const bool m_isAbstract:1;
+
+    friend class MetaMethod;
 
 private:
     byte __padding[3];
@@ -91,6 +115,11 @@ struct InterfaceMetaClass : MetaClass
     {
         return dynamic_cast<const Class*>(&metaObject) != nullptr;
     }
+
+    std::any castInstance(void* instance) const override
+    {
+        return reinterpret_cast<Class*>(instance);
+    }
 };
 
 /// MetaClass template specialized on MetaObject-derived classes. The super-classes are interface
@@ -115,6 +144,10 @@ struct ObjectMetaClass : MetaClass
     bool isClassOf(const MetaObject& metaObject) const override
     {
         return dynamic_cast<const Class*>(&metaObject) != nullptr;
+    }
+    std::any castInstance(void* instance) const override
+    {
+        return reinterpret_cast<Class*>(instance);
     }
 };
 

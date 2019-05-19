@@ -17,12 +17,18 @@
  */
 
 #include <mox/metadata/callable.hpp>
+#include <type_traits>
 
 namespace mox
 {
 
 Callable::invalid_argument::invalid_argument()
 {
+}
+
+size_t Callable::Arguments::count() const
+{
+    return size();
 }
 
 /// String representation of the exception.

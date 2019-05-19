@@ -30,5 +30,7 @@ protected:
 };
 
 #define SLEEP(msec) std::this_thread::sleep_for(std::chrono::milliseconds(msec))
+#define EXPECT_NULL(ptr)        EXPECT_TRUE(ptr == nullptr)
+#define EXPECT_NOT_NULL(ptr)    EXPECT_TRUE(ptr != nullptr)
 
 #endif // TEST_FRAMEWORK_H
