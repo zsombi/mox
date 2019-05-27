@@ -78,6 +78,9 @@ public:
 private:
     MetaClass& m_ownerClass;
     std::string m_name;
+
+    MetaMethod(MetaMethod const&) = delete;
+    MetaMethod(MetaMethod&&) = delete;
 };
 
 /// Invokes a \a method on an \a instance, passing the given \a arguments. The instance must have

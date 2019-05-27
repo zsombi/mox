@@ -138,6 +138,14 @@ public:
     /// \throws std::bad_any_cast if the arguments mismatch.
     std::any apply(const Arguments& args) const;
 
+    template <class Class>
+    std::any apply(Class& instance, const Arguments& args) const
+    {
+        Arguments thisArgs(args);
+        thisArgs.prepend(&instance);
+        return apply(thisArgs);
+    }
+
 private:
     InvokerFunction m_invoker;
     ArgumentDescriptor m_ret;
@@ -149,12 +157,23 @@ private:
 
 /// Invokes a \a callable with \a arguments. If the callable has a return value, returns that.
 /// Packs the \a arguments and applies those on the \a callable.
-/// If the callable is a method of a class, pass the instance of the class as first argument.
+/// If the callable is a method of a class, pass the pointer to the instance of the class as
+/// first argument. When you do that, make sure the instance is casted to the class that hosts
+/// the method managed by the callable.
 /// \param callable The callable to invoke.
 /// \param arguments The arguments to pass to the callable.
 /// \return The return value of the callable, undefined if the callable has no return value.
 template <class Ret, typename... Arguments>
 Ret invoke(const Callable& callable, Arguments... arguments);
+
+/// Template function specialized on callables when the first argument is a class. Pass the
+/// instance as reference to use the template.
+/// \param callable The callable to invoke.
+/// \param instance The instance of the class invoked.
+/// \param arguments The arguments to pass to the callable.
+/// \return The return value of the callable, undefined if the callable has no return value.
+template <class Ret, class Class, typename... Arguments>
+typename std::enable_if<std::is_class<Class>::value, Ret>::type invoke(const Callable& callable, Class& instance, Arguments... arguments);
 
 } // namespace mox
 

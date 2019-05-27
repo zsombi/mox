@@ -63,17 +63,20 @@ public:
     void addMetaClass(const MetaClass& metaClass);
     void removeMetaClass(const MetaClass& metaClass);
     const MetaClass* findMetaClass(std::string_view name);
+    const MetaClass* getMetaClass(MetaType::TypeId metaType);
 
     bool addConverter(MetaType::AbstractConverterSharedPtr converter, MetaType::TypeId fromType, MetaType::TypeId toType);
     void removeConverter(MetaType::TypeId fromType, MetaType::TypeId toType);
     MetaType::AbstractConverterSharedPtr findConverter(MetaType::TypeId fromType, MetaType::TypeId toType);
 
     typedef std::vector<std::unique_ptr<MetaType>> MetaTypeContainer;
+    typedef std::unordered_map<MetaType::TypeId, const MetaClass*> MetaClassTypeRegister;
     typedef std::unordered_map<std::string, const MetaClass*> MetaClassContainer;
     typedef std::unordered_map<ConverterKeyType, MetaType::AbstractConverterSharedPtr> ConverterContainer;
 
     MetaTypeContainer metaTypes;
     ConverterContainer converters;
+    MetaClassTypeRegister metaClassRegister;
     MetaClassContainer metaClasses;
     std::mutex sync;
 };

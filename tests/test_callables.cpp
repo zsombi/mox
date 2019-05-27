@@ -232,6 +232,10 @@ struct TestFunctor
     }
 };
 
+struct SecondLevel : public TestFunctor
+{
+};
+
 TEST_F(Callables, test_callable_type)
 {
     Callable func(testFunc);
@@ -274,8 +278,17 @@ TEST_F(Callables, test_invoke_method_no_arg)
     TestFunctor functor;
     Callable callable(&TestFunctor::voidMethod);
 
-    functor.invoked = false;
-    mox::invoke<void>(callable, &functor);
+    mox::invoke<void>(callable, functor);
+    EXPECT_TRUE(functor.invoked);
+}
+
+TEST_F(Callables, test_apply_method_no_arg)
+{
+    TestFunctor functor;
+    Callable callable(&TestFunctor::voidMethod);
+
+    Callable::Arguments args;
+    callable.apply(functor, args);
     EXPECT_TRUE(functor.invoked);
 }
 
@@ -284,7 +297,17 @@ TEST_F(Callables, test_invoke_method_one_arg)
     TestFunctor functor;
     Callable callable(&TestFunctor::voidMethod2);
 
-    mox::invoke<void>(callable, &functor, 101);
+    mox::invoke<void>(callable, functor, 101);
+    EXPECT_TRUE(functor.invoked);
+}
+
+TEST_F(Callables, test_apply_method_one_arg)
+{
+    TestFunctor functor;
+    Callable callable(&TestFunctor::voidMethod2);
+
+    Callable::Arguments args(101);
+    callable.apply(functor, args);
     EXPECT_TRUE(functor.invoked);
 }
 
@@ -293,8 +316,17 @@ TEST_F(Callables, test_invoke_method_no_arg_ret)
     TestFunctor functor;
     Callable callable(&TestFunctor::retMethod);
 
-    auto result = mox::invoke<int>(callable, &functor);
+    auto result = mox::invoke<int>(callable, functor);
     EXPECT_EQ(1010, result);
+}
+
+TEST_F(Callables, test_apply_method_no_arg_ret)
+{
+    TestFunctor functor;
+    Callable callable(&TestFunctor::retMethod);
+
+    auto result = callable.apply(functor, Callable::Arguments());
+    EXPECT_EQ(1010, std::any_cast<int>(result));
 }
 
 TEST_F(Callables, test_invoke_method_default_arg_ret)
@@ -303,8 +335,19 @@ TEST_F(Callables, test_invoke_method_default_arg_ret)
     Callable callable(&TestFunctor::retMethodWithDefArg);
 
     // This fails as the formal arguments are not the same as the actual ones.
-    auto result = mox::invoke<int>(callable, &functor, 100);
+    auto result = mox::invoke<int>(callable, functor, 100);
     EXPECT_EQ(1000, result);
+}
+
+TEST_F(Callables, test_apply_method_default_arg_ret)
+{
+    TestFunctor functor;
+    Callable callable(&TestFunctor::retMethodWithDefArg);
+
+    // This fails as the formal arguments are not the same as the actual ones.
+    Callable::Arguments args(100);
+    auto result = callable.apply(functor, args);
+    EXPECT_EQ(1000, std::any_cast<int>(result));
 }
 
 TEST_F(Callables, test_invoke_method_constret)
@@ -312,11 +355,23 @@ TEST_F(Callables, test_invoke_method_constret)
     TestFunctor functor;
     Callable callable(&TestFunctor::constRet);
 
-    auto result = mox::invoke<int>(callable, &functor);
+    auto result = mox::invoke<int>(callable, functor);
     EXPECT_EQ(101, result);
 
-    result = mox::invoke<int>(callable, &functor, "monkey");
+    result = mox::invoke<int>(callable, functor, "monkey");
     EXPECT_EQ(101, result);
+}
+
+TEST_F(Callables, test_apply_method_constret)
+{
+    TestFunctor functor;
+    Callable callable(&TestFunctor::constRet);
+
+    auto result = callable.apply(functor, Callable::Arguments());
+    EXPECT_EQ(101, std::any_cast<int>(result));
+
+    result = callable.apply(functor, Callable::Arguments("monkey"));
+    EXPECT_EQ(101, std::any_cast<int>(result));
 }
 
 TEST_F(Callables, test_lambda)
@@ -364,7 +419,7 @@ TEST_F(Callables, test_invoke_instance_with_function)
     Callable callable(factorial);
     TestFunctor f;
 
-    EXPECT_THROW(invoke<int>(callable, &f), std::bad_any_cast);
+    EXPECT_THROW(invoke<int>(callable, f), std::bad_any_cast);
 }
 
 struct AnyClass
@@ -376,7 +431,7 @@ TEST_F(Callables, test_invoke_with_other_instance)
     Callable callable(&TestFunctor::voidMethod);
     AnyClass any;
 
-    EXPECT_THROW(invoke<void>(callable, &any, 10), std::bad_any_cast);
+    EXPECT_THROW(invoke<void>(callable, any, 10), std::bad_any_cast);
 }
 
 
@@ -408,4 +463,14 @@ TEST_F(Callables, test_lambda_callables)
     EXPECT_EQ(1u, c5.argumentCount());
     EXPECT_EQ(MetaType::TypeId::Void, c5.argumentType(0u).type);
     EXPECT_TRUE(c5.argumentType(0u).isPointer);
+}
+
+TEST_F(Callables, test_superclass_callable_invoked_with_derived_instance)
+{
+    SecondLevel l2;
+    Callable callableL1(&TestFunctor::voidMethod);
+    Callable callableL2(&SecondLevel::voidMethod);
+
+    EXPECT_THROW(invoke<void>(callableL1, l2), std::bad_any_cast);
+    EXPECT_THROW(invoke<void>(callableL2, l2), std::bad_any_cast);
 }

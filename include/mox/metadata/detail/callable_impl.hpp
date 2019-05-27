@@ -126,6 +126,7 @@ Callable::Callable(Function fn)
 /******************************************************************************
  * invokes
  */
+
 template <class Ret, typename... Arguments>
 Ret invoke(const Callable& callable, Arguments... arguments)
 {
@@ -137,6 +138,16 @@ Ret invoke(const Callable& callable, Arguments... arguments)
     }
 }
 
+template <class Ret, class Class, typename... Arguments>
+typename std::enable_if<std::is_class<Class>::value, Ret>::type invoke(const Callable& callable, Class& instance, Arguments... arguments)
+{
+    Callable::Arguments vargs(arguments...);
+    std::any ret = callable.apply(instance, vargs);
+    if constexpr (!std::is_void<Ret>::value)
+    {
+        return std::any_cast<Ret>(ret);
+    }
+}
 } // namespace mox
 
 #endif // CALLABLE_IMPL_HPP

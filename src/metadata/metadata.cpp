@@ -258,9 +258,9 @@ void MetaData::addMetaClass(const MetaClass& metaClass)
     MutexLock locker(sync);
     MetaClassContainer::const_iterator it = metaClasses.find(name);
     ASSERT(it == metaClasses.cend(), name + " MetaClass already registered!");
-    {
-        metaClasses.insert(std::make_pair(name, &metaClass));
-    }
+
+    metaClassRegister.insert(std::make_pair(metaClass.metaType(), &metaClass));
+    metaClasses.insert(std::make_pair(name, &metaClass));
 }
 
 void MetaData::removeMetaClass(const MetaClass& metaClass)
@@ -273,12 +273,24 @@ void MetaData::removeMetaClass(const MetaClass& metaClass)
     {
         metaClasses.erase(it);
     }
+    MetaClassTypeRegister::const_iterator cit = metaClassRegister.find(metaClass.metaType());
+    if (cit != metaClassRegister.cend())
+    {
+        metaClassRegister.erase(cit);
+    }
 }
 const MetaClass* MetaData::findMetaClass(std::string_view name)
 {
     MutexLock locker(sync);
     MetaClassContainer::const_iterator it = metaClasses.find(std::string(name));
     return it != metaClasses.cend() ? it->second : nullptr;
+}
+
+const MetaClass* MetaData::getMetaClass(MetaType::TypeId metaType)
+{
+    MutexLock locker(sync);
+    MetaClassTypeRegister::const_iterator it = metaClassRegister.find(metaType);
+    return it != metaClassRegister.cend() ? it->second : nullptr;
 }
 
 bool MetaData::addConverter(MetaType::AbstractConverterSharedPtr converter, MetaType::TypeId fromType, MetaType::TypeId toType)
