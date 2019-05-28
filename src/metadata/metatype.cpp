@@ -71,6 +71,36 @@ const MetaType& MetaType::get(TypeId typeId)
     return metadata().getMetaType(typeId);
 }
 
+bool MetaType::isSupertypeOf(const MetaType& type) const
+{
+    if (!isClass() || !type.isClass())
+    {
+        return false;
+    }
+
+    const MetaClass* thisClass = metadata().getMetaClass(m_id);
+    ASSERT(thisClass, "No MetaClass for the class type.");
+
+    const MetaClass* typeClass = metadata().getMetaClass(type.id());
+    ASSERT(typeClass, "No MetaClass for the class type.");
+    return thisClass->isSuperClassOf(*typeClass);
+}
+
+bool MetaType::derivesFrom(const MetaType& type) const
+{
+    if (!isClass() || !type.isClass())
+    {
+        return false;
+    }
+
+    const MetaClass* thisClass = metadata().getMetaClass(m_id);
+    ASSERT(thisClass, "No MetaClass for the class type.");
+
+    const MetaClass* typeClass = metadata().getMetaClass(type.id());
+    ASSERT(typeClass, "No MetaClass for the class type.");
+    return thisClass->derivesFrom(*typeClass);
+}
+
 bool MetaType::isValid() const
 {
     return m_rtti != nullptr;

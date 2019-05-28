@@ -38,19 +38,25 @@ MetaClass::~MetaClass()
 
 bool MetaClass::isSuperClassOf(const MetaClass &metaClass) const
 {
-    auto tester = [this, &metaClass] (const MetaClass* mc) -> bool
+    return metaClass.derivesFrom(*this);
+}
+
+bool MetaClass::derivesFrom(const MetaClass &metaClass) const
+{
+    auto tester = [&metaClass] (const MetaClass* mc) -> bool
     {
-        if (mc == this)
+        if (mc == &metaClass)
         {
             return true;
         }
-        else
+        else if (mc->derivesFrom(metaClass))
         {
-            return mc->isSuperClassOf(metaClass);
+            return true;
         }
+        return false;
     };
 
-    MetaClassContainer::const_iterator it = std::find_if(metaClass.m_superClasses.cbegin(), metaClass.m_superClasses.cend(), tester);
+    MetaClassContainer::const_iterator it = std::find_if(m_superClasses.cbegin(), m_superClasses.cend(), tester);
     return (it != m_superClasses.cend());
 }
 

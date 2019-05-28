@@ -128,7 +128,8 @@ TEST(MetaClasses, test_superclass)
     const MetaClass* moObjectDerivedClass = ObjectDerivedClass::getStaticMetaClass();
     const MetaClass* moMetaObject = MetaObject::getStaticMetaClass();
 
-    EXPECT_TRUE(moObjectDerivedClass->isSuperClassOf(*moMetaObject));
+    EXPECT_FALSE(moObjectDerivedClass->isSuperClassOf(*moMetaObject));
+    EXPECT_TRUE(moObjectDerivedClass->derivesFrom(*moMetaObject));
     EXPECT_TRUE(moMetaObject->isSuperClassOf(*moObjectDerivedClass));
     EXPECT_TRUE(moBaseClass->isSuperClassOf(*moObjectDerivedClass));
     EXPECT_TRUE(moBaseClass->isSuperClassOf(*moDerivedClass));
@@ -181,4 +182,24 @@ TEST(MetaClasses, test_find)
     EXPECT_TRUE(nullptr != MetaClass::find("BaseClass"));
     EXPECT_TRUE(nullptr == MetaClass::find("Boo"));
     EXPECT_TRUE(nullptr == MetaClass::find("baseClass"));
+}
+
+TEST(MetaClasses, test_metatype_superclass)
+{
+    SecondObject::getStaticMetaClass();
+    const MetaType& base = MetaType::get<BaseClass>();
+    const MetaType& derived = MetaType::get<SecondLevelDerived>();
+    const MetaType& metaObject = MetaType::get<MetaObject>();
+    const MetaType& secondObject = MetaType::get<SecondObject>();
+
+    EXPECT_TRUE(derived.derivesFrom(base));
+    EXPECT_TRUE(base.isSupertypeOf(derived));
+    EXPECT_FALSE(metaObject.isSupertypeOf(base));
+    EXPECT_FALSE(metaObject.derivesFrom(base));
+    EXPECT_FALSE(metaObject.isSupertypeOf(derived));
+    EXPECT_FALSE(metaObject.derivesFrom(derived));
+
+    EXPECT_TRUE(secondObject.derivesFrom(base));
+    EXPECT_TRUE(secondObject.derivesFrom(derived));
+    EXPECT_TRUE(secondObject.derivesFrom(metaObject));
 }

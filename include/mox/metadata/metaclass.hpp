@@ -45,6 +45,9 @@ public:
     /// Tests whether this MetaClass is the superclass of the \a metaClass passed as argument.
     bool isSuperClassOf(const MetaClass& metaClass) const;
 
+    /// Tests whether this MetaClass derives from the \a metaClass passed as argument.
+    bool derivesFrom(const MetaClass& metaClass) const;
+
     /// Returns the MetaClass that manages the \a className class.
     static const MetaClass* find(std::string_view className);
 

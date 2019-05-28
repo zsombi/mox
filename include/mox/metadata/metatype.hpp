@@ -94,6 +94,16 @@ public:
     /// \return The registered MetaType holding the typeId.
     static const MetaType& get(TypeId typeId);
 
+    /// Checks whether this metatype is the supertype of the \a type passed as argument.
+    /// Both this type and the passed metatype must be class types.
+    /// \return \e true if this type is the supertype of the type, \e false if not.
+    bool isSupertypeOf(const MetaType& type) const;
+
+    /// Checks whether this metatype is derived from the \a type passed as argument.
+    /// Both this type and the passed metatype must be class types.
+    /// \return \e true if this type is derived from the type, \e false if not.
+    bool derivesFrom(const MetaType& type) const;
+
     /// Returns \e true if the MetaType holds a valid type.
     bool isValid() const;
 
