@@ -47,8 +47,8 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        MetaType::registerMetaType<SignalTestClass>();
-        MetaType::registerMetaType<SlotHolder>();
+        MetaTypeDescriptor::registerMetaType<SignalTestClass>();
+        MetaTypeDescriptor::registerMetaType<SlotHolder>();
     }
 };
 

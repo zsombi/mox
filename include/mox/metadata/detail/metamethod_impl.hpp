@@ -41,7 +41,7 @@ Ret invokeMethod(Class& instance, std::string_view method, Arguments... args)
         metaClass = instance.getDynamicMetaClass();
     }
 
-    auto visitor = [name = std::forward<std::string_view>(method), retType = MetaType::typeId<Ret>()](const MetaMethod* method) -> bool
+    auto visitor = [name = std::forward<std::string_view>(method), retType = MetaTypeDescriptor::typeId<Ret>()](const MetaMethod* method) -> bool
     {
         return (method->name() == name) && (method->returnType().type == retType);
     };

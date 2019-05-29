@@ -69,11 +69,11 @@ TEST(Variants, test_convert)
 TEST(Variants, test_convert_string)
 {
     mox::Variant var(std::string("True"));
-    EXPECT_EQ(mox::MetaType::TypeId::String, var.type());
+    EXPECT_EQ(mox::MetaTypeDescriptor::TypeId::String, var.type());
     EXPECT_TRUE(mox::variant_cast<bool>(var));
 
     var = false;
-    EXPECT_EQ(mox::MetaType::TypeId::Bool, var.type());
+    EXPECT_EQ(mox::MetaTypeDescriptor::TypeId::Bool, var.type());
     EXPECT_EQ("false", mox::variant_cast<std::string>(var));
 }
 
@@ -83,14 +83,14 @@ TEST(Variants, test_metaobject)
     void* p1 = &obj;
     mox::Variant var;
 
-    mox::MetaType::registerMetaType<TestObject>();
+    mox::MetaTypeDescriptor::registerMetaType<TestObject>();
 
     var = p1;
-    EXPECT_EQ(mox::MetaType::TypeId::VoidPtr, var.type());
+    EXPECT_EQ(mox::MetaTypeDescriptor::TypeId::VoidPtr, var.type());
     EXPECT_EQ(p1, var);
 
     var = &obj;
-    EXPECT_NE(mox::MetaType::TypeId::MetaObject, var.type());
+    EXPECT_NE(mox::MetaTypeDescriptor::TypeId::MetaObject, var.type());
     EXPECT_EQ(obj.getStaticMetaClass()->metaType(), var.type());
     EXPECT_EQ(&obj, var);
 }

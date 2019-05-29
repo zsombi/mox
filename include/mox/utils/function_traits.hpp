@@ -32,7 +32,7 @@ namespace mox
 struct MOX_API ArgumentDescriptor
 {
     /// Tye metatype of the argument.
-    const MetaType::TypeId type = MetaType::TypeId::Invalid;
+    const MetaTypeDescriptor::TypeId type = MetaTypeDescriptor::TypeId::Invalid;
     /// \e true if the argument is a pointer, \e false if not.
     const bool isPointer = false;
     /// \e true if the argument is a reference, \e false if not.
@@ -42,7 +42,7 @@ struct MOX_API ArgumentDescriptor
 
     /// Constructor.
     ArgumentDescriptor() = default;
-    ArgumentDescriptor(MetaType::TypeId type, bool ptr, bool ref, bool c)
+    ArgumentDescriptor(MetaTypeDescriptor::TypeId type, bool ptr, bool ref, bool c)
         : type(type)
         , isPointer(ptr)
         , isReference(ref)
@@ -56,7 +56,7 @@ struct MOX_API ArgumentDescriptor
     static ArgumentDescriptor&& get()
     {
         return std::move(ArgumentDescriptor{
-                             MetaType::typeId<Type>(),
+                             MetaTypeDescriptor::typeId<Type>(),
                              std::is_pointer<Type>(),
                              std::is_reference<Type>(),
                              std::is_const<Type>()

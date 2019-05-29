@@ -104,13 +104,13 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        MetaType::registerMetaType<BaseClass>();
-        MetaType::registerMetaType<BaseObject>();
-        MetaType::registerMetaType<OtherBaseClass>();
-        MetaType::registerMetaType<DerivedClass>();
-        MetaType::registerMetaType<ObjectDerivedClass>();
-        MetaType::registerMetaType<SecondLevelDerived>();
-        MetaType::registerMetaType<SecondObject>();
+        MetaTypeDescriptor::registerMetaType<BaseClass>();
+        MetaTypeDescriptor::registerMetaType<BaseObject>();
+        MetaTypeDescriptor::registerMetaType<OtherBaseClass>();
+        MetaTypeDescriptor::registerMetaType<DerivedClass>();
+        MetaTypeDescriptor::registerMetaType<ObjectDerivedClass>();
+        MetaTypeDescriptor::registerMetaType<SecondLevelDerived>();
+        MetaTypeDescriptor::registerMetaType<SecondObject>();
     }
 };
 
@@ -202,10 +202,10 @@ TEST_F(MetaClasses, test_find)
 TEST_F(MetaClasses, test_metatype_superclass)
 {
     SecondObject::getStaticMetaClass();
-    const MetaType& base = MetaType::get<BaseClass>();
-    const MetaType& derived = MetaType::get<SecondLevelDerived>();
-    const MetaType& metaObject = MetaType::get<MetaObject>();
-    const MetaType& secondObject = MetaType::get<SecondObject>();
+    const MetaTypeDescriptor& base = MetaTypeDescriptor::get<BaseClass>();
+    const MetaTypeDescriptor& derived = MetaTypeDescriptor::get<SecondLevelDerived>();
+    const MetaTypeDescriptor& metaObject = MetaTypeDescriptor::get<MetaObject>();
+    const MetaTypeDescriptor& secondObject = MetaTypeDescriptor::get<SecondObject>();
 
     EXPECT_TRUE(derived.derivesFrom(base));
     EXPECT_TRUE(base.isSupertypeOf(derived));

@@ -57,8 +57,8 @@ public:
     /// no method is identified by the visitor.
     const MetaMethod* visitMethods(const MethodVisitor& visitor) const;
 
-    /// Returns the MetaType of the MetaClass.
-    MetaType::TypeId metaType() const
+    /// Returns the MetaTypeDescriptor of the MetaClass.
+    MetaTypeDescriptor::TypeId metaType() const
     {
         return m_type.id();
     }
@@ -78,8 +78,8 @@ public:
     virtual std::any castInstance(void* instance) const = 0;
 
 protected:
-    /// Creates a metaclass with a registered MetaType identifier.
-    explicit MetaClass(const MetaType& type, bool abstract);
+    /// Creates a metaclass with a registered MetaTypeDescriptor identifier.
+    explicit MetaClass(const MetaTypeDescriptor& type, bool abstract);
 
     void addMethod(MetaMethod* method);
 
@@ -88,7 +88,7 @@ protected:
 
     MetaClassContainer m_superClasses;
     MetaMethodContainer m_methods;
-    const MetaType& m_type;
+    const MetaTypeDescriptor& m_type;
     const bool m_isAbstract:1;
 
     friend class MetaMethod;
@@ -104,7 +104,7 @@ struct InterfaceMetaClass : MetaClass
     static constexpr bool abstract = std::is_abstract_v<Class>;
 
     explicit InterfaceMetaClass()
-        : MetaClass(MetaType::get<Class>(), abstract)
+        : MetaClass(MetaTypeDescriptor::get<Class>(), abstract)
     {
         static_assert(!std::is_base_of<MetaObject, Class>::value, "InterfaceMetaClassImpl reflects a non-MetaObject class.");
         std::array<const MetaClass*, sizeof... (SuperClasses)> aa =
@@ -133,7 +133,7 @@ struct ObjectMetaClass : MetaClass
     static constexpr bool abstract = std::is_abstract_v<Class>;
 
     explicit ObjectMetaClass()
-        : MetaClass(MetaType::get<Class>(), abstract)
+        : MetaClass(MetaTypeDescriptor::get<Class>(), abstract)
     {
         static_assert(std::is_base_of<MetaObject, Class>::value, "MetaClassImpl reflects a MetaObject derived class.");
         std::array<const MetaClass*, sizeof... (SuperClasses)> aa =

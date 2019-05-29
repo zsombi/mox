@@ -24,39 +24,52 @@
 namespace mox
 {
 
-//template <typename Type>
-//typename std::enable_if<std::is_class<Type>::value, MetaType::TypeId>::type MetaType::registerMetaType()
-//{
-//    typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
-//    const mox::MetaType& newType = MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
-//    Type::getStaticMetaClass();
-//    return newType;
-//}
+namespace
+{
 
-//template <typename Type>
-//typename std::enable_if<!std::is_class<Type>::value, MetaType::TypeId>::type MetaType::registerMetaType()
-//{
-//    typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
-//    return MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
-//}
+template <typename T>
+struct has_metaclass
+{
+private:
+    typedef char yes_type;
+    typedef long no_type;
+    template <typename U> static yes_type test(decltype(&U::getStaticMetaClass));
+    template <typename U> static no_type  test(...);
+public:
+    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);
+};
+
+} // noname
+
+template <typename Type>
+MetaTypeDescriptor::TypeId MetaTypeDescriptor::registerMetaType()
+{
+    typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
+    const mox::MetaTypeDescriptor& newType = MetaTypeDescriptor::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
+    if constexpr (std::is_class_v<Type> && has_metaclass<Type>::value)
+    {
+        Type::getStaticMetaClass();
+    }
+    return newType.id();
+}
 
 template<typename Type>
-const MetaType& MetaType::get()
+const MetaTypeDescriptor& MetaTypeDescriptor::get()
 {
     typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
-    const MetaType* type = findMetaType(typeid(NakedType));
-    ASSERT(type, std::string("MetaType::get<>: unregistered metatype: ") + typeid(Type).name());
+    const MetaTypeDescriptor* type = findMetaType(typeid(NakedType));
+    ASSERT(type, std::string("MetaTypeDescriptor::get<>: unregistered metatype: ") + typeid(Type).name());
     return *type;
 }
 
 template <typename Type>
-MetaType::TypeId MetaType::typeId()
+MetaTypeDescriptor::TypeId MetaTypeDescriptor::typeId()
 {
     return get<Type>().id();
 }
 
 template <typename Type>
-bool MetaType::isCustomType()
+bool MetaTypeDescriptor::isCustomType()
 {
     return get<Type>().id() >= TypeId::UserType;
 }

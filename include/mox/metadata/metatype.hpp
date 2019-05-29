@@ -28,18 +28,17 @@
 
 namespace mox {
 
-struct MetaTypeTraits;
-/// The MetaType class extends the RTTI of the types in Mox. Provides information
+/// The MetaTypeDescriptor class extends the RTTI of the types in Mox. Provides information
 /// about the type, such as constness, whether is a pointer or enum. It also stores
-/// a fully qualified name of the type. The MetaType is also used when comparing
+/// a fully qualified name of the type. The MetaTypeDescriptor is also used when comparing
 /// arguments passed on invocation with the arguments of the metamethods.
 ///
 /// The class is a standalone class and cannot be derived.
-struct MOX_API MetaType
+struct MOX_API MetaTypeDescriptor
 {
 public:
     /// Destructor.
-    virtual ~MetaType() final;
+    virtual ~MetaTypeDescriptor() final;
 
     /// Defines the type identifier. User defined types are registered in the
     /// user area, right after UserType.
@@ -68,20 +67,20 @@ public:
         UserType
     };
 
-    /// Returns the registered MetaType for the given type. The function asserts
+    /// Returns the registered MetaTypeDescriptor for the given type. The function asserts
     /// if the type is not registered in the metatype system.
     /// Example:
     /// \code
-    /// const MetaType* intPtr = MetaType::value<int*>();
+    /// const MetaTypeDescriptor* intPtr = MetaTypeDescriptor::value<int*>();
     /// \endcode
     template<typename Type>
-    static const MetaType& get();
+    static const MetaTypeDescriptor& get();
 
     /// Returns the type identifier of the given type. The function asserts if
     /// the type is not registered in the metatype system.
     /// Example:
     /// \code
-    /// MetaType::TypeId type = MetaType::id<int*>();
+    /// MetaTypeDescriptor::TypeId type = MetaTypeDescriptor::id<int*>();
     /// \endcode
     template <typename Type>
     static TypeId typeId();
@@ -89,65 +88,52 @@ public:
     template <typename Type>
     static bool isCustomType();
 
-    /// Returns the MetaType of a given type identifier.
+    /// Returns the MetaTypeDescriptor of a given type identifier.
     /// \param typeId The type identifier.
-    /// \return The registered MetaType holding the typeId.
-    static const MetaType& get(TypeId typeId);
+    /// \return The registered MetaTypeDescriptor holding the typeId.
+    static const MetaTypeDescriptor& get(TypeId typeId);
 
     /// Checks whether this metatype is the supertype of the \a type passed as argument.
     /// Both this type and the passed metatype must be class types.
     /// \return \e true if this type is the supertype of the type, \e false if not.
-    bool isSupertypeOf(const MetaType& type) const;
+    bool isSupertypeOf(const MetaTypeDescriptor& type) const;
 
     /// Checks whether this metatype is derived from the \a type passed as argument.
     /// Both this type and the passed metatype must be class types.
     /// \return \e true if this type is derived from the type, \e false if not.
-    bool derivesFrom(const MetaType& type) const;
+    bool derivesFrom(const MetaTypeDescriptor& type) const;
 
-    /// Returns \e true if the MetaType holds a valid type.
+    /// Returns \e true if the MetaTypeDescriptor holds a valid type.
     bool isValid() const;
 
-    /// Returns \e true if the MetaType holds the void value.
+    /// Returns \e true if the MetaTypeDescriptor holds the void value.
     /// \note void pointers are reported as a separate type.
     bool isVoid() const;
 
-    /// Returns the type identifier held by the MetaType.
+    /// Returns the type identifier held by the MetaTypeDescriptor.
     TypeId id() const;
 
-    /// Returns the fully qualified name of the MetaType.
+    /// Returns the fully qualified name of the MetaTypeDescriptor.
     const char* name() const;
 
-    /// Returns \e true if the type held by the MetaType is an enumeration.
+    /// Returns \e true if the type held by the MetaTypeDescriptor is an enumeration.
     bool isEnum() const;
 
-    /// Returns \e true if the type held by this MetaType is a class.
+    /// Returns \e true if the type held by this MetaTypeDescriptor is a class.
     bool isClass() const;
 
-    /// Returns the RTTI (Run-time Type Information) of the MetaType.
+    /// Returns the RTTI (Run-time Type Information) of the MetaTypeDescriptor.
     const std::type_info* rtti() const;
 
-    /// Finds a MetaType associated to the \a rtti.
-    /// \return nullptr if the \e rtti does not have any associated MetaType registered.
-    static const MetaType* findMetaType(const std::type_info& rtti);
+    /// Finds a MetaTypeDescriptor associated to the \a rtti.
+    /// \return nullptr if the \e rtti does not have any associated MetaTypeDescriptor registered.
+    static const MetaTypeDescriptor* findMetaType(const std::type_info& rtti);
 
     /// Registers a Type into the Mox metatype subsystem. The function returns the
-    /// MetaType if already registered.
-    /// \return The MetaType handler of the Type.
+    /// MetaTypeDescriptor if already registered.
+    /// \return The MetaTypeDescriptor handler of the Type.
     template <typename Type>
-    static typename std::enable_if<std::is_class<Type>::value, MetaType::TypeId>::type registerMetaType()
-    {
-        typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
-        const mox::MetaType& newType = MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
-        Type::getStaticMetaClass();
-        return newType.id();
-    }
-
-    template <typename Type>
-    static typename std::enable_if<!std::is_class<Type>::value, MetaType::TypeId>::type registerMetaType()
-    {
-        typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
-        return MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>()).id();
-    }
+    static MetaTypeDescriptor::TypeId registerMetaType();
 
     /// Converters
     /// \{
@@ -164,17 +150,17 @@ public:
     typedef std::shared_ptr<AbstractConverter> AbstractConverterSharedPtr;
 
     template <typename From, typename To, typename Function>
-    struct ConverterFunctor : public MetaType::AbstractConverter
+    struct ConverterFunctor : public MetaTypeDescriptor::AbstractConverter
     {
         Function m_function;
 
         explicit ConverterFunctor(Function function) :
-            MetaType::AbstractConverter(convert),
+            MetaTypeDescriptor::AbstractConverter(convert),
             m_function(function)
         {
         }
 
-        static bool convert(const MetaType::AbstractConverter& converter, const void* from, void* to)
+        static bool convert(const MetaTypeDescriptor::AbstractConverter& converter, const void* from, void* to)
         {
             const From* in = reinterpret_cast<const From*>(from);
             To* out = reinterpret_cast<To*>(to);
@@ -187,8 +173,8 @@ public:
     template <typename From, typename To, typename Function>
     static bool registerConverter(Function function)
     {
-        const MetaType::TypeId fromType = MetaType::typeId<From>();
-        const MetaType::TypeId toType = MetaType::typeId<To>();
+        const MetaTypeDescriptor::TypeId fromType = MetaTypeDescriptor::typeId<From>();
+        const MetaTypeDescriptor::TypeId toType = MetaTypeDescriptor::typeId<To>();
         AbstractConverterSharedPtr converter = make_polymorphic_shared<AbstractConverter, ConverterFunctor<From, To, Function> >(function);
         return registerConverterFunction(converter, fromType, toType);
     }
@@ -200,13 +186,13 @@ public:
     /// \}
 
 private:
-    /// MetaType constructor.
-    explicit MetaType(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass);
-    /// Registers a MetaType associated to the \a rtti.
+    /// MetaTypeDescriptor constructor.
+    explicit MetaTypeDescriptor(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass);
+    /// Registers a MetaTypeDescriptor associated to the \a rtti.
     /// \param rtti The type info of the type to register.
     /// \param isEnum True if the type defines an enum.
-    /// \return the MetaType associated to the \e rtti.
-    static const MetaType& newMetatype(const std::type_info &rtti, bool isEnum, bool isClass);
+    /// \return the MetaTypeDescriptor associated to the \e rtti.
+    static const MetaTypeDescriptor& newMetatype(const std::type_info &rtti, bool isEnum, bool isClass);
 
     /// Registers a \a converter that converts a value from \a fromType to \a toType.
     static bool registerConverterFunction(AbstractConverterSharedPtr converter, TypeId fromType, TypeId toType);
@@ -220,8 +206,8 @@ private:
     bool m_isClass:1;
 
     friend class MetaData;
-    DISABLE_COPY(MetaType)
-    DISABLE_MOVE(MetaType)
+    DISABLE_COPY(MetaTypeDescriptor)
+    DISABLE_MOVE(MetaTypeDescriptor)
 };
 
 } // namespace mox

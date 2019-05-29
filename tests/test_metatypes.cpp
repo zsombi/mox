@@ -35,114 +35,114 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        MetaType::registerMetaType<UserStruct>();
-        MetaType::registerMetaType<UserClass>();
+        MetaTypeDescriptor::registerMetaType<UserStruct>();
+        MetaTypeDescriptor::registerMetaType<UserClass>();
     }
 };
 
 TEST_F(Types, test_atomic_types)
 {
-    const MetaType* type = &MetaType::get<bool>();
-    EXPECT_EQ(MetaType::TypeId::Bool, type->id());
+    const MetaTypeDescriptor* type = &MetaTypeDescriptor::get<bool>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Bool, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "bool"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<char>();
-    EXPECT_EQ(MetaType::TypeId::Char, type->id());
+    type = &MetaTypeDescriptor::get<char>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Char, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "char"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<byte>();
-    EXPECT_EQ(MetaType::TypeId::Byte, type->id());
+    type = &MetaTypeDescriptor::get<byte>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Byte, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "byte"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     // in c++11 byte is an enum class!!
     EXPECT_TRUE(type->isEnum());
 
-    type = &MetaType::get<short>();
-    EXPECT_EQ(MetaType::TypeId::Short, type->id());
+    type = &MetaTypeDescriptor::get<short>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Short, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "short"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<unsigned short>();
-    EXPECT_EQ(MetaType::TypeId::Word, type->id());
+    type = &MetaTypeDescriptor::get<unsigned short>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Word, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "word"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<int>();
-    EXPECT_EQ(MetaType::TypeId::Int, type->id());
+    type = &MetaTypeDescriptor::get<int>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "int"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<unsigned int>();
-    EXPECT_EQ(MetaType::TypeId::UInt, type->id());
+    type = &MetaTypeDescriptor::get<unsigned int>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::UInt, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "uint"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<long>();
-    EXPECT_EQ(MetaType::TypeId::Long, type->id());
+    type = &MetaTypeDescriptor::get<long>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Long, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "long"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<unsigned long>();
-    EXPECT_EQ(MetaType::TypeId::ULong, type->id());
+    type = &MetaTypeDescriptor::get<unsigned long>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::ULong, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "ulong"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<long long>();
-    EXPECT_EQ(MetaType::TypeId::Int64, type->id());
+    type = &MetaTypeDescriptor::get<long long>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int64, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "int64"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<unsigned long long>();
-    EXPECT_EQ(MetaType::TypeId::UInt64, type->id());
+    type = &MetaTypeDescriptor::get<unsigned long long>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::UInt64, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "uint64"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<float>();
-    EXPECT_EQ(MetaType::TypeId::Float, type->id());
+    type = &MetaTypeDescriptor::get<float>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Float, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "float"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<double>();
-    EXPECT_EQ(MetaType::TypeId::Double, type->id());
+    type = &MetaTypeDescriptor::get<double>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Double, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "double"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<void>();
-    EXPECT_EQ(MetaType::TypeId::Void, type->id());
+    type = &MetaTypeDescriptor::get<void>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "void"));
     EXPECT_TRUE(type->isValid());
     EXPECT_TRUE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &MetaType::get<std::string>();
-    EXPECT_EQ(MetaType::TypeId::String, type->id());
+    type = &MetaTypeDescriptor::get<std::string>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::String, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "std::string"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
@@ -151,48 +151,48 @@ TEST_F(Types, test_atomic_types)
 
 TEST_F(Types, test_synonim_types)
 {
-    const MetaType* type;
+    const MetaTypeDescriptor* type;
 
-    type = &MetaType::get<int32_t>();
-    EXPECT_EQ(MetaType::TypeId::Int, type->id());
+    type = &MetaTypeDescriptor::get<int32_t>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, type->id());
 
-    type = &MetaType::get<int16_t>();
-    EXPECT_EQ(MetaType::TypeId::Short, type->id());
+    type = &MetaTypeDescriptor::get<int16_t>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Short, type->id());
 
-    type = &MetaType::get<intptr_t>();
-    EXPECT_EQ(MetaType::TypeId::Long, type->id());
+    type = &MetaTypeDescriptor::get<intptr_t>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Long, type->id());
 
-    type = &MetaType::get<size_t>();
-    EXPECT_EQ(MetaType::TypeId::ULong, type->id());
+    type = &MetaTypeDescriptor::get<size_t>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::ULong, type->id());
 }
 
 TEST_F(Types, test_composit_types)
 {
-    const MetaType* type;
+    const MetaTypeDescriptor* type;
 
-    type = &MetaType::get<int*>();
-    EXPECT_EQ(MetaType::TypeId::Int, type->id());
+    type = &MetaTypeDescriptor::get<int*>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, type->id());
 
-    type = &MetaType::get<int&>();
-    EXPECT_EQ(MetaType::TypeId::Int, type->id());
+    type = &MetaTypeDescriptor::get<int&>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, type->id());
 
-    type = &MetaType::get<const int*>();
-    EXPECT_EQ(MetaType::TypeId::Int, type->id());
+    type = &MetaTypeDescriptor::get<const int*>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, type->id());
 
-    type = &MetaType::get<const int&>();
-    EXPECT_EQ(MetaType::TypeId::Int, type->id());
+    type = &MetaTypeDescriptor::get<const int&>();
+    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, type->id());
 }
 
 TEST_F(Types, test_user_types)
 {
-    const MetaType* type;
+    const MetaTypeDescriptor* type;
 
-    type = &MetaType::get<UserStruct>();
-    EXPECT_GE(type->id(), MetaType::TypeId::UserType);
+    type = &MetaTypeDescriptor::get<UserStruct>();
+    EXPECT_GE(type->id(), MetaTypeDescriptor::TypeId::UserType);
     EXPECT_TRUE(type->isClass());
 
-    type = &MetaType::get<UserClass>();
-    EXPECT_GE(type->id(), MetaType::TypeId::UserType);
+    type = &MetaTypeDescriptor::get<UserClass>();
+    EXPECT_GE(type->id(), MetaTypeDescriptor::TypeId::UserType);
 
-    EXPECT_EQ(MetaType::typeId<UserClass>(), MetaType::typeId<UserClass*>());
+    EXPECT_EQ(MetaTypeDescriptor::typeId<UserClass>(), MetaTypeDescriptor::typeId<UserClass*>());
 }
