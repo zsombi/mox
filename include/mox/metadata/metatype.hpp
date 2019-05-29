@@ -134,7 +134,20 @@ public:
     /// MetaType if already registered.
     /// \return The MetaType handler of the Type.
     template <typename Type>
-    static const mox::MetaType& registerMetaType();
+    static typename std::enable_if<std::is_class<Type>::value, MetaType::TypeId>::type registerMetaType()
+    {
+        typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
+        const mox::MetaType& newType = MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
+        Type::getStaticMetaClass();
+        return newType.id();
+    }
+
+    template <typename Type>
+    static typename std::enable_if<!std::is_class<Type>::value, MetaType::TypeId>::type registerMetaType()
+    {
+        typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
+        return MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>()).id();
+    }
 
     /// Converters
     /// \{

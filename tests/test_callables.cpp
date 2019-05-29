@@ -32,7 +32,7 @@ protected:
     {
         UnitTest::SetUp();
         MetaType::registerMetaType<std::reference_wrapper<int>>();
-        functorMetaType = MetaType::registerMetaType<TestFunctor>().id();
+        functorMetaType = MetaType::registerMetaType<TestFunctor>();
         invoked = false;
     }
 };

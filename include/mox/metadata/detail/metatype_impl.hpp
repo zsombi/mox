@@ -24,12 +24,21 @@
 namespace mox
 {
 
-template <typename Type>
-const MetaType& MetaType::registerMetaType()
-{
-    typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
-    return MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
-}
+//template <typename Type>
+//typename std::enable_if<std::is_class<Type>::value, MetaType::TypeId>::type MetaType::registerMetaType()
+//{
+//    typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
+//    const mox::MetaType& newType = MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
+//    Type::getStaticMetaClass();
+//    return newType;
+//}
+
+//template <typename Type>
+//typename std::enable_if<!std::is_class<Type>::value, MetaType::TypeId>::type MetaType::registerMetaType()
+//{
+//    typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
+//    return MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
+//}
 
 template<typename Type>
 const MetaType& MetaType::get()

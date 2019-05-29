@@ -60,7 +60,7 @@ public:
     /// Returns the MetaType of the MetaClass.
     MetaType::TypeId metaType() const
     {
-        return m_type;
+        return m_type.id();
     }
 
     /// Returns true if the class managed by this meta-class is abstract.
@@ -79,7 +79,7 @@ public:
 
 protected:
     /// Creates a metaclass with a registered MetaType identifier.
-    explicit MetaClass(MetaType::TypeId type, bool abstract);
+    explicit MetaClass(const MetaType& type, bool abstract);
 
     void addMethod(MetaMethod* method);
 
@@ -88,7 +88,7 @@ protected:
 
     MetaClassContainer m_superClasses;
     MetaMethodContainer m_methods;
-    MetaType::TypeId m_type;
+    const MetaType& m_type;
     const bool m_isAbstract:1;
 
     friend class MetaMethod;
@@ -104,7 +104,7 @@ struct InterfaceMetaClass : MetaClass
     static constexpr bool abstract = std::is_abstract_v<Class>;
 
     explicit InterfaceMetaClass()
-        : MetaClass(MetaType::registerMetaType<Class>().id(), abstract)
+        : MetaClass(MetaType::get<Class>(), abstract)
     {
         static_assert(!std::is_base_of<MetaObject, Class>::value, "InterfaceMetaClassImpl reflects a non-MetaObject class.");
         std::array<const MetaClass*, sizeof... (SuperClasses)> aa =
@@ -133,7 +133,7 @@ struct ObjectMetaClass : MetaClass
     static constexpr bool abstract = std::is_abstract_v<Class>;
 
     explicit ObjectMetaClass()
-        : MetaClass(MetaType::registerMetaType<Class>().id(), abstract)
+        : MetaClass(MetaType::get<Class>(), abstract)
     {
         static_assert(std::is_base_of<MetaObject, Class>::value, "MetaClassImpl reflects a MetaObject derived class.");
         std::array<const MetaClass*, sizeof... (SuperClasses)> aa =

@@ -98,15 +98,30 @@ public:
     }
 };
 
+class MetaClasses : public UnitTest
+{
+protected:
+    void SetUp() override
+    {
+        UnitTest::SetUp();
+        MetaType::registerMetaType<BaseClass>();
+        MetaType::registerMetaType<BaseObject>();
+        MetaType::registerMetaType<OtherBaseClass>();
+        MetaType::registerMetaType<DerivedClass>();
+        MetaType::registerMetaType<ObjectDerivedClass>();
+        MetaType::registerMetaType<SecondLevelDerived>();
+        MetaType::registerMetaType<SecondObject>();
+    }
+};
 
-TEST(MetaClasses, test_metaclass_ownership)
+TEST_F(MetaClasses, test_metaclass_ownership)
 {
     const MetaClass* mo = BaseClass::getStaticMetaClass();
     BaseObject object;
     EXPECT_TRUE(mo->isClassOf(object));
 }
 
-TEST(MetaClasses, test_composit_interface_metaclass)
+TEST_F(MetaClasses, test_composit_interface_metaclass)
 {
     const MetaClass* moBaseClass = BaseClass::getStaticMetaClass();
     const MetaClass* moOtherBaseClass = OtherBaseClass::getStaticMetaClass();
@@ -120,7 +135,7 @@ TEST(MetaClasses, test_composit_interface_metaclass)
     EXPECT_TRUE(moObjectDerivedClass->isClassOf(object));
 }
 
-TEST(MetaClasses, test_superclass)
+TEST_F(MetaClasses, test_superclass)
 {
     const MetaClass* moBaseClass = BaseClass::getStaticMetaClass();
     const MetaClass* moOtherBaseClass = OtherBaseClass::getStaticMetaClass();
@@ -138,7 +153,7 @@ TEST(MetaClasses, test_superclass)
     EXPECT_FALSE(moBaseClass->isSuperClassOf(*moOtherBaseClass));
 }
 
-TEST(MetaClasses, test_abstract)
+TEST_F(MetaClasses, test_abstract)
 {
     EXPECT_TRUE(SecondLevelDerived::SecondLevelDerivedMetaClass::abstract);
     EXPECT_FALSE(DerivedClass::DerivedClassMetaClass::abstract);
@@ -146,7 +161,7 @@ TEST(MetaClasses, test_abstract)
     EXPECT_FALSE(DerivedClass::getStaticMetaClass()->isAbstract());
 }
 
-TEST(MetaClasses, test_second_object)
+TEST_F(MetaClasses, test_second_object)
 {
     ObjectDerivedClass o1;
     SecondObject o2;
@@ -177,14 +192,14 @@ TEST(MetaClasses, test_second_object)
     EXPECT_TRUE(moMetaObject->isClassOf(o2));
 }
 
-TEST(MetaClasses, test_find)
+TEST_F(MetaClasses, test_find)
 {
     EXPECT_TRUE(nullptr != MetaClass::find("BaseClass"));
     EXPECT_TRUE(nullptr == MetaClass::find("Boo"));
     EXPECT_TRUE(nullptr == MetaClass::find("baseClass"));
 }
 
-TEST(MetaClasses, test_metatype_superclass)
+TEST_F(MetaClasses, test_metatype_superclass)
 {
     SecondObject::getStaticMetaClass();
     const MetaType& base = MetaType::get<BaseClass>();

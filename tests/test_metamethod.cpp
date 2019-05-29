@@ -86,6 +86,9 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
+        MetaType::registerMetaType<TestMixin>();
+        MetaType::registerMetaType<TestSecond>();
+        MetaType::registerMetaType<Mixin>();
     }
 };
 
