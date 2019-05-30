@@ -20,9 +20,10 @@
 #define METACLASS_HPP
 
 #include <any>
+#include <vector>
 
 #include <mox/utils/globals.hpp>
-#include <mox/metadata/metatype.hpp>
+#include <mox/metadata/metatype_descriptor.hpp>
 
 namespace mox
 {
@@ -57,8 +58,8 @@ public:
     /// no method is identified by the visitor.
     const MetaMethod* visitMethods(const MethodVisitor& visitor) const;
 
-    /// Returns the MetaTypeDescriptor of the MetaClass.
-    MetaTypeDescriptor::TypeId metaType() const
+    /// Returns the Metatype of the MetaClass.
+    Metatype metaType() const
     {
         return m_type.id();
     }
@@ -78,8 +79,8 @@ public:
     virtual std::any castInstance(void* instance) const = 0;
 
 protected:
-    /// Creates a metaclass with a registered MetaTypeDescriptor identifier.
-    explicit MetaClass(const MetaTypeDescriptor& type, bool abstract);
+    /// Creates a metaclass with a registered MetatypeDescriptor identifier.
+    explicit MetaClass(const MetatypeDescriptor& type, bool abstract);
 
     void addMethod(MetaMethod* method);
 
@@ -88,7 +89,7 @@ protected:
 
     MetaClassContainer m_superClasses;
     MetaMethodContainer m_methods;
-    const MetaTypeDescriptor& m_type;
+    const MetatypeDescriptor& m_type;
     const bool m_isAbstract:1;
 
     friend class MetaMethod;
@@ -104,7 +105,7 @@ struct InterfaceMetaClass : MetaClass
     static constexpr bool abstract = std::is_abstract_v<Class>;
 
     explicit InterfaceMetaClass()
-        : MetaClass(MetaTypeDescriptor::get<Class>(), abstract)
+        : MetaClass(metatypeDescriptor<Class>(), abstract)
     {
         static_assert(!std::is_base_of<MetaObject, Class>::value, "InterfaceMetaClassImpl reflects a non-MetaObject class.");
         std::array<const MetaClass*, sizeof... (SuperClasses)> aa =
@@ -133,7 +134,7 @@ struct ObjectMetaClass : MetaClass
     static constexpr bool abstract = std::is_abstract_v<Class>;
 
     explicit ObjectMetaClass()
-        : MetaClass(MetaTypeDescriptor::get<Class>(), abstract)
+        : MetaClass(metatypeDescriptor<Class>(), abstract)
     {
         static_assert(std::is_base_of<MetaObject, Class>::value, "MetaClassImpl reflects a MetaObject derived class.");
         std::array<const MetaClass*, sizeof... (SuperClasses)> aa =

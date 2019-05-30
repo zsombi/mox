@@ -18,11 +18,12 @@
 
 #include "test_framework.h"
 #include <mox/metadata/callable.hpp>
+#include <mox/metadata/metatype_descriptor.hpp>
 
 using namespace mox;
 
 static bool invoked = false;
-static MetaTypeDescriptor::TypeId functorMetaType = MetaTypeDescriptor::TypeId::Invalid;
+static Metatype functorMetaType = Metatype::Invalid;
 struct TestFunctor;
 
 class Callables : public UnitTest
@@ -31,8 +32,8 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        MetaTypeDescriptor::registerMetaType<std::reference_wrapper<int>>();
-        functorMetaType = MetaTypeDescriptor::registerMetaType<TestFunctor>();
+        registerMetaType<std::reference_wrapper<int>>();
+        functorMetaType = registerMetaType<TestFunctor>();
         invoked = false;
     }
 };
@@ -79,13 +80,13 @@ void* ptrFunc()
 TEST_F(Callables, test_callable_return_types)
 {
     Callable testFuncCallable(testFunc);
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, testFuncCallable.returnType().type);
+    EXPECT_EQ(Metatype::Void, testFuncCallable.returnType().type);
 
     Callable testRetFuncCallable(testRetFunc);
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, testRetFuncCallable.returnType().type);
+    EXPECT_EQ(Metatype::Int, testRetFuncCallable.returnType().type);
 
     Callable ptrFuncCallable(ptrFunc);
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, ptrFuncCallable.returnType().type);
+    EXPECT_EQ(Metatype::Void, ptrFuncCallable.returnType().type);
     EXPECT_TRUE(ptrFuncCallable.returnType().isPointer);
 }
 
@@ -96,18 +97,18 @@ TEST_F(Callables, test_callable_arguments)
 
     Callable testFunc2Callable(testFunc2);
     EXPECT_EQ(1u, testFunc2Callable.argumentCount());
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, testFunc2Callable.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int, testFunc2Callable.argumentType(0u).type);
     EXPECT_FALSE(testFunc2Callable.argumentType(0u).isConst);
     EXPECT_FALSE(testFunc2Callable.argumentType(0u).isPointer);
     EXPECT_FALSE(testFunc2Callable.argumentType(0u).isReference);
 
     Callable summCallable(sum);
     EXPECT_EQ(2u, summCallable.argumentCount());
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, summCallable.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int, summCallable.argumentType(0u).type);
     EXPECT_FALSE(summCallable.argumentType(0u).isConst);
     EXPECT_FALSE(summCallable.argumentType(0u).isPointer);
     EXPECT_FALSE(summCallable.argumentType(0u).isReference);
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, summCallable.argumentType(1u).type);
+    EXPECT_EQ(Metatype::Int, summCallable.argumentType(1u).type);
     EXPECT_FALSE(summCallable.argumentType(1u).isConst);
     EXPECT_FALSE(summCallable.argumentType(1u).isPointer);
     EXPECT_FALSE(summCallable.argumentType(1u).isReference);
@@ -260,9 +261,9 @@ TEST_F(Callables, test_method_ret_and_argument_types)
     Callable callable(&TestFunctor::voidMethod2);
 
     EXPECT_EQ(FunctionType::Method, callable.type());
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, callable.returnType().type);
+    EXPECT_EQ(Metatype::Void, callable.returnType().type);
     EXPECT_EQ(1u, callable.argumentCount());
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, callable.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int, callable.argumentType(0u).type);
     EXPECT_EQ(functorMetaType, callable.classType());
 }
 
@@ -270,7 +271,7 @@ TEST_F(Callables, test_function_class_type_invalid)
 {
     Callable callable(testFunc2);
 
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Invalid, callable.classType());
+    EXPECT_EQ(Metatype::Invalid, callable.classType());
 }
 
 TEST_F(Callables, test_invoke_method_no_arg)
@@ -439,29 +440,29 @@ TEST_F(Callables, test_lambda_callables)
 {
     Callable c1([](){});
 
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, c1.returnType().type);
+    EXPECT_EQ(Metatype::Void, c1.returnType().type);
     EXPECT_EQ(0u, c1.argumentCount());
 
     Callable c2([](int) {});
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, c2.returnType().type);
+    EXPECT_EQ(Metatype::Void, c2.returnType().type);
     EXPECT_EQ(1u, c2.argumentCount());
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, c2.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int, c2.argumentType(0u).type);
 
     Callable c3([](int, std::string) {});
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, c3.returnType().type);
+    EXPECT_EQ(Metatype::Void, c3.returnType().type);
     EXPECT_EQ(2u, c3.argumentCount());
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, c3.argumentType(0u).type);
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::String, c3.argumentType(1u).type);
+    EXPECT_EQ(Metatype::Int, c3.argumentType(0u).type);
+    EXPECT_EQ(Metatype::String, c3.argumentType(1u).type);
 
     Callable c4([]() -> int { return -1; });
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Int, c4.returnType().type);
+    EXPECT_EQ(Metatype::Int, c4.returnType().type);
     EXPECT_EQ(0u, c4.argumentCount());
 
     Callable c5([](void*) -> void* { return nullptr; });
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, c5.returnType().type);
+    EXPECT_EQ(Metatype::Void, c5.returnType().type);
     EXPECT_TRUE(c5.returnType().isPointer);
     EXPECT_EQ(1u, c5.argumentCount());
-    EXPECT_EQ(MetaTypeDescriptor::TypeId::Void, c5.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Void, c5.argumentType(0u).type);
     EXPECT_TRUE(c5.argumentType(0u).isPointer);
 }
 

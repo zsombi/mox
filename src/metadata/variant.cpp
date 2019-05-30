@@ -44,17 +44,17 @@ Variant::operator bool() const
     return (index() > 0);
 }
 
-MetaTypeDescriptor::TypeId Variant::type() const
+Metatype Variant::type() const
 {
     if (!(*this))
     {
-        return MetaTypeDescriptor::TypeId::Invalid;
+        return Metatype::Invalid;
     }
 
-    MetaTypeDescriptor::TypeId id = static_cast<MetaTypeDescriptor::TypeId>(index());
+    Metatype id = static_cast<Metatype>(index());
     switch (id)
     {
-        case MetaTypeDescriptor::TypeId::MetaObject:
+        case Metatype::MetaObject:
         {
             MetaObject* mo = value<MetaObject*>();
             return mo->getDynamicMetaClass()->metaType();
@@ -66,7 +66,7 @@ MetaTypeDescriptor::TypeId Variant::type() const
     }
 }
 
-bool Variant::canConvert(MetaTypeDescriptor::TypeId toType) const
+bool Variant::canConvert(Metatype toType) const
 {
     return metadata().findConverter(type(), toType) != nullptr;
 }

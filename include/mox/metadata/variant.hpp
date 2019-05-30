@@ -20,7 +20,7 @@
 #define VARIANT_HPP
 
 #include <mox/utils/globals.hpp>
-#include <mox/metadata/metatype.hpp>
+#include <mox/metadata/metatype_descriptor.hpp>
 
 #include <variant>
 #include <string>
@@ -33,7 +33,7 @@ class Variant;
 
 namespace
 {
-// Base type for Mox Variant. The order of the variant types matches the MetaTypeDescriptor::TypeId order.
+// Base type for Mox Variant. The order of the variant types matches the Metatype order.
 typedef std::variant<
     std::monostate,
     bool,
@@ -89,14 +89,14 @@ public:
     explicit operator bool() const;
 
     /// Returns the metatype of the variant.
-    MetaTypeDescriptor::TypeId type() const;
+    Metatype type() const;
 
     /// Returns \e true if the current value of the variant is of type \a Type.
     /// \return \e true if the current value of the variant is of \a Type, \e false if not.
     template <typename Type>
     bool isValueType() const
     {
-        return MetaTypeDescriptor::typeId<Type>() == type();
+        return metaType<Type>() == type();
     }
 
     /// Returns the value managed by the variant. Throws std::bad_variant_access if the value managed by the
@@ -110,7 +110,7 @@ public:
     /// Returns true if the variant data is convertible to the desired \a toType.
     /// \param toType The desired type to convert the variant data.
     /// \return \e true if the variant is convertible to the type, \e false if not.
-    bool canConvert(MetaTypeDescriptor::TypeId toType) const;
+    bool canConvert(Metatype toType) const;
 };
 
 /// Comparison operator, compares two variants.
@@ -139,14 +139,14 @@ bool operator==(const Variant& var, const T& v)
 template <typename Type>
 Type variant_cast(Variant variant)
 {
-    MetaTypeDescriptor::TypeId toType = MetaTypeDescriptor::typeId<Type>();
+    Metatype toType = metaType<Type>();
     if (variant.type() == toType)
     {
         // No conversion needed.
         return variant.value<Type>();
     }
 
-    MetaTypeDescriptor::AbstractConverterSharedPtr converter = MetaTypeDescriptor::findConverter(variant.type(), toType);
+    MetatypeDescriptor::AbstractConverterSharedPtr converter = MetatypeDescriptor::findConverter(variant.type(), toType);
     if (!converter)
     {
         throw std::bad_variant_access();

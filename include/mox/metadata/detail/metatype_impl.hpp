@@ -20,6 +20,8 @@
 #define METATYPE_IMPL_H
 
 #include <type_traits>
+#include <string>
+#include <mox/utils/globals.hpp>
 
 namespace mox
 {
@@ -42,36 +44,31 @@ public:
 } // noname
 
 template <typename Type>
-MetaTypeDescriptor::TypeId MetaTypeDescriptor::registerMetaType()
+Metatype metaType()
+{
+    typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
+    return registrar::findMetatype(typeid(NakedType));
+}
+
+template <typename Type>
+const MetatypeDescriptor& metatypeDescriptor()
+{
+    typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
+    const MetatypeDescriptor* descriptor = registrar::findMetatypeDescriptor(typeid(NakedType));
+    ASSERT(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + typeid(NakedType).name());
+    return *descriptor;
+}
+
+template <typename Type>
+Metatype registerMetaType()
 {
     typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
-    const mox::MetaTypeDescriptor& newType = MetaTypeDescriptor::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
-    if constexpr (std::is_class_v<Type> && has_metaclass<Type>::value)
+    Metatype newType = registrar::tryRegisterMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
+    if constexpr (has_metaclass<Type>::value)
     {
         Type::getStaticMetaClass();
     }
-    return newType.id();
-}
-
-template<typename Type>
-const MetaTypeDescriptor& MetaTypeDescriptor::get()
-{
-    typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
-    const MetaTypeDescriptor* type = findMetaType(typeid(NakedType));
-    ASSERT(type, std::string("MetaTypeDescriptor::get<>: unregistered metatype: ") + typeid(Type).name());
-    return *type;
-}
-
-template <typename Type>
-MetaTypeDescriptor::TypeId MetaTypeDescriptor::typeId()
-{
-    return get<Type>().id();
-}
-
-template <typename Type>
-bool MetaTypeDescriptor::isCustomType()
-{
-    return get<Type>().id() >= TypeId::UserType;
+    return newType;
 }
 
 } // namespace mox

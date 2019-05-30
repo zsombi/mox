@@ -52,23 +52,23 @@ bool stringToBool(std::string value)
 template <typename From, typename To>
 void registerTypeConverters()
 {
-    MetaTypeDescriptor::registerConverter<From, To>(atomicConverter<From, To>);
-    MetaTypeDescriptor::registerConverter<To, From>(atomicConverter<To, From>);
+    MetatypeDescriptor::registerConverter<From, To>(atomicConverter<From, To>);
+    MetatypeDescriptor::registerConverter<To, From>(atomicConverter<To, From>);
 }
 
 template <typename From, typename To>
 void registerPointerConverters()
 {
-    MetaTypeDescriptor::registerConverter<From, To>(pointerConverter<From, To>);
-    MetaTypeDescriptor::registerConverter<To, From>(pointerConverter<To, From>);
+    MetatypeDescriptor::registerConverter<From, To>(pointerConverter<From, To>);
+    MetatypeDescriptor::registerConverter<To, From>(pointerConverter<To, From>);
 }
 
 void registerStringConverters()
 {
-    MetaTypeDescriptor::registerConverter<bool, std::string>(default_converters::boolToString);
-    MetaTypeDescriptor::registerConverter<std::string, bool>(default_converters::stringToBool);
+    MetatypeDescriptor::registerConverter<bool, std::string>(default_converters::boolToString);
+    MetatypeDescriptor::registerConverter<std::string, bool>(default_converters::stringToBool);
 
-    MetaTypeDescriptor::registerConverter<char, std::string>([](char v) { std::string s; s += v; return s; });
+    MetatypeDescriptor::registerConverter<char, std::string>([](char v) { std::string s; s += v; return s; });
 }
 
 } // namespace default_converters
@@ -83,7 +83,7 @@ MetaData::~MetaData()
 
 #define ATOMIC_TYPE(name, Type, typeId) \
 { \
-    const MetaTypeDescriptor& metaType = addMetaType(name, typeid(Type), std::is_enum<Type>(), std::is_class<Type>()); \
+    const MetatypeDescriptor& metaType = addMetaType(name, typeid(Type), std::is_enum<Type>(), std::is_class<Type>()); \
     ASSERT(metaType.id() == typeId, "wrong atomic type registration!"); \
 }
 
@@ -95,23 +95,23 @@ void MetaData::initialize()
         return;
     }
 
-    ATOMIC_TYPE("void", void, MetaTypeDescriptor::TypeId::Void);
-    ATOMIC_TYPE("bool", bool, MetaTypeDescriptor::TypeId::Bool);
-    ATOMIC_TYPE("char", char, MetaTypeDescriptor::TypeId::Char);
-    ATOMIC_TYPE("byte", byte, MetaTypeDescriptor::TypeId::Byte);
-    ATOMIC_TYPE("short", short, MetaTypeDescriptor::TypeId::Short);
-    ATOMIC_TYPE("word", unsigned short, MetaTypeDescriptor::TypeId::Word);
-    ATOMIC_TYPE("int", int, MetaTypeDescriptor::TypeId::Int);
-    ATOMIC_TYPE("uint", unsigned int, MetaTypeDescriptor::TypeId::UInt);
-    ATOMIC_TYPE("long", long, MetaTypeDescriptor::TypeId::Long);
-    ATOMIC_TYPE("ulong", unsigned long, MetaTypeDescriptor::TypeId::ULong);
-    ATOMIC_TYPE("int64", long long, MetaTypeDescriptor::TypeId::Int64);
-    ATOMIC_TYPE("uint64", unsigned long long, MetaTypeDescriptor::TypeId::UInt64);
-    ATOMIC_TYPE("float", float, MetaTypeDescriptor::TypeId::Float);
-    ATOMIC_TYPE("double", double, MetaTypeDescriptor::TypeId::Double);
-    ATOMIC_TYPE("std::string", std::string, MetaTypeDescriptor::TypeId::String);
-    ATOMIC_TYPE("MetaObject", MetaObject, MetaTypeDescriptor::TypeId::MetaObject);
-    ATOMIC_TYPE("void*", void*, MetaTypeDescriptor::TypeId::VoidPtr);
+    ATOMIC_TYPE("void", void, Metatype::Void);
+    ATOMIC_TYPE("bool", bool, Metatype::Bool);
+    ATOMIC_TYPE("char", char, Metatype::Char);
+    ATOMIC_TYPE("byte", byte, Metatype::Byte);
+    ATOMIC_TYPE("short", short, Metatype::Short);
+    ATOMIC_TYPE("word", unsigned short, Metatype::Word);
+    ATOMIC_TYPE("int", int, Metatype::Int);
+    ATOMIC_TYPE("uint", unsigned int, Metatype::UInt);
+    ATOMIC_TYPE("long", long, Metatype::Long);
+    ATOMIC_TYPE("ulong", unsigned long, Metatype::ULong);
+    ATOMIC_TYPE("int64", long long, Metatype::Int64);
+    ATOMIC_TYPE("uint64", unsigned long long, Metatype::UInt64);
+    ATOMIC_TYPE("float", float, Metatype::Float);
+    ATOMIC_TYPE("double", double, Metatype::Double);
+    ATOMIC_TYPE("std::string", std::string, Metatype::String);
+    ATOMIC_TYPE("MetaObject", MetaObject, Metatype::MetaObject);
+    ATOMIC_TYPE("void*", void*, Metatype::VoidPtr);
 
     // Mark atomic type initialization completed.
     initialized = true;
@@ -221,21 +221,21 @@ MetaData& metadata()
     return globalMetaData;
 }
 
-const MetaTypeDescriptor& MetaData::addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass)
+const MetatypeDescriptor& MetaData::addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass)
 {
     MutexLock locker(sync);
 
-    metaTypes.emplace_back(new MetaTypeDescriptor(name, int(metaTypes.size()), rtti, isEnum, isClass));
+    metaTypes.emplace_back(new MetatypeDescriptor(name, int(metaTypes.size()), rtti, isEnum, isClass));
     return *metaTypes.back().get();
 }
 
-const MetaTypeDescriptor* MetaData::findMetaType(const std::type_info& rtti)
+const MetatypeDescriptor* MetaData::findMetaType(const std::type_info& rtti)
 {
     MutexLock locker(sync);
 
     for (MetaTypeContainer::const_iterator it = metaTypes.cbegin(); it != metaTypes.cend(); ++it)
     {
-        const MetaTypeDescriptor* type = it->get();
+        const MetatypeDescriptor* type = it->get();
         if (type->rtti()->hash_code() == rtti.hash_code())
         {
             return type;
@@ -244,7 +244,7 @@ const MetaTypeDescriptor* MetaData::findMetaType(const std::type_info& rtti)
     return nullptr;
 }
 
-const MetaTypeDescriptor& MetaData::getMetaType(MetaTypeDescriptor::TypeId type)
+const MetatypeDescriptor& MetaData::getMetaType(Metatype type)
 {
     MutexLock locker(sync);
     ASSERT(static_cast<size_t>(type) < metaTypes.size(), "Type not registered to be reflectable.");
@@ -253,7 +253,7 @@ const MetaTypeDescriptor& MetaData::getMetaType(MetaTypeDescriptor::TypeId type)
 
 void MetaData::addMetaClass(const MetaClass& metaClass)
 {
-    std::string name = MetaTypeDescriptor::get(metaClass.metaType()).name();
+    std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
 
     MutexLock locker(sync);
     MetaClassContainer::const_iterator it = metaClasses.find(name);
@@ -265,7 +265,7 @@ void MetaData::addMetaClass(const MetaClass& metaClass)
 
 void MetaData::removeMetaClass(const MetaClass& metaClass)
 {
-    std::string name = MetaTypeDescriptor::get(metaClass.metaType()).name();
+    std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
 
     MutexLock locker(sync);
     MetaClassContainer::const_iterator it = metaClasses.find(name);
@@ -286,14 +286,14 @@ const MetaClass* MetaData::findMetaClass(std::string_view name)
     return it != metaClasses.cend() ? it->second : nullptr;
 }
 
-const MetaClass* MetaData::getMetaClass(MetaTypeDescriptor::TypeId metaType)
+const MetaClass* MetaData::getMetaClass(Metatype metaType)
 {
     MutexLock locker(sync);
     MetaClassTypeRegister::const_iterator it = metaClassRegister.find(metaType);
     return it != metaClassRegister.cend() ? it->second : nullptr;
 }
 
-bool MetaData::addConverter(MetaTypeDescriptor::AbstractConverterSharedPtr converter, MetaTypeDescriptor::TypeId fromType, MetaTypeDescriptor::TypeId toType)
+bool MetaData::addConverter(MetatypeDescriptor::AbstractConverterSharedPtr converter, Metatype fromType, Metatype toType)
 {
     ConverterKeyType key = std::make_pair(fromType, toType);
     if (converters.find(key) != converters.end())
@@ -303,7 +303,7 @@ bool MetaData::addConverter(MetaTypeDescriptor::AbstractConverterSharedPtr conve
     return converters.insert(std::make_pair(key, converter)).second;
 }
 
-void MetaData::removeConverter(MetaTypeDescriptor::TypeId fromType, MetaTypeDescriptor::TypeId toType)
+void MetaData::removeConverter(Metatype fromType, Metatype toType)
 {
     ConverterKeyType key = std::make_pair(fromType, toType);
     ConverterContainer::const_iterator it = converters.find(key);
@@ -313,7 +313,7 @@ void MetaData::removeConverter(MetaTypeDescriptor::TypeId fromType, MetaTypeDesc
     }
 }
 
-MetaTypeDescriptor::AbstractConverterSharedPtr MetaData::findConverter(MetaTypeDescriptor::TypeId fromType, MetaTypeDescriptor::TypeId toType)
+MetatypeDescriptor::AbstractConverterSharedPtr MetaData::findConverter(Metatype fromType, Metatype toType)
 {
     ConverterKeyType key = std::make_pair(fromType, toType);
     ConverterContainer::iterator it = converters.find(key);

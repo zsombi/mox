@@ -52,7 +52,7 @@ const ArgumentDescriptor& Callable::returnType() const
     return m_ret;
 }
 
-MetaTypeDescriptor::TypeId Callable::classType() const
+Metatype Callable::classType() const
 {
     return m_classType;
 }

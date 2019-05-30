@@ -23,7 +23,7 @@
 namespace mox
 {
 
-MetaClass::MetaClass(const MetaTypeDescriptor& type, bool abstract)
+MetaClass::MetaClass(const MetatypeDescriptor& type, bool abstract)
     : m_type(type)
     , m_isAbstract(abstract)
 {

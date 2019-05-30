@@ -117,7 +117,7 @@ public:
 
     /// Returns the metatype of the class that owns the callable method.
     /// \return The metatype of the class, Invalid if the callable is not holding a method.
-    MetaTypeDescriptor::TypeId classType() const;
+    Metatype classType() const;
 
     /// Returns the number of arguments of the callable.
     /// \return The number of arguments of the callable.
@@ -150,7 +150,7 @@ private:
     InvokerFunction m_invoker;
     ArgumentDescriptor m_ret;
     ArgumentDescriptorContainer m_args;
-    MetaTypeDescriptor::TypeId m_classType = MetaTypeDescriptor::TypeId::Invalid;
+    Metatype m_classType = Metatype::Invalid;
     FunctionType m_type = FunctionType::Invalid;
     bool m_isConst = false;
 };
