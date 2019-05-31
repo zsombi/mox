@@ -72,6 +72,25 @@ const ArgumentDescriptor& Callable::argumentType(size_t index) const
     return m_args[index];
 }
 
+bool Callable::isInvocableWith(const ArgumentDescriptorContainer &arguments) const
+{
+    if (arguments.size() < m_args.size())
+    {
+        return false;
+    }
+
+    size_t argIdx = 0;
+    for (const ArgumentDescriptor& arg : m_args)
+    {
+        if (arg != arguments[argIdx++])
+        {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 std::any Callable::apply(const Arguments& args) const
 {
     return m_invoker(args);

@@ -67,6 +67,16 @@ struct MOX_API ArgumentDescriptor
     }
 };
 
+template <typename... Args>
+std::vector<ArgumentDescriptor> argument_descriptors()
+{
+    const std::array<ArgumentDescriptor, sizeof... (Args)> aa = {{ ArgumentDescriptor::get<Args>()... }};
+    return std::vector<ArgumentDescriptor>(aa.begin(), aa.end());
+}
+
+bool operator ==(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2);
+bool operator !=(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2);
+
 
 enum FunctionType
 {
@@ -108,8 +118,7 @@ struct function_traits<TRet(TObject::*)(Args...)>
 
     static std::vector<ArgumentDescriptor> argument_descriptors()
     {
-        const std::array<ArgumentDescriptor, arity> aa = {{ ArgumentDescriptor::get<Args>()... }};
-        return std::vector<ArgumentDescriptor>(aa.begin(), aa.end());
+        return mox::argument_descriptors<Args...>();
     }
 };
 
@@ -134,8 +143,7 @@ struct function_traits<TRet(TObject::*)(Args...) const>
 
     static std::vector<ArgumentDescriptor> argument_descriptors()
     {
-        const std::array<ArgumentDescriptor, arity> aa = {{ ArgumentDescriptor::get<Args>()... }};
-        return std::vector<ArgumentDescriptor>(aa.begin(), aa.end());
+        return mox::argument_descriptors<Args...>();
     }
 };
 
@@ -159,8 +167,7 @@ struct function_traits<TRet(*)(Args...)>
 
     static std::vector<ArgumentDescriptor> argument_descriptors()
     {
-        const std::array<ArgumentDescriptor, arity> aa = {{ ArgumentDescriptor::get<Args>()... }};
-        return std::vector<ArgumentDescriptor>(aa.begin(), aa.end());
+        return mox::argument_descriptors<Args...>();
     }
 };
 

@@ -29,6 +29,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/callable_impl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metamethod.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metamethod_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/signal.hpp
     )
 
 set(SOURCES
@@ -38,4 +39,5 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaclass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/variant.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/callable.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/signal.cpp
     )

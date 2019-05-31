@@ -88,6 +88,7 @@ public:
         /// \return The number of argument values.
         size_t count() const;
 
+        /// Repacks the argument package into a tuple.
         template <typename Function>
         auto toTuple() const;
     };
@@ -127,6 +128,11 @@ public:
     /// \return the argument descriptor for the argument at \a index.
     /// \throws Callable::invalid_argument if the \a index is out of arguments bounds.
     const ArgumentDescriptor& argumentType(size_t index) const;
+
+    /// Checks whether this callable is invocable with the argument types passed in \a arguments.
+    /// \param arguments The vector of argument descriptors defining the invoker.
+    /// \return If the invoke is possible with the argument types passed, \e true, otherwise \e false.
+    bool isInvocableWith(const ArgumentDescriptorContainer& arguments) const;
 
     /// Applies the arguments on a callable.
     /// \param args The arguments to apply. The collection must have at least as many arguments as many

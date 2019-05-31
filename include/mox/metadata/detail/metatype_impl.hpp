@@ -26,23 +26,6 @@
 namespace mox
 {
 
-namespace
-{
-
-template <typename T>
-struct has_metaclass
-{
-private:
-    typedef char yes_type;
-    typedef long no_type;
-    template <typename U> static yes_type test(decltype(&U::getStaticMetaClass));
-    template <typename U> static no_type  test(...);
-public:
-    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);
-};
-
-} // noname
-
 template <typename Type>
 Metatype metaType()
 {
@@ -64,7 +47,7 @@ Metatype registerMetaType()
 {
     typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
     Metatype newType = registrar::tryRegisterMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
-    if constexpr (has_metaclass<Type>::value)
+    if constexpr (has_static_metaclass<Type>::value)
     {
         Type::getStaticMetaClass();
     }

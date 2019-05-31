@@ -22,8 +22,27 @@
 #include "metadata_p.h"
 #include <cxxabi.h>
 
+#include <mox/utils/function_traits.hpp>
+
 namespace mox
 {
+
+bool operator ==(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2)
+{
+    return arg1.type == arg2.type &&
+            arg1.isPointer == arg2.isPointer &&
+            arg1.isReference == arg2.isReference &&
+            arg1.isConst == arg2.isConst;
+}
+
+bool operator !=(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2)
+{
+    return arg1.type != arg2.type ||
+            arg1.isPointer != arg2.isPointer ||
+            arg1.isReference != arg2.isReference ||
+            arg1.isConst != arg2.isConst;
+}
+
 
 namespace registrar
 {
@@ -52,7 +71,7 @@ Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isCla
     return type->id();
 }
 
-}
+} // registrar
 
 
 MetatypeDescriptor::MetatypeDescriptor(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass)

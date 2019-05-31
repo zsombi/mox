@@ -99,15 +99,15 @@ private:
 };
 
 /// MetaClass template specialized on non-MetaObject base classes, aswell as for interfaces.
-template <class Class, class... SuperClasses>
+template <class BaseClass, class... SuperClasses>
 struct InterfaceMetaClass : MetaClass
 {
-    static constexpr bool abstract = std::is_abstract_v<Class>;
+    static constexpr bool abstract = std::is_abstract_v<BaseClass>;
 
     explicit InterfaceMetaClass()
-        : MetaClass(metatypeDescriptor<Class>(), abstract)
+        : MetaClass(metatypeDescriptor<BaseClass>(), abstract)
     {
-        static_assert(!std::is_base_of<MetaObject, Class>::value, "InterfaceMetaClassImpl reflects a non-MetaObject class.");
+        static_assert(!std::is_base_of<MetaObject, BaseClass>::value, "InterfaceMetaClassImpl reflects a non-MetaObject class.");
         std::array<const MetaClass*, sizeof... (SuperClasses)> aa =
         {{
             SuperClasses::getStaticMetaClass()...
@@ -117,26 +117,26 @@ struct InterfaceMetaClass : MetaClass
     /// Checks whether the \a metaObject is derived from this interface.
     bool isClassOf(const MetaObject& metaObject) const override
     {
-        return dynamic_cast<const Class*>(&metaObject) != nullptr;
+        return dynamic_cast<const BaseClass*>(&metaObject) != nullptr;
     }
 
     std::any castInstance(void* instance) const override
     {
-        return reinterpret_cast<Class*>(instance);
+        return reinterpret_cast<BaseClass*>(instance);
     }
 };
 
 /// MetaClass template specialized on MetaObject-derived classes. The super-classes are interface
 /// classes with reflection.
-template <class Class, class... SuperClasses>
+template <class BaseClass, class... SuperClasses>
 struct ObjectMetaClass : MetaClass
 {
-    static constexpr bool abstract = std::is_abstract_v<Class>;
+    static constexpr bool abstract = std::is_abstract_v<BaseClass>;
 
     explicit ObjectMetaClass()
-        : MetaClass(metatypeDescriptor<Class>(), abstract)
+        : MetaClass(metatypeDescriptor<BaseClass>(), abstract)
     {
-        static_assert(std::is_base_of<MetaObject, Class>::value, "MetaClassImpl reflects a MetaObject derived class.");
+        static_assert(std::is_base_of<MetaObject, BaseClass>::value, "MetaClassImpl reflects a MetaObject derived class.");
         std::array<const MetaClass*, sizeof... (SuperClasses)> aa =
         {{
             SuperClasses::getStaticMetaClass()...
@@ -147,11 +147,11 @@ struct ObjectMetaClass : MetaClass
     /// Checks whether this MetaClass reflects the \a metaObject.
     bool isClassOf(const MetaObject& metaObject) const override
     {
-        return dynamic_cast<const Class*>(&metaObject) != nullptr;
+        return dynamic_cast<const BaseClass*>(&metaObject) != nullptr;
     }
     std::any castInstance(void* instance) const override
     {
-        return reinterpret_cast<Class*>(instance);
+        return reinterpret_cast<BaseClass*>(instance);
     }
 };
 
