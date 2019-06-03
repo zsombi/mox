@@ -67,6 +67,14 @@ public:
     }
 };
 
+void slotFunction1()
+{
+}
+
+void slotFunction2(int)
+{
+}
+
 class SignalTest: public UnitTest
 {
 protected:
@@ -109,14 +117,40 @@ TEST_F(SignalTest, test_connect_function)
 {
     SignalTestClass host;
 
-    auto lambda1 = []() {};
+    EXPECT_NOT_NULL(host.sig1.connect(slotFunction1));
+    EXPECT_NULL(host.sig1.connect(slotFunction2));
 
-    host.sig1.connect(lambda1);
+    EXPECT_NOT_NULL(host.sig2.connect(slotFunction1));
+    EXPECT_NOT_NULL(host.sig2.connect(slotFunction2));
+
+    EXPECT_NOT_NULL(host.sig3.connect(slotFunction1));
+    EXPECT_NOT_NULL(host.sig3.connect(slotFunction2));
 }
 
 TEST_F(SignalTest, test_connect_lambda)
 {
+    SignalTestClass host;
 
+    auto lambda1 = []() {};
+
+    EXPECT_NOT_NULL(host.sig1.connect(lambda1));
+    EXPECT_NOT_NULL(host.sig2.connect(lambda1));
+    EXPECT_NOT_NULL(host.sig3.connect(lambda1));
+
+    auto lambda2 = [](int) {};
+    EXPECT_NULL(host.sig1.connect(lambda2));
+    EXPECT_NOT_NULL(host.sig2.connect(lambda2));
+    EXPECT_NOT_NULL(host.sig3.connect(lambda2));
+
+    auto lambda3 = [](float) {};
+    EXPECT_NULL(host.sig1.connect(lambda3));
+    EXPECT_NULL(host.sig2.connect(lambda3));
+    EXPECT_NULL(host.sig3.connect(lambda3));
+
+    auto lambda4 = [](int, std::string) {};
+    EXPECT_NULL(host.sig1.connect(lambda4));
+    EXPECT_NULL(host.sig2.connect(lambda4));
+    EXPECT_NOT_NULL(host.sig3.connect(lambda4));
 }
 
 TEST_F(SignalTest, test_connect_signal)

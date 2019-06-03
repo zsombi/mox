@@ -129,6 +129,10 @@ public:
     SignalConnectionSharedPtr connect(const Function& function)
     {
         Callable lambda(function);
+        if (!lambda.isInvocableWith(argument_descriptors<Args...>()))
+        {
+            return nullptr;
+        }
         return SignalBase::connect(std::forward<Callable>(lambda));
     }
 
@@ -151,7 +155,7 @@ public:
         auto visitor = [name = std::forward<std::string_view>(slotName), retType = metaType<Ret>()](const MetaMethod* method) -> bool
         {
             return (method->name() == name) && (method->returnType().type == retType) &&
-                    method->isInvocableWith(std::vector<ArgumentDescriptor>(argument_descriptors<Args...>()));
+                    method->isInvocableWith(argument_descriptors<Args...>());
         };
         const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
         if (!metaMethod)
