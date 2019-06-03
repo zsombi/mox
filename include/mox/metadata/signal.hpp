@@ -36,38 +36,28 @@ namespace mox
 class SignalBase;
 class SignalHost;
 
-class MOX_API SignalConnection : public std::enable_shared_from_this<SignalConnection>
-{
-public:
-    virtual ~SignalConnection() = default;
-
-    const SignalBase& signal() const
-    {
-        return m_signal;
-    }
-
-    std::any receiver() const
-    {
-        return m_receiver;
-    }
-
-    bool isConnected() const;
-    bool disconnect();
-    virtual bool isValid() const = 0;
-
-protected:
-    explicit SignalConnection(SignalBase& signal, std::any receiver);
-
-    SignalBase& m_signal;
-    std::any m_receiver;
-
-    friend class SignalBase;
-};
-typedef std::shared_ptr<SignalConnection> SignalConnectionSharedPtr;
-
 class MOX_API SignalBase
 {
 public:
+    class MOX_API Connection : public std::enable_shared_from_this<Connection>
+    {
+    public:
+        virtual ~Connection() = default;
+        bool isConnected() const;
+        bool disconnect();
+        virtual bool isValid() const = 0;
+
+    protected:
+        explicit Connection(SignalBase& signal, std::any receiver);
+        virtual void activate(Callable::Arguments& args) = 0;
+
+        SignalBase& m_signal;
+        std::any m_receiver;
+
+        friend class SignalBase;
+    };
+    typedef std::shared_ptr<Connection> ConnectionSharedPtr;
+
     virtual ~SignalBase() = default;
 
     SignalHost& host() const;
@@ -76,7 +66,9 @@ public:
 
     bool isValid() const;
 
-    SignalConnectionSharedPtr connect(std::any instance, const MetaMethod* slot);
+    ConnectionSharedPtr connect(std::any instance, const MetaMethod* slot);
+
+    size_t activate(Callable::Arguments& args);
 
 protected:
     SignalBase() = delete;
@@ -84,13 +76,13 @@ protected:
     SignalBase& operator=(const SignalBase&) = delete;
 
     explicit SignalBase(SignalHost& host);
-    void addConnection(SignalConnectionSharedPtr connection);
-    void removeConnection(SignalConnectionSharedPtr connection);
-    SignalConnectionSharedPtr connect(Callable&& lambda);
-    SignalConnectionSharedPtr connect(std::any instance, Callable&& slot);
-    SignalConnectionSharedPtr connect(const SignalBase& signal);
+    void addConnection(ConnectionSharedPtr connection);
+    void removeConnection(ConnectionSharedPtr connection);
+    ConnectionSharedPtr connect(Callable&& lambda);
+    ConnectionSharedPtr connect(std::any instance, Callable&& slot);
+    ConnectionSharedPtr connect(const SignalBase& signal);
 
-    typedef std::list<SignalConnectionSharedPtr> ConnectionList;
+    typedef std::list<ConnectionSharedPtr> ConnectionList;
     SignalHost& m_host;
     ConnectionList m_connections;
     size_t m_id;
@@ -115,15 +107,15 @@ protected:
 template <typename SignatureFunction>
 class Signal;
 
-template <typename Ret, typename... Args>
-class Signal<Ret(Args...)> : public SignalBase
+template <typename... Args>
+class Signal<void(Args...)> : public SignalBase
 {
     static constexpr size_t arity = sizeof... (Args);
     const std::array<ArgumentDescriptor, arity> m_argumentDescriptors = {{ ArgumentDescriptor::get<Args>()... }};
 
 public:
     typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
-    typedef Ret(*Signature)(Args...);
+    typedef void(*Signature)(Args...);
 
     ArgumentDescriptorContainer argumentDescriptors() const
     {
@@ -135,8 +127,15 @@ public:
     {
     }
 
+    /// Signal emitter.
+    size_t operator()(Args... args)
+    {
+        Callable::Arguments argPack(args...);
+        return activate(argPack);
+    }
+
     template <typename SlotFunction>
-    SignalConnectionSharedPtr connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
+    ConnectionSharedPtr connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
     {
         Callable slotCallable(slot);
         if (!slotCallable.isInvocableWith(argumentDescriptors()))
@@ -147,7 +146,7 @@ public:
     }
 
     template <typename ReceiverSignal>
-    typename std::enable_if<std::is_base_of_v<SignalBase, ReceiverSignal>, SignalConnectionSharedPtr>::type connect(const ReceiverSignal& receiverSignal)
+    typename std::enable_if<std::is_base_of_v<SignalBase, ReceiverSignal>, ConnectionSharedPtr>::type connect(const ReceiverSignal& receiverSignal)
     {
         auto thatArgs = receiverSignal.argumentDescriptors();
         auto argMatch = std::mismatch(thatArgs.cbegin(), thatArgs.cend(), m_argumentDescriptors.cbegin(), m_argumentDescriptors.cend());
@@ -160,7 +159,7 @@ public:
     }
 
     template <typename Function>
-    typename std::enable_if<!std::is_base_of_v<SignalBase, Function>, SignalConnectionSharedPtr>::type connect(const Function& function)
+    typename std::enable_if<!std::is_base_of_v<SignalBase, Function>, ConnectionSharedPtr>::type connect(const Function& function)
     {
         Callable lambda(function);
         if (!lambda.isInvocableWith(argumentDescriptors()))
@@ -171,7 +170,7 @@ public:
     }
 
     template <class Receiver>
-    SignalConnectionSharedPtr connectMethod(Receiver& receiver, const char* slotName)
+    ConnectionSharedPtr connectMethod(Receiver& receiver, const char* slotName)
     {
         if constexpr (!has_static_metaclass<Receiver>::value)
         {
@@ -186,10 +185,9 @@ public:
         {
             metaClass = Receiver::getStaticMetaClass();
         }
-        auto visitor = [name = std::forward<std::string_view>(slotName), retType = metaType<Ret>(), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
+        auto visitor = [name = std::forward<std::string_view>(slotName), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
         {
-            return (method->name() == name) && (method->returnType().type == retType) &&
-                    method->isInvocableWith(descriptors);
+            return (method->name() == name) && method->isInvocableWith(descriptors);
         };
         const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
         if (!metaMethod)

@@ -26,21 +26,37 @@ namespace mox
 
 constexpr size_t INVALID_SIGNAL = std::numeric_limits<size_t>::max();
 
-class CallableConnection : public SignalConnection
+class CallableConnection : public SignalBase::Connection
 {
     Callable m_slot;
 
 public:
     CallableConnection(SignalBase& signal, std::any receiver, Callable&& callable);
-    CallableConnection(SignalBase& signal, Callable&& callable);
 
     bool isValid() const override
     {
         return m_slot.type() != FunctionType::Invalid;
     }
+
+    void activate(Callable::Arguments& args) override;
 };
 
-class MetaMethodConnection : public SignalConnection
+class FunctionConnection : public SignalBase::Connection
+{
+    Callable m_slot;
+
+public:
+    FunctionConnection(SignalBase& signal, Callable&& callable);
+
+    bool isValid() const override
+    {
+        return m_slot.type() != FunctionType::Invalid;
+    }
+
+    void activate(Callable::Arguments& args) override;
+};
+
+class MetaMethodConnection : public SignalBase::Connection
 {
     const MetaMethod* m_slot;
 
@@ -51,9 +67,10 @@ public:
     {
         return m_slot->type() != FunctionType::Invalid;
     }
+    void activate(Callable::Arguments& args) override;
 };
 
-class SignalReceiverConnection : public SignalConnection
+class SignalReceiverConnection : public SignalBase::Connection
 {
     const SignalBase& m_receiverSignal;
 
@@ -64,6 +81,7 @@ public:
     {
         return m_receiverSignal.isValid();
     }
+    void activate(Callable::Arguments& args) override;
 };
 
 } // mox

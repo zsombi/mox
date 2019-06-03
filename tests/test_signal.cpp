@@ -36,8 +36,13 @@ public:
     Signal<void(int, std::string)> sig3{*this};
 };
 
-class SlotHolder : public SignalHost
+class  SlotHolder : public SignalHost
 {
+    int slot1Call = 0;
+    int slot2Call = 0;
+    int slot3Call = 0;
+    int slot4Call = 0;
+
 public:
     MIXIN_METACLASS_BASE(SlotHolder)
     {
@@ -51,19 +56,40 @@ public:
 
     void method1()
     {
+        slot1Call++;
     }
 
     void method2(int v)
     {
         UNUSED(v);
+        slot2Call++;
     }
 
     void method3(int, std::string)
     {
+        slot3Call++;
     }
 
     void method4(float)
     {
+        slot4Call++;
+    }
+
+    int slot1CallCount() const
+    {
+        return slot1Call;
+    }
+    int slot2CallCount() const
+    {
+        return slot2Call;
+    }
+    int slot3CallCount() const
+    {
+        return slot3Call;
+    }
+    int slot4CallCount() const
+    {
+        return slot4Call;
     }
 };
 
@@ -176,6 +202,45 @@ TEST_F(SignalTest, test_disconnect)
 
 TEST_F(SignalTest, test_emit_signal)
 {
+    SignalTestClass emitter;
+    SlotHolder receiver;
+
+    EXPECT_EQ(0u, emitter.sig1());
+    emitter.sig1.connect(receiver, &SlotHolder::method1);
+    EXPECT_EQ(1u, emitter.sig1());
+    EXPECT_EQ(1u, receiver.slot1CallCount());
+}
+
+TEST_F(SignalTest, test_emit_signal_connected_to_signal)
+{
+    SignalTestClass emitter;
+    SlotHolder receiver;
+
+    EXPECT_EQ(0u, emitter.sig2(1));
+    emitter.sig2.connect(receiver.sig);
+    EXPECT_EQ(1u, emitter.sig2(1));
+    EXPECT_EQ(0u, receiver.slot2CallCount());
+
+    EXPECT_NOT_NULL(receiver.sig.connect(receiver, &SlotHolder::method2));
+    EXPECT_EQ(1u, emitter.sig2(1));
+    EXPECT_EQ(1u, receiver.slot2CallCount());
+}
+
+TEST_F(SignalTest, test_emit_signal_with_args)
+{
+    SignalTestClass emitter;
+    SlotHolder receiver;
+
+    EXPECT_EQ(0u, emitter.sig2(10));
+    emitter.sig2.connect(receiver, &SlotHolder::method1);
+    emitter.sig2.connect(receiver, &SlotHolder::method2);
+    EXPECT_EQ(2u, emitter.sig2(10));
+    EXPECT_EQ(1u, receiver.slot1CallCount());
+    EXPECT_EQ(1u, receiver.slot2CallCount());
+}
+
+TEST_F(SignalTest, test_connect_in_emit_excluded_from_activation)
+{
 
 }
 
@@ -200,11 +265,6 @@ TEST_F(SignalTest, test_delete_signal_source)
 }
 
 TEST_F(SignalTest, test_delete_connection_destination)
-{
-
-}
-
-TEST_F(SignalTest, test_connect_in_emit)
 {
 
 }
