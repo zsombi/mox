@@ -20,6 +20,7 @@
 #define SIGNAL_HPP
 
 #include <list>
+#include <memory>
 #include <type_traits>
 #include <vector>
 #include <mox/utils/globals.hpp>
@@ -35,7 +36,7 @@ namespace mox
 class SignalBase;
 class SignalHost;
 
-class MOX_API SignalConnection : std::enable_shared_from_this<SignalConnection>
+class MOX_API SignalConnection : public std::enable_shared_from_this<SignalConnection>
 {
 public:
     virtual ~SignalConnection() = default;
@@ -50,6 +51,8 @@ public:
         return m_receiver;
     }
 
+    bool isConnected() const;
+    bool disconnect();
     virtual bool isValid() const = 0;
 
 protected:

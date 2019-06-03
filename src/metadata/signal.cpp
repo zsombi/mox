@@ -27,6 +27,30 @@ SignalConnection::SignalConnection(SignalBase& signal, std::any receiver)
 {
 }
 
+bool SignalConnection::isConnected() const
+{
+    for (auto connection : m_signal.m_connections)
+    {
+        if (connection == shared_from_this())
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool SignalConnection::disconnect()
+{
+    if (!isConnected())
+    {
+        return false;
+    }
+
+    m_signal.removeConnection(shared_from_this());
+    return true;
+}
+
+
 CallableConnection::CallableConnection(SignalBase& signal, std::any receiver, Callable&& callable)
     : SignalConnection(signal, receiver)
     , m_slot(callable)
@@ -38,6 +62,7 @@ CallableConnection::CallableConnection(SignalBase& signal, Callable&& callable)
     , m_slot(callable)
 {
 }
+
 
 MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod* slot)
     : SignalConnection(signal, receiver)
@@ -103,28 +128,28 @@ bool SignalBase::isValid() const
 
 SignalConnectionSharedPtr SignalBase::connect(std::any instance, const MetaMethod* slot)
 {
-    SignalConnectionSharedPtr connection = std::make_shared<MetaMethodConnection>(*this, instance, slot);
+    SignalConnectionSharedPtr connection = make_polymorphic_shared<SignalConnection, MetaMethodConnection>(*this, instance, slot);
     addConnection(connection);
     return connection;
 }
 
 SignalConnectionSharedPtr SignalBase::connect(Callable&& lambda)
 {
-    SignalConnectionSharedPtr connection = std::make_shared<CallableConnection>(*this, std::forward<Callable>(lambda));
+    SignalConnectionSharedPtr connection = make_polymorphic_shared<SignalConnection, CallableConnection>(*this, std::forward<Callable>(lambda));
     addConnection(connection);
     return connection;
 }
 
 SignalConnectionSharedPtr SignalBase::connect(std::any instance, Callable&& slot)
 {
-    SignalConnectionSharedPtr connection = std::make_shared<CallableConnection>(*this, instance, std::forward<Callable>(slot));
+    SignalConnectionSharedPtr connection = make_polymorphic_shared<SignalConnection, CallableConnection>(*this, instance, std::forward<Callable>(slot));
     addConnection(connection);
-    return connection;
+    return std::static_pointer_cast<SignalConnection>(connection);
 }
 
 SignalConnectionSharedPtr SignalBase::connect(const SignalBase& signal)
 {
-    SignalConnectionSharedPtr connection = std::make_shared<SignalReceiverConnection>(*this, signal);
+    SignalConnectionSharedPtr connection = make_polymorphic_shared<SignalConnection, SignalReceiverConnection>(*this, signal);
     addConnection(connection);
     return connection;
 }

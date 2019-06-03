@@ -165,7 +165,13 @@ TEST_F(SignalTest, test_connect_signal)
 
 TEST_F(SignalTest, test_disconnect)
 {
+    SignalTestClass emitter;
+    SlotHolder receiver;
 
+    auto connection = emitter.sig1.connect(receiver, &SlotHolder::method1);
+    EXPECT_TRUE(connection->isConnected());
+    EXPECT_TRUE(connection->disconnect());
+    EXPECT_FALSE(connection->isConnected());
 }
 
 TEST_F(SignalTest, test_emit_signal)
