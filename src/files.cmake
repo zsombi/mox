@@ -39,5 +39,6 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaclass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/variant.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/callable.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/signal_p.h
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/signal.cpp
     )

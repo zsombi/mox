@@ -16,74 +16,88 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/metadata/signal.hpp>
+#include "signal_p.h"
 
 namespace mox
 {
 
-SignalConnection::SignalConnection(std::any receiver)
-    : receiver(receiver)
-    , isConnectedToSignal(false)
+SignalConnection::SignalConnection(SignalBase& signal, std::any receiver)
+    : m_signal(signal)
+    , m_receiver(receiver)
 {
 }
 
-struct CallableConnection : SignalConnection
+CallableConnection::CallableConnection(SignalBase& signal, std::any receiver, Callable&& callable)
+    : SignalConnection(signal, receiver)
+    , m_slot(callable)
 {
-    Callable slot;
+}
 
-    CallableConnection(std::any receiver, Callable&& callable)
-        : SignalConnection(receiver)
-        , slot(callable)
-    {
-    }
-
-    CallableConnection(Callable&& callable)
-        : SignalConnection(std::any())
-        , slot(callable)
-    {
-    }
-};
-
-struct MetaMethodConnection : SignalConnection
+CallableConnection::CallableConnection(SignalBase& signal, Callable&& callable)
+    : SignalConnection(signal, std::any())
+    , m_slot(callable)
 {
-    const MetaMethod* slot;
+}
 
-    MetaMethodConnection(std::any receiver, const MetaMethod* slot)
-        : SignalConnection(receiver)
-        , slot(slot)
-    {
-    }
-};
+MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod* slot)
+    : SignalConnection(signal, receiver)
+    , m_slot(slot)
+{
+}
 
 
 SignalHost::~SignalHost()
 {
 }
 
+size_t SignalHost::registerSignal(SignalBase& signal)
+{
+    m_signals.push_back(&signal);
+    return m_signals.size() - 1u;
+}
 
 SignalBase::SignalBase(SignalHost& host)
     : m_host(host)
+    , m_id(host.registerSignal(*this))
 {
+}
+
+void SignalBase::addConnection(SignalConnectionSharedPtr connection)
+{
+    m_connections.push_back(connection);
+}
+
+void SignalBase::removeConnection(SignalConnectionSharedPtr connection)
+{
+    ConnectionList::iterator it, end = m_connections.end();
+    for (it = m_connections.begin(); it != end; ++it)
+    {
+        if (*it == connection)
+        {
+            it->reset();
+            return;
+        }
+    }
 }
 
 SignalConnectionSharedPtr SignalBase::connect(Callable&& lambda)
 {
-    SignalConnectionSharedPtr connection = SignalConnectionSharedPtr(new CallableConnection(std::forward<Callable>(lambda)));
-    m_host.m_connections.push_back(connection);
+    SignalConnectionSharedPtr connection = std::make_shared<CallableConnection>(*this, std::forward<Callable>(lambda));
+    addConnection(connection);
     return connection;
 }
 
 SignalConnectionSharedPtr SignalBase::connect(std::any instance, Callable&& slot)
 {
-    SignalConnectionSharedPtr connection = SignalConnectionSharedPtr(new CallableConnection(instance, std::forward<Callable>(slot)));
-    m_host.m_connections.push_back(connection);
+    SignalConnectionSharedPtr connection = std::make_shared<CallableConnection>(*this, instance, std::forward<Callable>(slot));
+    addConnection(connection);
     return connection;
 }
 
 SignalConnectionSharedPtr SignalBase::connect(std::any instance, const MetaMethod* slot)
 {
-    SignalConnectionSharedPtr connection = SignalConnectionSharedPtr(new MetaMethodConnection(instance, slot));
-    m_host.m_connections.push_back(connection);
+    SignalConnectionSharedPtr connection = std::make_shared<MetaMethodConnection>(*this, instance, slot);
+    addConnection(connection);
     return connection;
 }
 

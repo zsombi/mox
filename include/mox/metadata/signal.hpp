@@ -19,6 +19,7 @@
 #ifndef SIGNAL_HPP
 #define SIGNAL_HPP
 
+#include <list>
 #include <type_traits>
 #include <vector>
 #include <mox/utils/globals.hpp>
@@ -34,12 +35,30 @@ namespace mox
 class SignalBase;
 class SignalHost;
 
-struct MOX_API SignalConnection : std::enable_shared_from_this<SignalConnection>
+class MOX_API SignalConnection : std::enable_shared_from_this<SignalConnection>
 {
-    std::any receiver;
-    bool isConnectedToSignal;
+public:
+    virtual ~SignalConnection() = default;
 
-    explicit SignalConnection(std::any receiver);
+    const SignalBase& signal() const
+    {
+        return m_signal;
+    }
+
+    std::any receiver() const
+    {
+        return m_receiver;
+    }
+
+    virtual bool isValid() const = 0;
+
+protected:
+    explicit SignalConnection(SignalBase& signal, std::any receiver);
+
+    SignalBase& m_signal;
+    std::any m_receiver;
+
+    friend class SignalBase;
 };
 typedef std::shared_ptr<SignalConnection> SignalConnectionSharedPtr;
 
@@ -51,11 +70,19 @@ public:
     SignalConnectionSharedPtr connect(std::any instance, const MetaMethod* slot);
 
 protected:
+    SignalBase() = delete;
     explicit SignalBase(SignalHost& host);
+    void addConnection(SignalConnectionSharedPtr connection);
+    void removeConnection(SignalConnectionSharedPtr connection);
     SignalConnectionSharedPtr connect(Callable&& lambda);
     SignalConnectionSharedPtr connect(std::any instance, Callable&& slot);
 
+    typedef std::list<SignalConnectionSharedPtr> ConnectionList;
     SignalHost& m_host;
+    ConnectionList m_connections;
+    size_t m_id;
+
+    friend class SignalConnection;
 };
 
 class MOX_API SignalHost
@@ -65,7 +92,10 @@ public:
     virtual ~SignalHost();
 
 protected:
-    std::vector<SignalConnectionSharedPtr> m_connections;
+    std::vector<const SignalBase*> m_signals;
+
+    size_t registerSignal(SignalBase& signal);
+
     friend class SignalBase;
 };
 
