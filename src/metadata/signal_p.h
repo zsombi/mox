@@ -55,10 +55,10 @@ public:
 
 class SignalReceiverConnection : public SignalConnection
 {
-    SignalBase& m_receiverSignal;
+    const SignalBase& m_receiverSignal;
 
 public:
-    SignalReceiverConnection(SignalBase& sender, SignalBase& other);
+    SignalReceiverConnection(SignalBase& sender, const SignalBase& other);
 
     bool isValid() const override
     {

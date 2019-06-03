@@ -45,7 +45,7 @@ MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver
 {
 }
 
-SignalReceiverConnection::SignalReceiverConnection(SignalBase& sender, SignalBase& other)
+SignalReceiverConnection::SignalReceiverConnection(SignalBase& sender, const SignalBase& other)
     : SignalConnection(sender, std::any(&other.host()))
     , m_receiverSignal(other)
 {
@@ -122,7 +122,7 @@ SignalConnectionSharedPtr SignalBase::connect(std::any instance, Callable&& slot
     return connection;
 }
 
-SignalConnectionSharedPtr SignalBase::connect(SignalBase& signal)
+SignalConnectionSharedPtr SignalBase::connect(const SignalBase& signal)
 {
     SignalConnectionSharedPtr connection = std::make_shared<SignalReceiverConnection>(*this, signal);
     addConnection(connection);

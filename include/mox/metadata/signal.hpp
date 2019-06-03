@@ -77,12 +77,15 @@ public:
 
 protected:
     SignalBase() = delete;
+    SignalBase(const SignalBase&) = delete;
+    SignalBase& operator=(const SignalBase&) = delete;
+
     explicit SignalBase(SignalHost& host);
     void addConnection(SignalConnectionSharedPtr connection);
     void removeConnection(SignalConnectionSharedPtr connection);
     SignalConnectionSharedPtr connect(Callable&& lambda);
     SignalConnectionSharedPtr connect(std::any instance, Callable&& slot);
-    SignalConnectionSharedPtr connect(SignalBase& signal);
+    SignalConnectionSharedPtr connect(const SignalBase& signal);
 
     typedef std::list<SignalConnectionSharedPtr> ConnectionList;
     SignalHost& m_host;
@@ -119,7 +122,7 @@ public:
     typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
     typedef Ret(*Signature)(Args...);
 
-    ArgumentDescriptorContainer argumentDescriptors()
+    ArgumentDescriptorContainer argumentDescriptors() const
     {
         return ArgumentDescriptorContainer(m_argumentDescriptors.cbegin(), m_argumentDescriptors.cend());
     }
@@ -141,7 +144,7 @@ public:
     }
 
     template <typename ReceiverSignal>
-    typename std::enable_if<std::is_base_of_v<SignalBase, ReceiverSignal>, SignalConnectionSharedPtr>::type connect(ReceiverSignal receiverSignal)
+    typename std::enable_if<std::is_base_of_v<SignalBase, ReceiverSignal>, SignalConnectionSharedPtr>::type connect(const ReceiverSignal& receiverSignal)
     {
         auto thatArgs = receiverSignal.argumentDescriptors();
         auto argMatch = std::mismatch(thatArgs.cbegin(), thatArgs.cend(), m_argumentDescriptors.cbegin(), m_argumentDescriptors.cend());
