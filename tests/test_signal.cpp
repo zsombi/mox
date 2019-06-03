@@ -241,7 +241,16 @@ TEST_F(SignalTest, test_emit_signal_with_args)
 
 TEST_F(SignalTest, test_connect_in_emit_excluded_from_activation)
 {
+    SignalTestClass emitter;
+    SlotHolder receiver;
 
+    auto lambda = [&emitter, &receiver](int)
+    {
+        emitter.sig2.connect(receiver, &SlotHolder::method2);
+    };
+    EXPECT_NOT_NULL(emitter.sig2.connect(lambda));
+    EXPECT_EQ(1u, emitter.sig2(10));
+    EXPECT_EQ(0u, receiver.slot2CallCount());
 }
 
 TEST_F(SignalTest, test_disconnect_on_emit)

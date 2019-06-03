@@ -183,14 +183,18 @@ SignalBase::ConnectionSharedPtr SignalBase::connect(const SignalBase& signal)
 size_t SignalBase::activate(Callable::Arguments &args)
 {
     size_t count = 0;
-    for (auto connection : m_connections)
+
+    for (ConnectionList::const_iterator it = m_connections.cbegin(), end = m_connections.cend(); it != end; ++it)
     {
-        if (connection)
+        if (*it)
         {
-            connection->activate(args);
+            (*it)->activate(args);
             count++;
         }
     }
+
+    // Compact the connection container by removing the null connections.
+    m_connections.erase(std::remove(m_connections.begin(), m_connections.end(), nullptr), m_connections.end());
     return count;
 }
 

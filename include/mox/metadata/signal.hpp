@@ -82,7 +82,7 @@ protected:
     ConnectionSharedPtr connect(std::any instance, Callable&& slot);
     ConnectionSharedPtr connect(const SignalBase& signal);
 
-    typedef std::list<ConnectionSharedPtr> ConnectionList;
+    typedef std::vector<ConnectionSharedPtr> ConnectionList;
     SignalHost& m_host;
     ConnectionList m_connections;
     size_t m_id;
