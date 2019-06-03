@@ -74,21 +74,8 @@ const ArgumentDescriptor& Callable::argumentType(size_t index) const
 
 bool Callable::isInvocableWith(const ArgumentDescriptorContainer &arguments) const
 {
-    if (arguments.size() < m_args.size())
-    {
-        return false;
-    }
-
-    size_t argIdx = 0;
-    for (const ArgumentDescriptor& arg : m_args)
-    {
-        if (arg != arguments[argIdx++])
-        {
-            return false;
-        }
-    }
-
-    return true;
+    auto match = std::mismatch(m_args.cbegin(), m_args.cend(), arguments.cbegin(), arguments.cend());
+    return (match.first == m_args.cend());
 }
 
 std::any Callable::apply(const Arguments& args) const

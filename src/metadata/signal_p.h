@@ -24,6 +24,8 @@
 namespace mox
 {
 
+constexpr size_t INVALID_SIGNAL = std::numeric_limits<size_t>::max();
+
 class CallableConnection : public SignalConnection
 {
     Callable m_slot;
@@ -48,6 +50,19 @@ public:
     bool isValid() const override
     {
         return m_slot->type() != FunctionType::Invalid;
+    }
+};
+
+class SignalReceiverConnection : public SignalConnection
+{
+    SignalBase& m_receiverSignal;
+
+public:
+    SignalReceiverConnection(SignalBase& sender, SignalBase& other);
+
+    bool isValid() const override
+    {
+        return m_receiverSignal.isValid();
     }
 };
 

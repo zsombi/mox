@@ -155,7 +155,12 @@ TEST_F(SignalTest, test_connect_lambda)
 
 TEST_F(SignalTest, test_connect_signal)
 {
+    SignalTestClass emitter;
+    SlotHolder receiver;
 
+    EXPECT_NULL(emitter.sig1.connect(receiver.sig));
+    EXPECT_NOT_NULL(emitter.sig2.connect(receiver.sig));
+    EXPECT_NOT_NULL(emitter.sig3.connect(receiver.sig));
 }
 
 TEST_F(SignalTest, test_disconnect)

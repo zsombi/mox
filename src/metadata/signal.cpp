@@ -45,6 +45,12 @@ MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver
 {
 }
 
+SignalReceiverConnection::SignalReceiverConnection(SignalBase& sender, SignalBase& other)
+    : SignalConnection(sender, std::any(&other.host()))
+    , m_receiverSignal(other)
+{
+}
+
 
 SignalHost::~SignalHost()
 {
@@ -80,6 +86,28 @@ void SignalBase::removeConnection(SignalConnectionSharedPtr connection)
     }
 }
 
+SignalHost& SignalBase::host() const
+{
+    return m_host;
+}
+
+size_t SignalBase::id() const
+{
+    return m_id;
+}
+
+bool SignalBase::isValid() const
+{
+    return m_id != INVALID_SIGNAL;
+}
+
+SignalConnectionSharedPtr SignalBase::connect(std::any instance, const MetaMethod* slot)
+{
+    SignalConnectionSharedPtr connection = std::make_shared<MetaMethodConnection>(*this, instance, slot);
+    addConnection(connection);
+    return connection;
+}
+
 SignalConnectionSharedPtr SignalBase::connect(Callable&& lambda)
 {
     SignalConnectionSharedPtr connection = std::make_shared<CallableConnection>(*this, std::forward<Callable>(lambda));
@@ -94,9 +122,9 @@ SignalConnectionSharedPtr SignalBase::connect(std::any instance, Callable&& slot
     return connection;
 }
 
-SignalConnectionSharedPtr SignalBase::connect(std::any instance, const MetaMethod* slot)
+SignalConnectionSharedPtr SignalBase::connect(SignalBase& signal)
 {
-    SignalConnectionSharedPtr connection = std::make_shared<MetaMethodConnection>(*this, instance, slot);
+    SignalConnectionSharedPtr connection = std::make_shared<SignalReceiverConnection>(*this, signal);
     addConnection(connection);
     return connection;
 }
