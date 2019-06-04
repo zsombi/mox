@@ -28,6 +28,7 @@ constexpr size_t INVALID_SIGNAL = std::numeric_limits<size_t>::max();
 
 class CallableConnection : public SignalBase::Connection
 {
+    std::any m_receiver;
     Callable m_slot;
 
 public:
@@ -58,6 +59,7 @@ public:
 
 class MetaMethodConnection : public SignalBase::Connection
 {
+    std::any m_receiver;
     const MetaMethod* m_slot;
 
 public:

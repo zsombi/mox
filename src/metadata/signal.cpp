@@ -21,9 +21,8 @@
 namespace mox
 {
 
-SignalBase::Connection::Connection(SignalBase& signal, std::any receiver)
+SignalBase::Connection::Connection(SignalBase& signal)
     : m_signal(signal)
-    , m_receiver(receiver)
 {
 }
 
@@ -52,7 +51,8 @@ bool SignalBase::Connection::disconnect()
 
 
 CallableConnection::CallableConnection(SignalBase& signal, std::any receiver, Callable&& callable)
-    : SignalBase::Connection(signal, receiver)
+    : SignalBase::Connection(signal)
+    , m_receiver(receiver)
     , m_slot(callable)
 {
 }
@@ -66,7 +66,7 @@ void CallableConnection::activate(Callable::Arguments& args)
 
 
 FunctionConnection::FunctionConnection(SignalBase& signal, Callable&& callable)
-    : SignalBase::Connection(signal, std::any())
+    : SignalBase::Connection(signal)
     , m_slot(callable)
 {
 }
@@ -78,7 +78,8 @@ void FunctionConnection::activate(Callable::Arguments& args)
 
 
 MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod* slot)
-    : SignalBase::Connection(signal, receiver)
+    : SignalBase::Connection(signal)
+    , m_receiver(receiver)
     , m_slot(slot)
 {
 }
@@ -92,7 +93,7 @@ void MetaMethodConnection::activate(Callable::Arguments& args)
 
 
 SignalReceiverConnection::SignalReceiverConnection(SignalBase& sender, const SignalBase& other)
-    : SignalBase::Connection(sender, std::any(&other.host()))
+    : SignalBase::Connection(sender)
     , m_receiverSignal(other)
 {
 }
