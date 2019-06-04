@@ -62,6 +62,7 @@ Metatype findMetatype(const std::type_info& rtti)
 Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass)
 {
     const MetatypeDescriptor* type = findMetatypeDescriptor(rtti);
+    ASSERT(!type, std::string("Metatype already registered: ") + rtti.name());
     if (!type)
     {
         const MetatypeDescriptor& newType = metadata().addMetaType(nullptr, rtti, isEnum, isClass);

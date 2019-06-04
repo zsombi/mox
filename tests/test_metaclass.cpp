@@ -104,13 +104,13 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerMetaType<BaseClass>();
-        registerMetaType<BaseObject>();
-        registerMetaType<OtherBaseClass>();
-        registerMetaType<DerivedClass>();
-        registerMetaType<ObjectDerivedClass>();
-        registerMetaType<SecondLevelDerived>();
-        registerMetaType<SecondObject>();
+        registerTestType<BaseClass>();
+        registerTestType<BaseObject>();
+        registerTestType<OtherBaseClass>();
+        registerTestType<DerivedClass>();
+        registerTestType<ObjectDerivedClass>();
+        registerTestType<SecondLevelDerived>();
+        registerTestType<SecondObject>();
     }
 };
 

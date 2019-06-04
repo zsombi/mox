@@ -32,8 +32,8 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerMetaType<std::reference_wrapper<int>>();
-        functorMetaType = registerMetaType<TestFunctor>();
+        registerTestType<std::reference_wrapper<int>>();
+        functorMetaType = registerTestType<TestFunctor>();
         invoked = false;
     }
 };

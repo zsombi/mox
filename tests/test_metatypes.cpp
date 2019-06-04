@@ -35,8 +35,8 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerMetaType<UserStruct>();
-        registerMetaType<UserClass>();
+        registerTestType<UserStruct>();
+        registerTestType<UserClass>();
     }
 };
 

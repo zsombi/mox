@@ -49,11 +49,10 @@ public:
         virtual bool isValid() const = 0;
 
     protected:
-        explicit Connection(SignalBase& signal, std::any receiver);
+        explicit Connection(SignalBase& signal);
         virtual void activate(Callable::Arguments& args) = 0;
 
         SignalBase& m_signal;
-        std::any m_receiver;
 
         friend class SignalBase;
     };

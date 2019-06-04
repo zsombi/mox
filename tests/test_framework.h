@@ -21,6 +21,8 @@
 
 #include <gtest/gtest.h>
 #include <unordered_map>
+#include <mox/metadata/metatype.hpp>
+#include <mox/metadata/metatype_descriptor.hpp>
 
 class UnitTest : public ::testing::Test
 {
@@ -28,6 +30,18 @@ protected:
     void SetUp() override;
     void TearDown() override;
 };
+
+template <typename Type>
+mox::Metatype registerTestType()
+{
+    typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
+    const mox::MetatypeDescriptor* descriptor = mox::registrar::findMetatypeDescriptor(typeid(NakedType));
+    if (!descriptor)
+    {
+        return mox::registerMetaType<Type>();
+    }
+    return descriptor->id();
+}
 
 #define SLEEP(msec) std::this_thread::sleep_for(std::chrono::milliseconds(msec))
 #define EXPECT_NULL(ptr)        EXPECT_TRUE(ptr == nullptr)

@@ -137,9 +137,9 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerMetaType<SignalTestClass>();
-        registerMetaType<SlotHolder>();
-        registerMetaType<DerivedHolder>();
+        registerTestType<SignalTestClass>();
+        registerTestType<SlotHolder>();
+        registerTestType<DerivedHolder>();
     }
 };
 
