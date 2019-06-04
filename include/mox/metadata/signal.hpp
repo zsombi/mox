@@ -21,6 +21,7 @@
 
 #include <list>
 #include <memory>
+#include <mutex>
 #include <type_traits>
 #include <vector>
 #include <mox/utils/globals.hpp>
@@ -83,8 +84,10 @@ protected:
     ConnectionSharedPtr connect(const SignalBase& signal);
 
     typedef std::vector<ConnectionSharedPtr> ConnectionList;
+
     SignalHost& m_host;
     ConnectionList m_connections;
+    std::mutex m_signalLock;
     size_t m_id;
 
     friend class SignalConnection;

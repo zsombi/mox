@@ -301,6 +301,19 @@ TEST_F(SignalTest, test_connect_in_emit_excluded_from_activation)
     EXPECT_EQ(0u, receiver.slot2CallCount());
 }
 
+TEST_F(SignalTest, test_emit_same_signal_in_slot_dismissed)
+{
+    SignalTestClass sender;
+
+    auto lambda = [&sender]()
+    {
+        sender.sig1();
+    };
+
+    EXPECT_NOT_NULL(sender.sig1.connect(lambda));
+    EXPECT_EQ(1u, sender.sig1());
+}
+
 TEST_F(SignalTest, test_disconnect_on_emit)
 {
 

@@ -182,6 +182,12 @@ SignalBase::ConnectionSharedPtr SignalBase::connect(const SignalBase& signal)
 
 size_t SignalBase::activate(Callable::Arguments &args)
 {
+    if (!m_signalLock.try_lock())
+    {
+        return 0;
+    }
+    m_signalLock.unlock();
+    std::unique_lock<std::mutex> locker(m_signalLock);
     size_t count = 0;
 
     for (ConnectionList::const_iterator it = m_connections.cbegin(), end = m_connections.cend(); it != end; ++it)
