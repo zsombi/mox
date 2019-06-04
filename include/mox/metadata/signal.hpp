@@ -58,7 +58,7 @@ public:
     };
     typedef std::shared_ptr<Connection> ConnectionSharedPtr;
 
-    virtual ~SignalBase() = default;
+    virtual ~SignalBase();
 
     SignalHost& host() const;
 
@@ -86,10 +86,10 @@ protected:
 
     SignalHost& m_host;
     ConnectionList m_connections;
-    std::mutex m_signalLock;
     size_t m_id;
+    bool m_triggering;
 
-    friend class SignalConnection;
+    friend class SignalHost;
 };
 
 class MOX_API SignalHost
@@ -99,9 +99,11 @@ public:
     virtual ~SignalHost();
 
 protected:
+    std::mutex m_lock;
     std::vector<const SignalBase*> m_signals;
 
     size_t registerSignal(SignalBase& signal);
+    void removeSignal(SignalBase& signal);
 
     friend class SignalBase;
 };

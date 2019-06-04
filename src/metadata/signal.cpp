@@ -17,6 +17,7 @@
  */
 
 #include "signal_p.h"
+#include <mox/utils/locks.hpp>
 
 namespace mox
 {
@@ -110,23 +111,39 @@ SignalHost::~SignalHost()
 
 size_t SignalHost::registerSignal(SignalBase& signal)
 {
+    ScopeLock lock(m_lock);
     m_signals.push_back(&signal);
     return m_signals.size() - 1u;
+}
+
+void SignalHost::removeSignal(SignalBase &signal)
+{
+    ScopeLock lock(m_lock);
+    ASSERT(signal.isValid(), "Signal already removed");
+    m_signals[signal.id()] = nullptr;
 }
 
 SignalBase::SignalBase(SignalHost& host)
     : m_host(host)
     , m_id(host.registerSignal(*this))
+    , m_triggering(false)
 {
+}
+
+SignalBase::~SignalBase()
+{
+    m_host.removeSignal(*this);
 }
 
 void SignalBase::addConnection(ConnectionSharedPtr connection)
 {
+    ScopeLock lock(m_host.m_lock);
     m_connections.push_back(connection);
 }
 
 void SignalBase::removeConnection(ConnectionSharedPtr connection)
 {
+    ScopeLock lock(m_host.m_lock);
     ConnectionList::iterator it, end = m_connections.end();
     for (it = m_connections.begin(); it != end; ++it)
     {
@@ -183,12 +200,12 @@ SignalBase::ConnectionSharedPtr SignalBase::connect(const SignalBase& signal)
 
 size_t SignalBase::activate(Callable::Arguments &args)
 {
-    if (!m_signalLock.try_lock())
+    if (m_triggering)
     {
         return 0;
     }
-    m_signalLock.unlock();
-    std::unique_lock<std::mutex> locker(m_signalLock);
+
+    FlagScope<true> lock(m_triggering);
     size_t count = 0;
 
     for (ConnectionList::const_iterator it = m_connections.cbegin(), end = m_connections.cend(); it != end; ++it)
