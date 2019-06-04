@@ -137,12 +137,25 @@ public:
     template <typename SlotFunction>
     ConnectionSharedPtr connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
     {
+        typedef typename function_traits<SlotFunction>::object ReceiverType;
         Callable slotCallable(slot);
         if (!slotCallable.isInvocableWith(argumentDescriptors()))
         {
             return nullptr;
         }
-        return SignalBase::connect(&receiver, std::forward<Callable>(slotCallable));
+        if constexpr (has_static_metaclass<ReceiverType>::value)
+        {
+            const MetaClass* metaClass = ReceiverType::getStaticMetaClass();
+            if constexpr (has_dynamic_metaclass<ReceiverType>::value)
+            {
+                metaClass = ReceiverType::getDynamicMetaClass();
+            }
+            return SignalBase::connect(metaClass->castInstance(&receiver), std::forward<Callable>(slotCallable));
+        }
+        else
+        {
+            return SignalBase::connect(&receiver, std::forward<Callable>(slotCallable));
+        }
     }
 
     template <typename ReceiverSignal>

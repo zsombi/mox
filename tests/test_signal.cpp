@@ -93,6 +93,36 @@ public:
     }
 };
 
+class DerivedHolder : public SlotHolder
+{
+    int derived1Call = 0;
+    int derived2Call = 0;
+public:
+    MIXIN_METACLASS(DerivedHolder, SlotHolder)
+    {
+        META_METHOD(DerivedHolder, derivedMethod1);
+        META_METHOD(DerivedHolder, derivedMethod2);
+    };
+
+    void derivedMethod1()
+    {
+        derived1Call++;
+    }
+    void derivedMethod2(int v)
+    {
+        derived2Call = v;
+    }
+
+    int derived1CallData()
+    {
+        return derived1Call;
+    }
+    int derived2CallData()
+    {
+        return derived2Call;
+    }
+};
+
 void slotFunction1()
 {
 }
@@ -109,6 +139,7 @@ protected:
         UnitTest::SetUp();
         registerMetaType<SignalTestClass>();
         registerMetaType<SlotHolder>();
+        registerMetaType<DerivedHolder>();
     }
 };
 
@@ -209,6 +240,23 @@ TEST_F(SignalTest, test_emit_signal)
     emitter.sig1.connect(receiver, &SlotHolder::method1);
     EXPECT_EQ(1u, emitter.sig1());
     EXPECT_EQ(1u, receiver.slot1CallCount());
+}
+
+TEST_F(SignalTest, test_emit_signal_connected_to_superclass)
+{
+    SignalTestClass emitter;
+    DerivedHolder receiver;
+
+    EXPECT_NOT_NULL(emitter.sig1.connect(receiver, &DerivedHolder::method1));
+    EXPECT_EQ(1u, emitter.sig1());
+    EXPECT_EQ(1u, receiver.slot1CallCount());
+
+    EXPECT_NOT_NULL(emitter.sig2.connect(receiver, &DerivedHolder::method2));
+    EXPECT_NOT_NULL(emitter.sig2.connect(receiver, &DerivedHolder::derivedMethod2));
+
+    EXPECT_EQ(2u, emitter.sig2(10));
+    EXPECT_EQ(1u, receiver.slot1CallCount());
+    EXPECT_EQ(10u, receiver.derived2CallData());
 }
 
 TEST_F(SignalTest, test_emit_signal_connected_to_signal)
