@@ -91,6 +91,10 @@ public:
     {
         return slot4Call;
     }
+
+    void notMetaMethod()
+    {
+    }
 };
 
 class DerivedHolder : public SlotHolder
@@ -293,6 +297,23 @@ TEST_F(SignalTest, test_disconnect_metamethod)
 
     EXPECT_TRUE(host.sig2.disconnect(slots, "method2"));
     EXPECT_EQ(1u, host.sig2(1));
+}
+
+TEST_F(SignalTest, test_connect_as_address_disconnect_as_methodname)
+{
+    SignalTestClass host;
+    SlotHolder slots;
+
+    EXPECT_NOT_NULL(host.sig1.connect(slots, &SlotHolder::method1));
+    EXPECT_TRUE(host.sig1.disconnect(slots, "method1"));
+
+    EXPECT_NOT_NULL(host.sig1.connect(slots, "method1"));
+    EXPECT_TRUE(host.sig1.disconnect(slots, &SlotHolder::method1));
+
+    EXPECT_NOT_NULL(host.sig1.connect(slots, &SlotHolder::notMetaMethod));
+    EXPECT_FALSE(host.sig1.disconnect(slots, "notMetaMethod"));
+
+    EXPECT_NULL(host.sig1.connect(slots, "notMetaMethod"));
 }
 
 TEST_F(SignalTest, test_emit_signal)
