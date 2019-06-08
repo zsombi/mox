@@ -83,5 +83,17 @@ std::any Callable::apply(const Arguments& args) const
     return m_invoker(args);
 }
 
+const void* Callable::address() const
+{
+    return m_address;
+}
+
+void Callable::reset()
+{
+    m_address = nullptr;
+    m_args.clear();
+    m_classType = Metatype::Invalid;
+    m_type = FunctionType::Invalid;
+}
 
 } // namespace mox

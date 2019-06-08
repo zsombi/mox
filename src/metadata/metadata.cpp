@@ -18,6 +18,7 @@
 
 #include "metadata_p.h"
 #include <algorithm>
+#include <mox/utils/locks.hpp>
 #include <mox/utils/string.hpp>
 #include <mox/metadata/variant.hpp>
 
@@ -223,7 +224,7 @@ MetaData& metadata()
 
 const MetatypeDescriptor& MetaData::addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass)
 {
-    MutexLock locker(sync);
+    ScopeLock locker(sync);
 
     metaTypes.emplace_back(new MetatypeDescriptor(name, int(metaTypes.size()), rtti, isEnum, isClass));
     return *metaTypes.back().get();
@@ -231,7 +232,7 @@ const MetatypeDescriptor& MetaData::addMetaType(const char* name, const std::typ
 
 const MetatypeDescriptor* MetaData::findMetaType(const std::type_info& rtti)
 {
-    MutexLock locker(sync);
+    ScopeLock locker(sync);
 
     for (MetaTypeContainer::const_iterator it = metaTypes.cbegin(); it != metaTypes.cend(); ++it)
     {
@@ -246,7 +247,7 @@ const MetatypeDescriptor* MetaData::findMetaType(const std::type_info& rtti)
 
 const MetatypeDescriptor& MetaData::getMetaType(Metatype type)
 {
-    MutexLock locker(sync);
+    ScopeLock locker(sync);
     ASSERT(static_cast<size_t>(type) < metaTypes.size(), "Type not registered to be reflectable.");
     return *metaTypes[static_cast<size_t>(type)].get();
 }
@@ -255,7 +256,7 @@ void MetaData::addMetaClass(const MetaClass& metaClass)
 {
     std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
 
-    MutexLock locker(sync);
+    ScopeLock locker(sync);
     MetaClassContainer::const_iterator it = metaClasses.find(name);
     ASSERT(it == metaClasses.cend(), name + " MetaClass already registered!");
 
@@ -267,7 +268,7 @@ void MetaData::removeMetaClass(const MetaClass& metaClass)
 {
     std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
 
-    MutexLock locker(sync);
+    ScopeLock locker(sync);
     MetaClassContainer::const_iterator it = metaClasses.find(name);
     if (it != metaClasses.cend())
     {
@@ -281,14 +282,14 @@ void MetaData::removeMetaClass(const MetaClass& metaClass)
 }
 const MetaClass* MetaData::findMetaClass(std::string_view name)
 {
-    MutexLock locker(sync);
+    ScopeLock locker(sync);
     MetaClassContainer::const_iterator it = metaClasses.find(std::string(name));
     return it != metaClasses.cend() ? it->second : nullptr;
 }
 
 const MetaClass* MetaData::getMetaClass(Metatype metaType)
 {
-    MutexLock locker(sync);
+    ScopeLock locker(sync);
     MetaClassTypeRegister::const_iterator it = metaClassRegister.find(metaType);
     return it != metaClassRegister.cend() ? it->second : nullptr;
 }

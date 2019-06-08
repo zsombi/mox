@@ -231,6 +231,56 @@ TEST_F(SignalTest, test_disconnect)
     EXPECT_FALSE(connection->isConnected());
 }
 
+TEST_F(SignalTest, test_disconnect_functor)
+{
+    SignalTestClass sender;
+
+    std::function<void()> fn1 = []() {};
+
+    EXPECT_NOT_NULL(sender.sig1.connect(fn1));
+    EXPECT_EQ(1u, sender.sig1());
+    sender.sig1.disconnect(fn1);
+    EXPECT_EQ(0u, sender.sig1());
+}
+
+TEST_F(SignalTest, test_disconnect_function)
+{
+    SignalTestClass sender;
+
+    sender.sig1.connect(slotFunction1);
+    EXPECT_EQ(1u, sender.sig1());
+    sender.sig1.disconnect(slotFunction1);
+    EXPECT_EQ(0u, sender.sig1());
+}
+
+TEST_F(SignalTest, test_disconnect_method)
+{
+    SignalTestClass sender;
+    SlotHolder receiver;
+
+    SignalBase::ConnectionSharedPtr connection = sender.sig2.connect(receiver, &SlotHolder::method2);
+    EXPECT_EQ(1u, sender.sig2(1));
+
+    sender.sig2.disconnect(receiver, &SlotHolder::method2);
+    EXPECT_EQ(0u, sender.sig2(1));
+}
+
+TEST_F(SignalTest, test_disconnect_signal)
+{
+    SignalTestClass sender;
+    SlotHolder receiver;
+
+    sender.sig2.connect(receiver.sig);
+    EXPECT_EQ(1u, sender.sig2(1));
+    sender.sig2.disconnect(receiver.sig);
+    EXPECT_EQ(0u, sender.sig2(1));
+}
+
+TEST_F(SignalTest, test_disconnect_metamethod)
+{
+
+}
+
 TEST_F(SignalTest, test_emit_signal)
 {
     SignalTestClass emitter;

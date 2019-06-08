@@ -27,18 +27,6 @@ SignalBase::Connection::Connection(SignalBase& signal)
 {
 }
 
-bool SignalBase::Connection::isConnected() const
-{
-    for (auto connection : m_signal.m_connections)
-    {
-        if (connection == shared_from_this())
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
 bool SignalBase::Connection::disconnect()
 {
     if (!isConnected())
@@ -50,19 +38,11 @@ bool SignalBase::Connection::disconnect()
     return true;
 }
 
-
-CallableConnection::CallableConnection(SignalBase& signal, std::any receiver, Callable&& callable)
-    : SignalBase::Connection(signal)
-    , m_receiver(receiver)
-    , m_slot(callable)
+bool SignalBase::Connection::compare(std::any receiver, void* funcAddress) const
 {
-}
-
-void CallableConnection::activate(Callable::Arguments& args)
-{
-    Callable::Arguments copy(args);
-    copy.prepend(m_receiver);
-    m_slot.apply(copy);
+    UNUSED(receiver);
+    UNUSED(funcAddress);
+    return false;
 }
 
 
@@ -72,9 +52,44 @@ FunctionConnection::FunctionConnection(SignalBase& signal, Callable&& callable)
 {
 }
 
+bool FunctionConnection::compare(std::any, void *funcAddress) const
+{
+    return (m_slot.address() == funcAddress);
+}
+
 void FunctionConnection::activate(Callable::Arguments& args)
 {
     m_slot.apply(args);
+}
+
+void FunctionConnection::reset()
+{
+    m_slot.reset();
+}
+
+
+MethodConnection::MethodConnection(SignalBase& signal, std::any receiver, Callable&& callable)
+    : FunctionConnection(signal, std::forward<Callable>(callable))
+    , m_receiver(receiver)
+{
+}
+
+bool MethodConnection::compare(std::any receiver, void *funcAddress) const
+{
+    return (m_receiver.type() == receiver.type()) && FunctionConnection::compare(receiver, funcAddress);
+}
+
+void MethodConnection::activate(Callable::Arguments& args)
+{
+    Callable::Arguments copy(args);
+    copy.prepend(m_receiver);
+    FunctionConnection::activate(copy);
+}
+
+void MethodConnection::reset()
+{
+    m_receiver.reset();
+    FunctionConnection::reset();
 }
 
 
@@ -85,6 +100,11 @@ MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver
 {
 }
 
+bool MetaMethodConnection::compare(std::any receiver, void *funcAddress) const
+{
+    return (m_receiver.type() == receiver.type()) && (m_slot->address() == funcAddress);
+}
+
 void MetaMethodConnection::activate(Callable::Arguments& args)
 {
     Callable::Arguments copy(args);
@@ -92,16 +112,30 @@ void MetaMethodConnection::activate(Callable::Arguments& args)
     m_slot->apply(copy);
 }
 
+void MetaMethodConnection::reset()
+{
+    m_receiver.reset();
+    m_slot = nullptr;
+}
 
-SignalReceiverConnection::SignalReceiverConnection(SignalBase& sender, const SignalBase& other)
+
+SignalConnection::SignalConnection(SignalBase& sender, const SignalBase& other)
     : SignalBase::Connection(sender)
-    , m_receiverSignal(other)
+    , m_receiverSignal(const_cast<SignalBase*>(&other))
 {
 }
 
-void SignalReceiverConnection::activate(Callable::Arguments& args)
+void SignalConnection::activate(Callable::Arguments& args)
 {
-    const_cast<SignalBase&>(m_receiverSignal).activate(args);
+    if (m_receiverSignal)
+    {
+        m_receiverSignal->activate(args);
+    }
+}
+
+void SignalConnection::reset()
+{
+    m_receiverSignal = nullptr;
 }
 
 
@@ -147,9 +181,11 @@ void SignalBase::removeConnection(ConnectionSharedPtr connection)
     ConnectionList::iterator it, end = m_connections.end();
     for (it = m_connections.begin(); it != end; ++it)
     {
-        if (*it == connection)
+        ConnectionSharedPtr conn = *it;
+        if (conn == connection)
         {
             it->reset();
+            connection->reset();
             return;
         }
     }
@@ -186,16 +222,62 @@ SignalBase::ConnectionSharedPtr SignalBase::connect(Callable&& lambda)
 
 SignalBase::ConnectionSharedPtr SignalBase::connect(std::any instance, Callable&& slot)
 {
-    ConnectionSharedPtr connection = make_polymorphic_shared<Connection, CallableConnection>(*this, instance, std::forward<Callable>(slot));
+    ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MethodConnection>(*this, instance, std::forward<Callable>(slot));
     addConnection(connection);
     return connection;
 }
 
 SignalBase::ConnectionSharedPtr SignalBase::connect(const SignalBase& signal)
 {
-    ConnectionSharedPtr connection = make_polymorphic_shared<Connection, SignalReceiverConnection>(*this, signal);
+    ConnectionSharedPtr connection = make_polymorphic_shared<Connection, SignalConnection>(*this, signal);
     addConnection(connection);
     return connection;
+}
+
+bool SignalBase::disconnect(const SignalBase& signal)
+{
+    ScopeLock lock(m_host.m_lock);
+    ConnectionList::iterator it, end = m_connections.end();
+
+    for (it = m_connections.begin(); it != end; ++it)
+    {
+        SignalConnectionSharedPtr signalConnection = std::static_pointer_cast<SignalConnection>(*it);
+        if (!signalConnection)
+        {
+            continue;
+        }
+        if (signalConnection->signal() == &signal)
+        {
+            *it = nullptr;
+            signalConnection->reset();
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool SignalBase::disconnect(std::any receiver, void* callableAddress)
+{
+    ScopeLock lock(m_host.m_lock);
+    ConnectionList::iterator it, end = m_connections.end();
+
+    for (it = m_connections.begin(); it != end; ++it)
+    {
+        ConnectionSharedPtr connection = *it;
+        if (!connection)
+        {
+            continue;
+        }
+        if (connection->compare(receiver, callableAddress))
+        {
+            *it = nullptr;
+            connection->reset();
+            return true;
+        }
+    }
+
+    return false;
 }
 
 size_t SignalBase::activate(Callable::Arguments &args)

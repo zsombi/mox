@@ -26,35 +26,34 @@ namespace mox
 
 constexpr size_t INVALID_SIGNAL = std::numeric_limits<size_t>::max();
 
-class CallableConnection : public SignalBase::Connection
-{
-    std::any m_receiver;
-    Callable m_slot;
-
-public:
-    CallableConnection(SignalBase& signal, std::any receiver, Callable&& callable);
-
-    bool isValid() const override
-    {
-        return m_slot.type() != FunctionType::Invalid;
-    }
-
-    void activate(Callable::Arguments& args) override;
-};
-
 class FunctionConnection : public SignalBase::Connection
 {
+protected:
     Callable m_slot;
 
 public:
     FunctionConnection(SignalBase& signal, Callable&& callable);
 
-    bool isValid() const override
+    bool compare(std::any receiver, void* funcAddress) const override;
+    bool isConnected() const override
     {
         return m_slot.type() != FunctionType::Invalid;
     }
 
     void activate(Callable::Arguments& args) override;
+    void reset() override;
+};
+
+class MethodConnection : public FunctionConnection
+{
+    std::any m_receiver;
+
+public:
+    MethodConnection(SignalBase& signal, std::any receiver, Callable&& callable);
+
+    bool compare(std::any receiver, void* funcAddress) const override;
+    void activate(Callable::Arguments& args) override;
+    void reset() override;
 };
 
 class MetaMethodConnection : public SignalBase::Connection
@@ -65,26 +64,37 @@ class MetaMethodConnection : public SignalBase::Connection
 public:
     MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod* slot);
 
-    bool isValid() const override
+    bool isConnected() const override
     {
         return m_slot->type() != FunctionType::Invalid;
     }
+    bool compare(std::any receiver, void* funcAddress) const override;
     void activate(Callable::Arguments& args) override;
+    void reset() override;
 };
 
-class SignalReceiverConnection : public SignalBase::Connection
+class SignalConnection : public SignalBase::Connection
 {
-    const SignalBase& m_receiverSignal;
+    SignalBase* m_receiverSignal;
 
 public:
-    SignalReceiverConnection(SignalBase& sender, const SignalBase& other);
 
-    bool isValid() const override
+    SignalBase* signal() const
     {
-        return m_receiverSignal.isValid();
+        return m_receiverSignal;
+    }
+
+    SignalConnection(SignalBase& sender, const SignalBase& other);
+
+    bool isConnected() const override
+    {
+        return m_receiverSignal && m_receiverSignal->isValid();
     }
     void activate(Callable::Arguments& args) override;
+    void reset() override;
 };
+
+typedef std::shared_ptr<SignalConnection> SignalConnectionSharedPtr;
 
 } // mox
 

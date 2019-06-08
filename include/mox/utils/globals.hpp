@@ -187,6 +187,16 @@ void* address(Ret(Class::*func)(Args...) const)
     return (void*&)func;
 }
 
-typedef std::unique_lock<std::mutex> MutexLock;
+template <typename Ret, typename... Args>
+void* address(Ret(*func)(Args...))
+{
+    return (void*&)func;
+}
+
+template <typename Functor>
+void* address(Functor fn)
+{
+    return (void*&)fn;
+}
 
 #endif // GLOBALS

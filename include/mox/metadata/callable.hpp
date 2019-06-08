@@ -152,10 +152,18 @@ public:
         return apply(thisArgs);
     }
 
+    /// Returns the address of the callable.
+    /// \return The arrdess of the callable. nullptr is returned when the callable is a lambda.
+    const void* address() const;
+
+    /// Resets the callable.
+    void reset();
+
 private:
     InvokerFunction m_invoker;
     ArgumentDescriptor m_ret;
     ArgumentDescriptorContainer m_args;
+    void* m_address = nullptr;
     Metatype m_classType = Metatype::Invalid;
     FunctionType m_type = FunctionType::Invalid;
     bool m_isConst = false;

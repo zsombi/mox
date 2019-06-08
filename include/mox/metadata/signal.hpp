@@ -44,13 +44,14 @@ public:
     {
     public:
         virtual ~Connection() = default;
-        bool isConnected() const;
+        virtual bool isConnected() const = 0;
         bool disconnect();
-        virtual bool isValid() const = 0;
+        virtual bool compare(std::any receiver, void* funcAddress) const;
 
     protected:
         explicit Connection(SignalBase& signal);
         virtual void activate(Callable::Arguments& args) = 0;
+        virtual void reset() = 0;
 
         SignalBase& m_signal;
 
@@ -67,6 +68,7 @@ public:
     bool isValid() const;
 
     ConnectionSharedPtr connect(std::any instance, const MetaMethod* slot);
+    ConnectionSharedPtr connect(const SignalBase& signal);
 
     size_t activate(Callable::Arguments& args);
 
@@ -78,9 +80,12 @@ protected:
     explicit SignalBase(SignalHost& host);
     void addConnection(ConnectionSharedPtr connection);
     void removeConnection(ConnectionSharedPtr connection);
+
     ConnectionSharedPtr connect(Callable&& lambda);
     ConnectionSharedPtr connect(std::any instance, Callable&& slot);
-    ConnectionSharedPtr connect(const SignalBase& signal);
+
+    bool disconnect(std::any receiver, void* callableAddress);
+    bool disconnect(const SignalBase& signal);
 
     typedef std::vector<ConnectionSharedPtr> ConnectionList;
 
@@ -138,6 +143,8 @@ public:
         return activate(argPack);
     }
 
+    /// Connects a \a slot that is a method of a \a receiver.
+    /// \return If the connection succeeds, the connection object, or nullptr on failure.
     template <typename SlotFunction>
     ConnectionSharedPtr connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
     {
@@ -162,6 +169,7 @@ public:
         }
     }
 
+    /// Connects a \a receiverSignal to this signal.
     template <typename ReceiverSignal>
     typename std::enable_if<std::is_base_of_v<SignalBase, ReceiverSignal>, ConnectionSharedPtr>::type connect(const ReceiverSignal& receiverSignal)
     {
@@ -175,6 +183,7 @@ public:
         return SignalBase::connect(receiverSignal);
     }
 
+    /// Connects a function, or a lambda to this signal.
     template <typename Function>
     typename std::enable_if<!std::is_base_of_v<SignalBase, Function>, ConnectionSharedPtr>::type connect(const Function& function)
     {
@@ -186,8 +195,9 @@ public:
         return SignalBase::connect(std::forward<Callable>(lambda));
     }
 
+    /// Connects a metamethod
     template <class Receiver>
-    ConnectionSharedPtr connectMethod(Receiver& receiver, const char* slotName)
+    ConnectionSharedPtr connectMethod(Receiver& receiver, const char* method)
     {
         if constexpr (!has_static_metaclass<Receiver>::value)
         {
@@ -202,7 +212,7 @@ public:
         {
             metaClass = Receiver::getStaticMetaClass();
         }
-        auto visitor = [name = std::forward<std::string_view>(slotName), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
+        auto visitor = [name = std::forward<std::string_view>(method), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
         {
             return (method->name() == name) && method->isInvocableWith(descriptors);
         };
@@ -215,6 +225,41 @@ public:
         return SignalBase::connect(metaClass->castInstance(&receiver), metaMethod);
     }
 
+    /// Disconnects a \a slot that is a method of the \a receiver.
+    template <typename SlotFunction>
+    bool disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
+    {
+        typedef typename function_traits<SlotFunction>::object ReceiverType;
+        std::any receiverInstance;
+        if constexpr (has_static_metaclass<ReceiverType>::value)
+        {
+            const MetaClass* metaClass = ReceiverType::getStaticMetaClass();
+            if constexpr (has_dynamic_metaclass<ReceiverType>::value)
+            {
+                metaClass = ReceiverType::getDynamicMetaClass();
+            }
+            receiverInstance = metaClass->castInstance(&receiver);
+        }
+        else
+        {
+            receiverInstance = &receiver;
+        }
+        return SignalBase::disconnect(receiverInstance, ::address(slot));
+    }
+
+    /// Disconnects a \a function from this signal.
+    template <typename SlotFunction>
+    typename std::enable_if<!std::is_base_of_v<SignalBase, SlotFunction>, bool>::type disconnect(const SlotFunction& slot)
+    {
+        return SignalBase::disconnect(std::any(), ::address(slot));
+    }
+
+    /// Disconnects a \a signal from this signal.
+    template <typename SignalType>
+    typename std::enable_if<std::is_base_of_v<SignalBase, SignalType>, bool>::type disconnect(const SignalType& signal)
+    {
+        return SignalBase::disconnect(signal);
+    }
 };
 
 } // mox
