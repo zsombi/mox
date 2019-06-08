@@ -31,6 +31,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metamethod.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metamethod_impl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/signal.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/signal_impl.hpp
     )
 
 set(SOURCES

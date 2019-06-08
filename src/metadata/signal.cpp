@@ -206,9 +206,9 @@ bool SignalBase::isValid() const
     return m_id != INVALID_SIGNAL;
 }
 
-SignalBase::ConnectionSharedPtr SignalBase::connect(std::any instance, const MetaMethod& slot)
+SignalBase::ConnectionSharedPtr SignalBase::connect(std::any receiver, const MetaMethod& metaMethod)
 {
-    ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MetaMethodConnection>(*this, instance, slot);
+    ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MetaMethodConnection>(*this, receiver, metaMethod);
     addConnection(connection);
     return connection;
 }
@@ -220,9 +220,9 @@ SignalBase::ConnectionSharedPtr SignalBase::connect(Callable&& lambda)
     return connection;
 }
 
-SignalBase::ConnectionSharedPtr SignalBase::connect(std::any instance, Callable&& slot)
+SignalBase::ConnectionSharedPtr SignalBase::connect(std::any receiver, Callable&& slot)
 {
-    ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MethodConnection>(*this, instance, std::forward<Callable>(slot));
+    ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MethodConnection>(*this, receiver, std::forward<Callable>(slot));
     addConnection(connection);
     return connection;
 }
