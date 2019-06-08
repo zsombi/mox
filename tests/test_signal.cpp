@@ -278,7 +278,21 @@ TEST_F(SignalTest, test_disconnect_signal)
 
 TEST_F(SignalTest, test_disconnect_metamethod)
 {
+    SignalTestClass host;
+    SlotHolder slots;
 
+    EXPECT_NOT_NULL(host.sig1.connect(slots, "method1"));
+    EXPECT_EQ(1u, host.sig1());
+    EXPECT_TRUE(host.sig1.disconnect(slots, "method1"));
+    EXPECT_FALSE(host.sig1.disconnect(slots, "method2"));
+    EXPECT_EQ(0u, host.sig1());
+
+    EXPECT_NOT_NULL(host.sig2.connect(slots, "method1"));
+    EXPECT_NOT_NULL(host.sig2.connect(slots, "method2"));
+    EXPECT_EQ(2u, host.sig2(1));
+
+    EXPECT_TRUE(host.sig2.disconnect(slots, "method2"));
+    EXPECT_EQ(1u, host.sig2(1));
 }
 
 TEST_F(SignalTest, test_emit_signal)

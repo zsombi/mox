@@ -34,7 +34,7 @@ protected:
 public:
     FunctionConnection(SignalBase& signal, Callable&& callable);
 
-    bool compare(std::any receiver, void* funcAddress) const override;
+    bool compare(std::any receiver, const void* funcAddress) const override;
     bool isConnected() const override
     {
         return m_slot.type() != FunctionType::Invalid;
@@ -51,7 +51,7 @@ class MethodConnection : public FunctionConnection
 public:
     MethodConnection(SignalBase& signal, std::any receiver, Callable&& callable);
 
-    bool compare(std::any receiver, void* funcAddress) const override;
+    bool compare(std::any receiver, const void* funcAddress) const override;
     void activate(Callable::Arguments& args) override;
     void reset() override;
 };
@@ -62,16 +62,22 @@ class MetaMethodConnection : public SignalBase::Connection
     const MetaMethod* m_slot;
 
 public:
+    const MetaMethod* method() const
+    {
+        return m_slot;
+    }
+
     MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod* slot);
 
     bool isConnected() const override
     {
         return m_slot->type() != FunctionType::Invalid;
     }
-    bool compare(std::any receiver, void* funcAddress) const override;
+    bool compare(std::any receiver, const void* funcAddress) const override;
     void activate(Callable::Arguments& args) override;
     void reset() override;
 };
+typedef std::shared_ptr<MetaMethodConnection> MetaMethodConnectionSharedPtr;
 
 class SignalConnection : public SignalBase::Connection
 {
@@ -93,7 +99,6 @@ public:
     void activate(Callable::Arguments& args) override;
     void reset() override;
 };
-
 typedef std::shared_ptr<SignalConnection> SignalConnectionSharedPtr;
 
 } // mox

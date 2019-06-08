@@ -46,7 +46,7 @@ public:
         virtual ~Connection() = default;
         virtual bool isConnected() const = 0;
         bool disconnect();
-        virtual bool compare(std::any receiver, void* funcAddress) const;
+        virtual bool compare(std::any receiver, const void* funcAddress) const;
 
     protected:
         explicit Connection(SignalBase& signal);
@@ -84,7 +84,7 @@ protected:
     ConnectionSharedPtr connect(Callable&& lambda);
     ConnectionSharedPtr connect(std::any instance, Callable&& slot);
 
-    bool disconnect(std::any receiver, void* callableAddress);
+    bool disconnect(std::any receiver, const void* callableAddress);
     bool disconnect(const SignalBase& signal);
 
     typedef std::vector<ConnectionSharedPtr> ConnectionList;
@@ -143,9 +143,10 @@ public:
         return activate(argPack);
     }
 
-    /// Connects a metamethod
+    /// Connects a metamethod with \a methodName. The metamethod must be registered in the \a receiver's
+    /// static or dynamic metaclass.
     template <class Receiver>
-    ConnectionSharedPtr connect(const Receiver& receiver, const char* method)
+    ConnectionSharedPtr connect(const Receiver& receiver, const char* methodName)
     {
         if constexpr (!has_static_metaclass<Receiver>::value)
         {
@@ -160,7 +161,7 @@ public:
         {
             metaClass = Receiver::getStaticMetaClass();
         }
-        auto visitor = [name = std::forward<std::string_view>(method), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
+        auto visitor = [name = std::forward<std::string_view>(methodName), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
         {
             return (method->name() == name) && method->isInvocableWith(descriptors);
         };
@@ -176,7 +177,8 @@ public:
     /// Connects a \a slot that is a method of a \a receiver.
     /// \return If the connection succeeds, the connection object, or nullptr on failure.
     template <typename SlotFunction>
-    typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, ConnectionSharedPtr>::type connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
+    typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, ConnectionSharedPtr>::type
+    connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
     {
         typedef typename function_traits<SlotFunction>::object ReceiverType;
         Callable slotCallable(slot);
@@ -225,9 +227,38 @@ public:
         return SignalBase::connect(std::forward<Callable>(lambda));
     }
 
+    template <typename Receiver>
+    bool disconnect(const Receiver& receiver, const char* method)
+    {
+        if constexpr (!has_static_metaclass<Receiver>::value)
+        {
+            return false;
+        }
+        const MetaClass* metaClass = nullptr;
+        if constexpr (has_dynamic_metaclass<Receiver>::value)
+        {
+            metaClass = Receiver::getDynamicMetaClass();
+        }
+        else
+        {
+            metaClass = Receiver::getStaticMetaClass();
+        }
+        auto visitor = [name = std::forward<std::string_view>(method), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
+        {
+            return (method->name() == name) && method->isInvocableWith(descriptors);
+        };
+        const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
+        if (!metaMethod)
+        {
+            return false;
+        }
+
+        return SignalBase::disconnect(metaClass->castInstance(const_cast<Receiver*>(&receiver)), metaMethod->address());
+    }
+
     /// Disconnects a \a slot that is a method of the \a receiver.
     template <typename SlotFunction>
-    bool disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
+    typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, bool>::type disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
     {
         typedef typename function_traits<SlotFunction>::object ReceiverType;
         std::any receiverInstance;

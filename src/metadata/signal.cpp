@@ -38,7 +38,7 @@ bool SignalBase::Connection::disconnect()
     return true;
 }
 
-bool SignalBase::Connection::compare(std::any receiver, void* funcAddress) const
+bool SignalBase::Connection::compare(std::any receiver, const void* funcAddress) const
 {
     UNUSED(receiver);
     UNUSED(funcAddress);
@@ -52,7 +52,7 @@ FunctionConnection::FunctionConnection(SignalBase& signal, Callable&& callable)
 {
 }
 
-bool FunctionConnection::compare(std::any, void *funcAddress) const
+bool FunctionConnection::compare(std::any, const void *funcAddress) const
 {
     return (m_slot.address() == funcAddress);
 }
@@ -74,7 +74,7 @@ MethodConnection::MethodConnection(SignalBase& signal, std::any receiver, Callab
 {
 }
 
-bool MethodConnection::compare(std::any receiver, void *funcAddress) const
+bool MethodConnection::compare(std::any receiver, const void *funcAddress) const
 {
     return (m_receiver.type() == receiver.type()) && FunctionConnection::compare(receiver, funcAddress);
 }
@@ -100,7 +100,7 @@ MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver
 {
 }
 
-bool MetaMethodConnection::compare(std::any receiver, void *funcAddress) const
+bool MetaMethodConnection::compare(std::any receiver, const void *funcAddress) const
 {
     return (m_receiver.type() == receiver.type()) && (m_slot->address() == funcAddress);
 }
@@ -257,7 +257,7 @@ bool SignalBase::disconnect(const SignalBase& signal)
     return false;
 }
 
-bool SignalBase::disconnect(std::any receiver, void* callableAddress)
+bool SignalBase::disconnect(std::any receiver, const void* callableAddress)
 {
     ScopeLock lock(m_host.m_lock);
     ConnectionList::iterator it, end = m_connections.end();
@@ -279,6 +279,7 @@ bool SignalBase::disconnect(std::any receiver, void* callableAddress)
 
     return false;
 }
+
 
 size_t SignalBase::activate(Callable::Arguments &args)
 {
