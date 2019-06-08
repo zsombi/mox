@@ -158,16 +158,16 @@ TEST_F(SignalTest, test_connect_metamethod)
     SignalTestClass host;
     SlotHolder slots;
 
-    EXPECT_NOT_NULL(host.sig1.connectMethod(slots, "method1"));
-    EXPECT_NOT_NULL(host.sig2.connectMethod(slots, "method1"));
-    EXPECT_NOT_NULL(host.sig2.connectMethod(slots, "method2"));
-    EXPECT_NULL(host.sig2.connectMethod(slots, "method3"));
-    EXPECT_NULL(host.sig2.connectMethod(slots, "method4"));
+    EXPECT_NOT_NULL(host.sig1.connect(slots, "method1"));
+    EXPECT_NOT_NULL(host.sig2.connect(slots, "method1"));
+    EXPECT_NOT_NULL(host.sig2.connect(slots, "method2"));
+    EXPECT_NULL(host.sig2.connect(slots, "method3"));
+    EXPECT_NULL(host.sig2.connect(slots, "method4"));
 
-    EXPECT_NOT_NULL(host.sig3.connectMethod(slots, "method1"));
-    EXPECT_NOT_NULL(host.sig3.connectMethod(slots, "method2"));
-    EXPECT_NOT_NULL(host.sig3.connectMethod(slots, "method3"));
-    EXPECT_NULL(host.sig3.connectMethod(slots, "method4"));
+    EXPECT_NOT_NULL(host.sig3.connect(slots, "method1"));
+    EXPECT_NOT_NULL(host.sig3.connect(slots, "method2"));
+    EXPECT_NOT_NULL(host.sig3.connect(slots, "method3"));
+    EXPECT_NULL(host.sig3.connect(slots, "method4"));
 }
 
 TEST_F(SignalTest, test_connect_function)
