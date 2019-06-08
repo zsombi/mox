@@ -67,11 +67,11 @@ public:
         return m_slot;
     }
 
-    MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod* slot);
+    MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod& slot);
 
     bool isConnected() const override
     {
-        return m_slot->type() != FunctionType::Invalid;
+        return m_slot && (m_slot->type() != FunctionType::Invalid);
     }
     bool compare(std::any receiver, const void* funcAddress) const override;
     void activate(Callable::Arguments& args) override;

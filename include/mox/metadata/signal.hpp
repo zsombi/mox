@@ -67,7 +67,7 @@ public:
 
     bool isValid() const;
 
-    ConnectionSharedPtr connect(std::any instance, const MetaMethod* slot);
+    ConnectionSharedPtr connect(std::any instance, const MetaMethod& slot);
     ConnectionSharedPtr connect(const SignalBase& signal);
 
     size_t activate(Callable::Arguments& args);
@@ -148,18 +148,14 @@ public:
     template <class Receiver>
     ConnectionSharedPtr connect(const Receiver& receiver, const char* methodName)
     {
-        if constexpr (!has_static_metaclass<Receiver>::value)
+        if constexpr (!has_static_metaclass_v<Receiver>)
         {
             return nullptr;
         }
-        const MetaClass* metaClass = nullptr;
-        if constexpr (has_dynamic_metaclass<Receiver>::value)
+        const MetaClass* metaClass = Receiver::getStaticMetaClass();
+        if constexpr (has_dynamic_metaclass_v<Receiver>)
         {
             metaClass = Receiver::getDynamicMetaClass();
-        }
-        else
-        {
-            metaClass = Receiver::getStaticMetaClass();
         }
         auto visitor = [name = std::forward<std::string_view>(methodName), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
         {
@@ -171,7 +167,7 @@ public:
             return nullptr;
         }
 
-        return SignalBase::connect(metaClass->castInstance(const_cast<Receiver*>(&receiver)), metaMethod);
+        return SignalBase::connect(metaClass->castInstance(const_cast<Receiver*>(&receiver)), *metaMethod);
     }
 
     /// Connects a \a slot that is a method of a \a receiver.
@@ -181,24 +177,31 @@ public:
     connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
     {
         typedef typename function_traits<SlotFunction>::object ReceiverType;
+
+        if constexpr (has_static_metaclass_v<ReceiverType>)
+        {
+            const MetaClass* metaClass = ReceiverType::getStaticMetaClass();
+            if constexpr (has_dynamic_metaclass_v<ReceiverType>)
+            {
+                metaClass = ReceiverType::getDynamicMetaClass();
+            }
+            auto visitor = [methodAddress = ::address(slot), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
+            {
+                return (method->address() == methodAddress) && method->isInvocableWith(descriptors);
+            };
+            const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
+            if (metaMethod)
+            {
+                return SignalBase::connect(metaClass->castInstance(const_cast<ReceiverType*>(&receiver)), *metaMethod);
+            }
+        }
+
         Callable slotCallable(slot);
         if (!slotCallable.isInvocableWith(argumentDescriptors()))
         {
             return nullptr;
         }
-        if constexpr (has_static_metaclass<ReceiverType>::value)
-        {
-            const MetaClass* metaClass = ReceiverType::getStaticMetaClass();
-            if constexpr (has_dynamic_metaclass<ReceiverType>::value)
-            {
-                metaClass = ReceiverType::getDynamicMetaClass();
-            }
-            return SignalBase::connect(metaClass->castInstance(&receiver), std::forward<Callable>(slotCallable));
-        }
-        else
-        {
-            return SignalBase::connect(&receiver, std::forward<Callable>(slotCallable));
-        }
+        return SignalBase::connect(&receiver, std::forward<Callable>(slotCallable));
     }
 
     /// Connects a \a receiverSignal to this signal.
@@ -230,18 +233,14 @@ public:
     template <typename Receiver>
     bool disconnect(const Receiver& receiver, const char* method)
     {
-        if constexpr (!has_static_metaclass<Receiver>::value)
+        if constexpr (!has_static_metaclass_v<Receiver>)
         {
             return false;
         }
-        const MetaClass* metaClass = nullptr;
-        if constexpr (has_dynamic_metaclass<Receiver>::value)
+        const MetaClass* metaClass = Receiver::getStaticMetaClass();
+        if constexpr (has_dynamic_metaclass_v<Receiver>)
         {
             metaClass = Receiver::getDynamicMetaClass();
-        }
-        else
-        {
-            metaClass = Receiver::getStaticMetaClass();
         }
         auto visitor = [name = std::forward<std::string_view>(method), descriptors = argumentDescriptors()](const MetaMethod* method) -> bool
         {
@@ -261,11 +260,12 @@ public:
     typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, bool>::type disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction slot)
     {
         typedef typename function_traits<SlotFunction>::object ReceiverType;
+
         std::any receiverInstance;
-        if constexpr (has_static_metaclass<ReceiverType>::value)
+        if constexpr (has_static_metaclass_v<ReceiverType>)
         {
             const MetaClass* metaClass = ReceiverType::getStaticMetaClass();
-            if constexpr (has_dynamic_metaclass<ReceiverType>::value)
+            if constexpr (has_dynamic_metaclass_v<ReceiverType>)
             {
                 metaClass = ReceiverType::getDynamicMetaClass();
             }

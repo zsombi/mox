@@ -87,6 +87,9 @@ public:
 };
 
 template <typename T>
+inline constexpr bool has_static_metaclass_v = has_static_metaclass<T>::value;
+
+template <typename T>
 struct has_dynamic_metaclass
 {
 private:
@@ -97,6 +100,9 @@ private:
 public:
     static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);
 };
+
+template <typename T>
+inline constexpr bool has_dynamic_metaclass_v = has_dynamic_metaclass<T>::value;
 
 
 /// Returns the metatype identifier of the given type. The function asserts if

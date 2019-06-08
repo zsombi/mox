@@ -93,10 +93,10 @@ void MethodConnection::reset()
 }
 
 
-MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod* slot)
+MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod& slot)
     : SignalBase::Connection(signal)
     , m_receiver(receiver)
-    , m_slot(slot)
+    , m_slot(&slot)
 {
 }
 
@@ -206,7 +206,7 @@ bool SignalBase::isValid() const
     return m_id != INVALID_SIGNAL;
 }
 
-SignalBase::ConnectionSharedPtr SignalBase::connect(std::any instance, const MetaMethod* slot)
+SignalBase::ConnectionSharedPtr SignalBase::connect(std::any instance, const MetaMethod& slot)
 {
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MetaMethodConnection>(*this, instance, slot);
     addConnection(connection);
