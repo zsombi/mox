@@ -22,6 +22,13 @@
 namespace mox
 {
 
+MetaSignal::MetaSignal(MetaClass& metaClass, std::string_view name, const Callable::ArgumentDescriptorContainer& args)
+    : m_ownerClass(metaClass)
+    , m_arguments(args)
+    , m_name(name)
+{
+}
+
 SignalBase::Connection::Connection(SignalBase& signal)
     : m_signal(signal)
 {
@@ -157,8 +164,9 @@ void SignalHost::removeSignal(SignalBase &signal)
     m_signals[signal.id()] = nullptr;
 }
 
-SignalBase::SignalBase(SignalHost& host)
+SignalBase::SignalBase(SignalHost& host, std::string_view name)
     : m_host(host)
+    , m_name(name)
     , m_id(host.registerSignal(*this))
     , m_triggering(false)
 {

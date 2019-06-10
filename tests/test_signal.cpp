@@ -27,13 +27,16 @@ using namespace mox;
 class SignalTestClass : public SignalHost
 {
 public:
+    typedef Signal<void()> Sig1Type;
+
     MIXIN_METACLASS_BASE(SignalTestClass)
     {
+        mox::MetaSignalImpl<Sig1Type::Signature> sig1{*this, "sig1"};
     };
 
-    Signal<void()> sig1{*this};
-    Signal<void(int)> sig2{*this};
-    Signal<void(int, std::string)> sig3{*this};
+    Sig1Type sig1{*this, "sig1"};
+    Signal<void(int)> sig2{*this, "sig2"};
+    Signal<void(int, std::string)> sig3{*this, "sig3"};
 };
 
 class  SlotHolder : public SignalHost
@@ -52,7 +55,7 @@ public:
         META_METHOD(SlotHolder, method4);
     };
 
-    Signal<void(int)> sig{*this};
+    Signal<void(int)> sig{*this, "sig"};
 
     void method1()
     {
