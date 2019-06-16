@@ -87,9 +87,38 @@ const MetaMethod* MetaClass::visitMethods(const MethodVisitor& visitor) const
     return nullptr;
 }
 
+const MetaSignal* MetaClass::visitSignals(const SignalVisitor& visitor) const
+{
+    for (const MetaSignal* signal : m_signals)
+    {
+        if (visitor(signal))
+        {
+            return signal;
+        }
+    }
+
+    for (const MetaClass* super : m_superClasses)
+    {
+        const MetaSignal* signal = super->visitSignals(visitor);
+        if (signal)
+        {
+            return signal;
+        }
+    }
+
+    return nullptr;
+}
+
+
 void MetaClass::addMethod(MetaMethod *method)
 {
     m_methods.push_back(method);
+}
+
+size_t MetaClass::addSignal(MetaSignal &signal)
+{
+    m_signals.push_back(&signal);
+    return m_signals.size() - 1;
 }
 
 MetaObject::MetaObject()

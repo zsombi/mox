@@ -31,11 +31,48 @@
 
 #include <mox/utils/function_traits.hpp>
 
+/// Metasignal declarator macro
+#define META_SIGNAL(name)  mox::MetaSignalImpl<decltype(name)> meta_##name{*this, #name}
+
 namespace mox
 {
 
 class SignalBase;
 class SignalHost;
+
+class MOX_API MetaSignal
+{
+public:
+    std::string name() const
+    {
+        return m_name;
+    }
+    const Callable::ArgumentDescriptorContainer arguments() const
+    {
+        return m_arguments;
+    }
+
+    size_t activate(SignalHost& sender, Callable::Arguments& arguments) const;
+
+protected:
+    explicit MetaSignal(MetaClass& metaClass, std::string_view name, const Callable::ArgumentDescriptorContainer& args);
+    virtual ~MetaSignal() =  default;
+
+    MetaClass& m_ownerClass;
+    Callable::ArgumentDescriptorContainer m_arguments;
+    std::string m_name;
+    size_t m_id;
+};
+
+template <class SignalType>
+class MetaSignalImpl : public MetaSignal
+{
+public:
+    explicit MetaSignalImpl(MetaClass& metaClass, std::string_view name)
+        : MetaSignal(metaClass, name, function_traits<typename SignalType::Signature>::argument_descriptors())
+    {
+    }
+};
 
 /// SignalBase is the base class of the Mox signals. You can declare signals using the Signal template class.
 class MOX_API SignalBase
@@ -121,8 +158,8 @@ protected:
     SignalBase(const SignalBase&) = delete;
     SignalBase& operator=(const SignalBase&) = delete;
 
-    /// Constructs a signal registering it to the signal \a host with the \a name passed as argument.
-    explicit SignalBase(SignalHost& host, std::string_view name);
+    /// Constructs a signal with \a metaSignal, and registers it to the \a host passed as argument.
+    explicit SignalBase(SignalHost& host, const MetaSignal& metaSignal);
     /// Destructor.
     virtual ~SignalBase();
 
@@ -146,8 +183,8 @@ protected:
 
     /// The signal host address.
     SignalHost& m_host;
-    /// The name of the signal.
-    std::string m_name;
+    /// The metasignal of the signal.
+    const MetaSignal& m_metaSignal;
     /// The collection of active connections.
     ConnectionList m_connections;
     /// The signal identifier
@@ -188,7 +225,7 @@ protected:
 };
 
 /// Signal template specialization for a generic signature.
-template <typename SignatureFunction>
+template <typename Signature>
 class Signal;
 
 /// Signal template, specialization with a signature of void function with arbitrary arguments.
@@ -205,7 +242,21 @@ class Signal<void(Args...)> : public SignalBase
     static constexpr size_t arity = sizeof... (Args);
     const std::array<ArgumentDescriptor, arity> m_argumentDescriptors = {{ ArgumentDescriptor::get<Args>()... }};
 
-    template <typename Signature> friend class MetaSignal;
+    template <typename Signature> friend class MetaSignalImpl;
+
+    template <class SignalOwner>
+    static const MetaSignal& getMetaSignal(std::string_view name)
+    {
+        const std::array<ArgumentDescriptor, arity> des = {{ ArgumentDescriptor::get<Args>()... }};
+        const std::vector<ArgumentDescriptor> desArray(des.begin(), des.end());
+        auto visitor = [desArray = std::move(desArray), name = std::move(name)](const MetaSignal* signal)
+        {
+            return (signal->name() == name) && (signal->arguments() == desArray);
+        };
+        const MetaSignal* signal = SignalOwner::getStaticMetaClass()->visitSignals(visitor);
+        ASSERT(signal, std::string("Cannot create a signal without a metasignal for ") + std::string(name));
+        return *signal;
+    }
 
 public:
     /// The signature of the signal.
@@ -217,8 +268,9 @@ public:
     /// Constructs the signal attaching it to the \a owner.
     /// \param owner The SignalHost owning the signal.
     /// \param name The name of the signal.
-    explicit Signal(SignalHost& owner, std::string_view name)
-        : SignalBase(owner, name)
+    template <class SignalOwner>
+    explicit Signal(SignalOwner& owner, std::string_view name)
+        : SignalBase(owner, getMetaSignal<SignalOwner>(name))
     {
     }
 
@@ -295,27 +347,6 @@ public:
     template <typename SignalType>
     typename std::enable_if<std::is_base_of_v<SignalBase, SignalType>, bool>::type
     disconnect(const SignalType& signal);
-};
-
-class MOX_API MetaSignal
-{
-protected:
-    explicit MetaSignal(MetaClass& metaClass, std::string_view name, const Callable::ArgumentDescriptorContainer& args);
-    virtual ~MetaSignal() =  default;
-
-    MetaClass& m_ownerClass;
-    Callable::ArgumentDescriptorContainer m_arguments;
-    std::string m_name;
-};
-
-template <typename Signature>
-class MOX_API MetaSignalImpl : public MetaSignal
-{
-public:
-    explicit MetaSignalImpl(MetaClass& metaClass, std::string_view name)
-        : MetaSignal(metaClass, name, function_traits<Signature>::argument_descriptors())
-    {
-    }
 };
 
 } // mox

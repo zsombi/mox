@@ -30,6 +30,7 @@ namespace mox
 
 class MetaObject;
 class MetaMethod;
+class MetaSignal;
 
 /// MetaClass represents the type reflection or metadata of a managed structure or class. The metadata consists
 /// of factory functions, methods, properties and signals.
@@ -39,6 +40,8 @@ struct MOX_API MetaClass
 public:
     /// Method visitor function.
     typedef std::function<bool(const MetaMethod*)> MethodVisitor;
+    /// Metasignal visitor function.
+    typedef std::function<bool(const MetaSignal*)> SignalVisitor;
 
     /// Destructor.
     virtual ~MetaClass();
@@ -57,6 +60,12 @@ public:
     /// \return The MetaMethod instance for which the visitor returns \e true, \e nullptr if
     /// no method is identified by the visitor.
     const MetaMethod* visitMethods(const MethodVisitor& visitor) const;
+
+    /// Visits the metaclass passing the metasignals to the \a visitor.
+    /// \param visitor The visitor.
+    /// \return The MetaSignal instance for which the visitor returns \e true, \e nullptr if
+    /// no metasignal is identified by the visitor.
+    const MetaSignal* visitSignals(const SignalVisitor& visitor) const;
 
     /// Returns the Metatype of the MetaClass.
     Metatype metaType() const
@@ -83,16 +92,20 @@ protected:
     explicit MetaClass(const MetatypeDescriptor& type, bool abstract);
 
     void addMethod(MetaMethod* method);
+    size_t addSignal(MetaSignal& signal);
 
     typedef std::vector<const MetaClass*> MetaClassContainer;
     typedef std::vector<const MetaMethod*> MetaMethodContainer;
+    typedef std::vector<const MetaSignal*> MetaSignalContainer;
 
     MetaClassContainer m_superClasses;
     MetaMethodContainer m_methods;
+    MetaSignalContainer m_signals;
     const MetatypeDescriptor& m_type;
     const bool m_isAbstract:1;
 
     friend class MetaMethod;
+    friend class MetaSignal;
 
 private:
     byte __padding[3];

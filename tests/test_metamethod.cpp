@@ -33,7 +33,7 @@ public:
         META_METHOD(TestMixin, testFunc1);
         META_METHOD(TestMixin, testFunc2);
         META_METHOD(TestMixin, staticFunc);
-        MetaMethod lambda = {*this, [](TestMixin* instance) { instance->invoked = true; }, "lambda"};
+        MetaMethod lambda{*this, [](TestMixin* instance) { instance->invoked = true; }, "lambda"};
     };
 
     void testFunc1()

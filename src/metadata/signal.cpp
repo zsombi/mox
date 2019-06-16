@@ -26,7 +26,15 @@ MetaSignal::MetaSignal(MetaClass& metaClass, std::string_view name, const Callab
     : m_ownerClass(metaClass)
     , m_arguments(args)
     , m_name(name)
+    , m_id(m_ownerClass.addSignal(*this))
 {
+}
+
+size_t MetaSignal::activate(SignalHost& sender, Callable::Arguments& arguments) const
+{
+    UNUSED(sender);
+    UNUSED(arguments);
+    return 0;
 }
 
 SignalBase::Connection::Connection(SignalBase& signal)
@@ -164,9 +172,9 @@ void SignalHost::removeSignal(SignalBase &signal)
     m_signals[signal.id()] = nullptr;
 }
 
-SignalBase::SignalBase(SignalHost& host, std::string_view name)
+SignalBase::SignalBase(SignalHost& host, const MetaSignal& metaSignal)
     : m_host(host)
-    , m_name(name)
+    , m_metaSignal(metaSignal)
     , m_id(host.registerSignal(*this))
     , m_triggering(false)
 {

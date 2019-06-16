@@ -24,19 +24,23 @@
 
 using namespace mox;
 
+#define META_METHOD2(name)  mox::MetaMethod meta_name = {*this, &Class::name, #name}
+
 class SignalTestClass : public SignalHost
 {
 public:
-    typedef Signal<void()> Sig1Type;
+    Signal<void()> sig1{*this, "sig1"};
+    Signal<void(int)> sig2{*this, "sig2"};
+    Signal<void(int, std::string)> sig3{*this, "sig3"};
+    Signal<void()> sigB{*this, "sigB"};
 
     MIXIN_METACLASS_BASE(SignalTestClass)
     {
-        mox::MetaSignalImpl<Sig1Type::Signature> sig1{*this, "sig1"};
+        META_SIGNAL(sig1);
+        META_SIGNAL(sigB);
+        META_SIGNAL(sig2);
+        META_SIGNAL(sig3);
     };
-
-    Sig1Type sig1{*this, "sig1"};
-    Signal<void(int)> sig2{*this, "sig2"};
-    Signal<void(int, std::string)> sig3{*this, "sig3"};
 };
 
 class  SlotHolder : public SignalHost
@@ -47,15 +51,17 @@ class  SlotHolder : public SignalHost
     int slot4Call = 0;
 
 public:
+    Signal<void(int)> sig{*this, "sig"};
+
     MIXIN_METACLASS_BASE(SlotHolder)
     {
         META_METHOD(SlotHolder, method1);
         META_METHOD(SlotHolder, method2);
         META_METHOD(SlotHolder, method3);
         META_METHOD(SlotHolder, method4);
+        META_SIGNAL(sig);
     };
 
-    Signal<void(int)> sig{*this, "sig"};
 
     void method1()
     {
@@ -425,4 +431,20 @@ TEST_F(SignalTest, test_delete_signal_source)
 TEST_F(SignalTest, test_delete_connection_destination)
 {
 
+}
+
+TEST_F(SignalTest, test_metasignal_emit)
+{
+    SignalTestClass sender;
+    SlotHolder receiver;
+
+    const MetaClass* metaClass = sender.getStaticMetaClass();
+    auto visitor = [](const MetaSignal* signal)
+    {
+        return bool(signal->name() == "sig1");
+    };
+    const MetaSignal* signal = metaClass->visitSignals(visitor);
+    EXPECT_NOT_NULL(signal);
+    Callable::Arguments args;
+    signal->activate(sender, args);
 }
