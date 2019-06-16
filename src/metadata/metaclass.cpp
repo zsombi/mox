@@ -121,23 +121,4 @@ size_t MetaClass::addSignal(MetaSignal &signal)
     return m_signals.size() - 1;
 }
 
-MetaObject::MetaObject()
-{
-}
-
-MetaObject::~MetaObject()
-{
-}
-
-const MetaClass* MetaObject::getStaticMetaClass()
-{
-    static ObjectMetaClass<MetaObject> metaClass;
-    return &metaClass;
-}
-
-const MetaClass* MetaObject::getDynamicMetaClass() const
-{
-    return getStaticMetaClass();
-}
-
 } // namespace mox

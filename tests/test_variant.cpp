@@ -19,6 +19,7 @@
 #include "test_framework.h"
 #include <mox/metadata/variant.hpp>
 #include <mox/metadata/metaclass.hpp>
+#include <mox/metadata/metaobject.hpp>
 
 class TestObject : public mox::MetaObject
 {

@@ -168,24 +168,6 @@ struct ObjectMetaClass : MetaClass
     }
 };
 
-/// Base class for the classes that provide standalone type reflection.
-class MOX_API MetaObject
-{
-public:
-    /// Destructor.
-    virtual ~MetaObject();
-
-    /// Returns the static metaclass of the metaobject.
-    static const MetaClass* getStaticMetaClass();
-
-    /// Returns the dynamic metaclass of the metaobject.
-    virtual const MetaClass* getDynamicMetaClass() const;
-
-protected:
-    /// Constructor.
-    explicit MetaObject();
-};
-
 } // namespace mox
 
 /// Declares the MetaClass of a non-MetaObject derived base class or interface. The meta-class name associated to the

@@ -26,6 +26,7 @@
 #include <mox/metadata/metatype.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/metadata/metaclass.hpp>
+#include <mox/metadata/metaobject.hpp>
 
 namespace mox
 {

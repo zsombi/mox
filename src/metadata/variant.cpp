@@ -18,6 +18,7 @@
 
 #include <mox/metadata/variant.hpp>
 #include <mox/metadata/metaclass.hpp>
+#include <mox/metadata/metaobject.hpp>
 
 #include "metadata_p.h"
 
