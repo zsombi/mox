@@ -37,7 +37,7 @@
 namespace mox
 {
 
-class SignalBase;
+class Signal;
 class SignalHost;
 
 class MOX_API MetaSignal
@@ -47,6 +47,7 @@ public:
     {
         return m_name;
     }
+    /// Returns an array with the argument descriptors of the signal.
     const Callable::ArgumentDescriptorContainer arguments() const
     {
         return m_arguments;
@@ -74,8 +75,8 @@ public:
     }
 };
 
-/// SignalBase is the base class of the Mox signals. You can declare signals using the Signal template class.
-class MOX_API SignalBase
+/// Signal is the base class of the Mox signals. You can declare signals using the Signal template class.
+class MOX_API Signal
 {
 public:
     /// The class reptresents a connection to a signal. The connection is a token which holds the
@@ -104,7 +105,7 @@ public:
 
     protected:
         /// Constructs a connection attached to the \a signal.
-        explicit Connection(SignalBase& signal);
+        explicit Connection(Signal& signal);
 
         /// Activates the connection by calling the slot of the connection.
         /// \param args The arguments to pass to the slot.
@@ -114,9 +115,9 @@ public:
         virtual void reset() = 0;
 
         /// The signal the connection is attached to.
-        SignalBase& m_signal;
+        Signal& m_signal;
 
-        friend class SignalBase;
+        friend class Signal;
     };
 
     /// The connection type.
@@ -144,7 +145,7 @@ public:
     /// Creates a connection between this signal and a receiver \a signal.
     /// \param signal The receiver signal connected to this signal.
     /// \return The connection shared object.
-    ConnectionSharedPtr connect(const SignalBase& signal);
+    ConnectionSharedPtr connect(const Signal& signal);
 
     /// Activates the connections of the signal by invoking the slots from each connection passing
     /// the \a arguments to the slots. Connections created during the activation are not invoked
@@ -153,15 +154,22 @@ public:
     /// \return The number of connections activated.
     size_t activate(Callable::Arguments& arguments);
 
+    /// Returns the metasignal assiciated to the signal.
+    /// \return The metasignal of the signal.
+    const MetaSignal& metaSignal() const
+    {
+        return m_metaSignal;
+    }
+
 protected:
-    SignalBase() = delete;
-    SignalBase(const SignalBase&) = delete;
-    SignalBase& operator=(const SignalBase&) = delete;
+    Signal() = delete;
+    Signal(const Signal&) = delete;
+    Signal& operator=(const Signal&) = delete;
 
     /// Constructs a signal with \a metaSignal, and registers it to the \a host passed as argument.
-    explicit SignalBase(SignalHost& host, const MetaSignal& metaSignal);
+    explicit Signal(SignalHost& host, const MetaSignal& metaSignal);
     /// Destructor.
-    virtual ~SignalBase();
+    virtual ~Signal();
 
     /// Adds a \a connection to the signal.
     void addConnection(ConnectionSharedPtr connection);
@@ -176,7 +184,7 @@ protected:
     /// Disconnects a connection that holds a \a receiver and \a callableAddress.
     bool disconnect(std::any receiver, const void* callableAddress);
     /// Disconnects a connection that holds the \a signal.
-    bool disconnect(const SignalBase& signal);
+    bool disconnect(const Signal& signal);
 
     /// Connection container type.
     typedef std::vector<ConnectionSharedPtr> ConnectionList;
@@ -210,46 +218,41 @@ protected:
     /// Signal host lock, guards the signal register.
     std::mutex m_lock;
     /// The signal register holding all declared signals on a signal host.
-    std::vector<const SignalBase*> m_signals;
+    std::vector<const Signal*> m_signals;
 
     /// Registers the \a signal to the signal host.
     /// \param signal The signal to register.
     /// \return The signal identifier.
-    size_t registerSignal(SignalBase& signal);
+    size_t registerSignal(Signal& signal);
 
     /// Removes a signal from the signal host register.
     /// \param signal The signal to remove from the register.
-    void removeSignal(SignalBase& signal);
+    void removeSignal(Signal& signal);
 
-    friend class SignalBase;
+    friend class Signal;
 };
 
 /// Signal template specialization for a generic signature.
 template <typename Signature>
-class Signal;
+class SignalType;
 
 /// Signal template, specialization with a signature of void function with arbitrary arguments.
 /// The arguments must be registered as metatypes. You can connect methods, metamethods, functions,
 /// functors or lambdas to a signal using the relevant connect() methods. You can disconnect the
-/// connections either calling disconnect() on the signal, or by calling SignalBase::Connection::disconnect().
+/// connections either calling disconnect() on the signal, or by calling Signal::Connection::disconnect().
 /// \note You can connect signals to slots that have the same arguments or less arguments than
 /// the signal has. When connecting to slots with less arguments than the signal signature, only
 /// slots that have the same argument types at the specific argument index are considered connectable.
 /// This is also valid when connecting two signals.
 template <typename... Args>
-class Signal<void(Args...)> : public SignalBase
+class SignalType<void(Args...)> : public Signal
 {
-    static constexpr size_t arity = sizeof... (Args);
-    const std::array<ArgumentDescriptor, arity> m_argumentDescriptors = {{ ArgumentDescriptor::get<Args>()... }};
-
-    template <typename Signature> friend class MetaSignalImpl;
-
     template <class SignalOwner>
     static const MetaSignal& getMetaSignal(std::string_view name)
     {
-        const std::array<ArgumentDescriptor, arity> des = {{ ArgumentDescriptor::get<Args>()... }};
+        const std::array<ArgumentDescriptor, sizeof... (Args)> des = {{ ArgumentDescriptor::get<Args>()... }};
         const std::vector<ArgumentDescriptor> desArray(des.begin(), des.end());
-        auto visitor = [desArray = std::move(desArray), name = std::move(name)](const MetaSignal* signal)
+        auto visitor = [desArray = std::move(desArray), name = std::string(name)](const MetaSignal* signal)
         {
             return (signal->name() == name) && (signal->arguments() == desArray);
         };
@@ -262,15 +265,12 @@ public:
     /// The signature of the signal.
     typedef void(*Signature)(Args...);
 
-    /// Returns an array with the argument descriptors of the signal.
-    Callable::ArgumentDescriptorContainer argumentDescriptors() const;
-
     /// Constructs the signal attaching it to the \a owner.
     /// \param owner The SignalHost owning the signal.
     /// \param name The name of the signal.
     template <class SignalOwner>
-    explicit Signal(SignalOwner& owner, std::string_view name)
-        : SignalBase(owner, getMetaSignal<SignalOwner>(name))
+    explicit SignalType(SignalOwner& owner, std::string_view name)
+        : Signal(owner, getMetaSignal<SignalOwner>(name))
     {
     }
 
@@ -303,7 +303,7 @@ public:
     /// \return If the connection succeeds, returns the shared pointer to the connection. If the connection
     /// fails, returns \e nullptr.
     template <typename ReceiverSignal>
-    typename std::enable_if<std::is_base_of_v<SignalBase, ReceiverSignal>, ConnectionSharedPtr>::type
+    typename std::enable_if<std::is_base_of_v<Signal, ReceiverSignal>, ConnectionSharedPtr>::type
     connect(const ReceiverSignal& signal);
 
     /// Connects a \a function, or a lambda to this signal.
@@ -311,7 +311,7 @@ public:
     /// \return If the connection succeeds, returns the shared pointer to the connection. If the connection
     /// fails, returns \e nullptr.
     template <typename Function>
-    typename std::enable_if<!std::is_base_of_v<SignalBase, Function>, ConnectionSharedPtr>::type
+    typename std::enable_if<!std::is_base_of_v<Signal, Function>, ConnectionSharedPtr>::type
     connect(const Function& function);
 
     /// Disconnects a metamethod with \a methodName. The metamethod must be registered in the \a receiver's
@@ -337,16 +337,16 @@ public:
     /// \return If the \a function, functor or lambda was connected, and the disconnect succeeded,
     /// returns \e true. Otherwise returns \e false.
     template <typename SlotFunction>
-    typename std::enable_if<!std::is_base_of_v<SignalBase, SlotFunction>, bool>::type
+    typename std::enable_if<!std::is_base_of_v<Signal, SlotFunction>, bool>::type
     disconnect(const SlotFunction& slot);
 
     /// Disconnects a \a signal from this signal.
     /// \param signal The signal to disconnect.
     /// \return If the \a signal was connected, and the disconnect succeeded, returns \e true.
     /// Otherwise returns \e false.
-    template <typename SignalType>
-    typename std::enable_if<std::is_base_of_v<SignalBase, SignalType>, bool>::type
-    disconnect(const SignalType& signal);
+    template <typename SignalClass>
+    typename std::enable_if<std::is_base_of_v<Signal, SignalClass>, bool>::type
+    disconnect(const SignalClass& signal);
 };
 
 } // mox

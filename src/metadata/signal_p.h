@@ -26,13 +26,13 @@ namespace mox
 
 constexpr size_t INVALID_SIGNAL = std::numeric_limits<size_t>::max();
 
-class FunctionConnection : public SignalBase::Connection
+class FunctionConnection : public Signal::Connection
 {
 protected:
     Callable m_slot;
 
 public:
-    FunctionConnection(SignalBase& signal, Callable&& callable);
+    FunctionConnection(Signal& signal, Callable&& callable);
 
     bool compare(std::any receiver, const void* funcAddress) const override;
     bool isConnected() const override
@@ -49,14 +49,14 @@ class MethodConnection : public FunctionConnection
     std::any m_receiver;
 
 public:
-    MethodConnection(SignalBase& signal, std::any receiver, Callable&& callable);
+    MethodConnection(Signal& signal, std::any receiver, Callable&& callable);
 
     bool compare(std::any receiver, const void* funcAddress) const override;
     void activate(Callable::Arguments& args) override;
     void reset() override;
 };
 
-class MetaMethodConnection : public SignalBase::Connection
+class MetaMethodConnection : public Signal::Connection
 {
     std::any m_receiver;
     const MetaMethod* m_slot;
@@ -67,7 +67,7 @@ public:
         return m_slot;
     }
 
-    MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod& slot);
+    MetaMethodConnection(Signal& signal, std::any receiver, const MetaMethod& slot);
 
     bool isConnected() const override
     {
@@ -79,18 +79,18 @@ public:
 };
 typedef std::shared_ptr<MetaMethodConnection> MetaMethodConnectionSharedPtr;
 
-class SignalConnection : public SignalBase::Connection
+class SignalConnection : public Signal::Connection
 {
-    SignalBase* m_receiverSignal;
+    Signal* m_receiverSignal;
 
 public:
 
-    SignalBase* signal() const
+    Signal* signal() const
     {
         return m_receiverSignal;
     }
 
-    SignalConnection(SignalBase& sender, const SignalBase& other);
+    SignalConnection(Signal& sender, const Signal& other);
 
     bool isConnected() const override
     {

@@ -25,15 +25,13 @@
 
 using namespace mox;
 
-#define META_METHOD2(name)  mox::MetaMethod meta_name = {*this, &Class::name, #name}
-
 class SignalTestClass : public SignalHost
 {
 public:
-    Signal<void()> sig1{*this, "sig1"};
-    Signal<void(int)> sig2{*this, "sig2"};
-    Signal<void(int, std::string)> sig3{*this, "sig3"};
-    Signal<void()> sigB{*this, "sigB"};
+    SignalType<void()> sig1{*this, "sig1"};
+    SignalType<void(int)> sig2{*this, "sig2"};
+    SignalType<void(int, std::string)> sig3{*this, "sig3"};
+    SignalType<void()> sigB{*this, "sigB"};
 
     MIXIN_METACLASS_BASE(SignalTestClass)
     {
@@ -52,7 +50,7 @@ class  SlotHolder : public SignalHost
     int slot4Call = 0;
 
 public:
-    Signal<void(int)> sig{*this, "sig"};
+    SignalType<void(int)> sig{*this, "sig"};
 
     MIXIN_METACLASS_BASE(SlotHolder)
     {
@@ -272,7 +270,7 @@ TEST_F(SignalTest, test_disconnect_method)
     SignalTestClass sender;
     SlotHolder receiver;
 
-    SignalBase::ConnectionSharedPtr connection = sender.sig2.connect(receiver, &SlotHolder::method2);
+    Signal::ConnectionSharedPtr connection = sender.sig2.connect(receiver, &SlotHolder::method2);
     EXPECT_EQ(1u, sender.sig2(1));
 
     sender.sig2.disconnect(receiver, &SlotHolder::method2);

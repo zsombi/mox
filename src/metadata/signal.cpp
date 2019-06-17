@@ -37,12 +37,12 @@ size_t MetaSignal::activate(SignalHost& sender, Callable::Arguments& arguments) 
     return 0;
 }
 
-SignalBase::Connection::Connection(SignalBase& signal)
+Signal::Connection::Connection(Signal& signal)
     : m_signal(signal)
 {
 }
 
-bool SignalBase::Connection::disconnect()
+bool Signal::Connection::disconnect()
 {
     if (!isConnected())
     {
@@ -53,7 +53,7 @@ bool SignalBase::Connection::disconnect()
     return true;
 }
 
-bool SignalBase::Connection::compare(std::any receiver, const void* funcAddress) const
+bool Signal::Connection::compare(std::any receiver, const void* funcAddress) const
 {
     UNUSED(receiver);
     UNUSED(funcAddress);
@@ -61,8 +61,8 @@ bool SignalBase::Connection::compare(std::any receiver, const void* funcAddress)
 }
 
 
-FunctionConnection::FunctionConnection(SignalBase& signal, Callable&& callable)
-    : SignalBase::Connection(signal)
+FunctionConnection::FunctionConnection(Signal& signal, Callable&& callable)
+    : Signal::Connection(signal)
     , m_slot(callable)
 {
 }
@@ -83,7 +83,7 @@ void FunctionConnection::reset()
 }
 
 
-MethodConnection::MethodConnection(SignalBase& signal, std::any receiver, Callable&& callable)
+MethodConnection::MethodConnection(Signal& signal, std::any receiver, Callable&& callable)
     : FunctionConnection(signal, std::forward<Callable>(callable))
     , m_receiver(receiver)
 {
@@ -108,8 +108,8 @@ void MethodConnection::reset()
 }
 
 
-MetaMethodConnection::MetaMethodConnection(SignalBase& signal, std::any receiver, const MetaMethod& slot)
-    : SignalBase::Connection(signal)
+MetaMethodConnection::MetaMethodConnection(Signal& signal, std::any receiver, const MetaMethod& slot)
+    : Signal::Connection(signal)
     , m_receiver(receiver)
     , m_slot(&slot)
 {
@@ -134,9 +134,9 @@ void MetaMethodConnection::reset()
 }
 
 
-SignalConnection::SignalConnection(SignalBase& sender, const SignalBase& other)
-    : SignalBase::Connection(sender)
-    , m_receiverSignal(const_cast<SignalBase*>(&other))
+SignalConnection::SignalConnection(Signal& sender, const Signal& other)
+    : Signal::Connection(sender)
+    , m_receiverSignal(const_cast<Signal*>(&other))
 {
 }
 
@@ -158,21 +158,21 @@ SignalHost::~SignalHost()
 {
 }
 
-size_t SignalHost::registerSignal(SignalBase& signal)
+size_t SignalHost::registerSignal(Signal& signal)
 {
     ScopeLock lock(m_lock);
     m_signals.push_back(&signal);
     return m_signals.size() - 1u;
 }
 
-void SignalHost::removeSignal(SignalBase &signal)
+void SignalHost::removeSignal(Signal &signal)
 {
     ScopeLock lock(m_lock);
     ASSERT(signal.isValid(), "Signal already removed");
     m_signals[signal.id()] = nullptr;
 }
 
-SignalBase::SignalBase(SignalHost& host, const MetaSignal& metaSignal)
+Signal::Signal(SignalHost& host, const MetaSignal& metaSignal)
     : m_host(host)
     , m_metaSignal(metaSignal)
     , m_id(host.registerSignal(*this))
@@ -180,18 +180,18 @@ SignalBase::SignalBase(SignalHost& host, const MetaSignal& metaSignal)
 {
 }
 
-SignalBase::~SignalBase()
+Signal::~Signal()
 {
     m_host.removeSignal(*this);
 }
 
-void SignalBase::addConnection(ConnectionSharedPtr connection)
+void Signal::addConnection(ConnectionSharedPtr connection)
 {
     ScopeLock lock(m_host.m_lock);
     m_connections.push_back(connection);
 }
 
-void SignalBase::removeConnection(ConnectionSharedPtr connection)
+void Signal::removeConnection(ConnectionSharedPtr connection)
 {
     ScopeLock lock(m_host.m_lock);
     ConnectionList::iterator it, end = m_connections.end();
@@ -207,50 +207,50 @@ void SignalBase::removeConnection(ConnectionSharedPtr connection)
     }
 }
 
-SignalHost& SignalBase::host() const
+SignalHost& Signal::host() const
 {
     return m_host;
 }
 
-size_t SignalBase::id() const
+size_t Signal::id() const
 {
     return m_id;
 }
 
-bool SignalBase::isValid() const
+bool Signal::isValid() const
 {
     return m_id != INVALID_SIGNAL;
 }
 
-SignalBase::ConnectionSharedPtr SignalBase::connect(std::any receiver, const MetaMethod& metaMethod)
+Signal::ConnectionSharedPtr Signal::connect(std::any receiver, const MetaMethod& metaMethod)
 {
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MetaMethodConnection>(*this, receiver, metaMethod);
     addConnection(connection);
     return connection;
 }
 
-SignalBase::ConnectionSharedPtr SignalBase::connect(Callable&& lambda)
+Signal::ConnectionSharedPtr Signal::connect(Callable&& lambda)
 {
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, FunctionConnection>(*this, std::forward<Callable>(lambda));
     addConnection(connection);
     return connection;
 }
 
-SignalBase::ConnectionSharedPtr SignalBase::connect(std::any receiver, Callable&& slot)
+Signal::ConnectionSharedPtr Signal::connect(std::any receiver, Callable&& slot)
 {
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MethodConnection>(*this, receiver, std::forward<Callable>(slot));
     addConnection(connection);
     return connection;
 }
 
-SignalBase::ConnectionSharedPtr SignalBase::connect(const SignalBase& signal)
+Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 {
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, SignalConnection>(*this, signal);
     addConnection(connection);
     return connection;
 }
 
-bool SignalBase::disconnect(const SignalBase& signal)
+bool Signal::disconnect(const Signal& signal)
 {
     ScopeLock lock(m_host.m_lock);
     ConnectionList::iterator it, end = m_connections.end();
@@ -273,7 +273,7 @@ bool SignalBase::disconnect(const SignalBase& signal)
     return false;
 }
 
-bool SignalBase::disconnect(std::any receiver, const void* callableAddress)
+bool Signal::disconnect(std::any receiver, const void* callableAddress)
 {
     ScopeLock lock(m_host.m_lock);
     ConnectionList::iterator it, end = m_connections.end();
@@ -297,7 +297,7 @@ bool SignalBase::disconnect(std::any receiver, const void* callableAddress)
 }
 
 
-size_t SignalBase::activate(Callable::Arguments &args)
+size_t Signal::activate(Callable::Arguments &args)
 {
     if (m_triggering)
     {
