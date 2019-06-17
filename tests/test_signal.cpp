@@ -28,10 +28,10 @@ using namespace mox;
 class SignalTestClass : public SignalHost
 {
 public:
-    SignalType<void()> sig1{*this, "sig1"};
-    SignalType<void(int)> sig2{*this, "sig2"};
-    SignalType<void(int, std::string)> sig3{*this, "sig3"};
-    SignalType<void()> sigB{*this, "sigB"};
+    impl::Signal<void()> sig1{*this, "sig1"};
+    impl::Signal<void(int)> sig2{*this, "sig2"};
+    impl::Signal<void(int, std::string)> sig3{*this, "sig3"};
+    impl::Signal<void()> sigB{*this, "sigB"};
 
     MIXIN_METACLASS_BASE(SignalTestClass)
     {
@@ -50,7 +50,7 @@ class  SlotHolder : public SignalHost
     int slot4Call = 0;
 
 public:
-    SignalType<void(int)> sig{*this, "sig"};
+    impl::Signal<void(int)> sig{*this, "sig"};
 
     MIXIN_METACLASS_BASE(SlotHolder)
     {
@@ -445,5 +445,9 @@ TEST_F(SignalTest, test_metasignal_emit)
     const MetaSignal* signal = metaClass->visitSignals(visitor);
     EXPECT_NOT_NULL(signal);
     Callable::Arguments args;
-    signal->activate(sender, args);
+    EXPECT_EQ(0u, signal->activate(sender, args));
+
+    sender.sig1.connect(receiver, &SlotHolder::method1);
+    EXPECT_EQ(1u, sender.sig1());
+    EXPECT_EQ(1u, signal->activate(sender, args));
 }

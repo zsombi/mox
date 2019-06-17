@@ -19,19 +19,17 @@
 #ifndef SIGNAL_IMPL_HPP
 #define SIGNAL_IMPL_HPP
 
-namespace mox
-{
+namespace mox {
 
 template <typename... Args>
-size_t SignalType<void(Args...)>::operator()(Args... arguments)
+size_t Signal::operator()(Args... arguments)
 {
     Callable::Arguments argPack(arguments...);
     return activate(argPack);
 }
 
-template <typename... Args>
 template <class Receiver>
-Signal::ConnectionSharedPtr SignalType<void(Args...)>::connect(const Receiver& receiver, const char* methodName)
+mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const char* methodName)
 {
     if constexpr (!has_static_metaclass_v<Receiver>)
     {
@@ -52,13 +50,12 @@ Signal::ConnectionSharedPtr SignalType<void(Args...)>::connect(const Receiver& r
         return nullptr;
     }
 
-    return Signal::connect(metaClass->castInstance(const_cast<Receiver*>(&receiver)), *metaMethod);
+    return connect(metaClass->castInstance(const_cast<Receiver*>(&receiver)), *metaMethod);
 }
 
-template <typename... Args>
 template <typename SlotFunction>
 typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, Signal::ConnectionSharedPtr>::type
-SignalType<void(Args...)>::connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
+Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
     typedef typename function_traits<SlotFunction>::object ReceiverType;
 
@@ -76,7 +73,7 @@ SignalType<void(Args...)>::connect(typename function_traits<SlotFunction>::objec
         const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
         if (metaMethod)
         {
-            return Signal::connect(metaClass->castInstance(const_cast<ReceiverType*>(&receiver)), *metaMethod);
+            return connect(metaClass->castInstance(const_cast<ReceiverType*>(&receiver)), *metaMethod);
         }
     }
 
@@ -85,41 +82,24 @@ SignalType<void(Args...)>::connect(typename function_traits<SlotFunction>::objec
     {
         return nullptr;
     }
-    return Signal::connect(&receiver, std::forward<Callable>(slotCallable));
+    return connect(&receiver, std::forward<Callable>(slotCallable));
 }
 
-template <typename... Args>
-template <typename ReceiverSignal>
-typename std::enable_if<std::is_base_of_v<Signal, ReceiverSignal>, Signal::ConnectionSharedPtr>::type
-SignalType<void(Args...)>::connect(const ReceiverSignal& signal)
-{
-    auto thatArgs = signal.metaSignal().arguments();
-    auto thisArgs = metaSignal().arguments();
-    auto argMatch = std::mismatch(thatArgs.cbegin(), thatArgs.cend(), thisArgs.cbegin(), thisArgs.cend());
-    if (argMatch.first != thatArgs.end())
-    {
-        return nullptr;
-    }
-
-    return Signal::connect(signal);
-}
-
-template <typename... Args>
 template <typename Function>
 typename std::enable_if<!std::is_base_of_v<Signal, Function>, Signal::ConnectionSharedPtr>::type
-SignalType<void(Args...)>::connect(const Function& function)
+Signal::connect(const Function& function)
 {
     Callable lambda(function);
     if (!lambda.isInvocableWith(metaSignal().arguments()))
     {
         return nullptr;
     }
-    return Signal::connect(std::forward<Callable>(lambda));
+    return connect(std::forward<Callable>(lambda));
 }
 
-template <typename... Args>
+
 template <typename Receiver>
-bool SignalType<void(Args...)>::disconnect(const Receiver& receiver, const char* methodName)
+bool Signal::disconnect(const Receiver& receiver, const char* methodName)
 {
     if constexpr (!has_static_metaclass_v<Receiver>)
     {
@@ -140,13 +120,12 @@ bool SignalType<void(Args...)>::disconnect(const Receiver& receiver, const char*
         return false;
     }
 
-    return Signal::disconnect(metaClass->castInstance(const_cast<Receiver*>(&receiver)), metaMethod->address());
+    return disconnectImpl(metaClass->castInstance(const_cast<Receiver*>(&receiver)), metaMethod->address());
 }
 
-template <typename... Args>
 template <typename SlotFunction>
 typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, bool>::type
-SignalType<void(Args...)>::disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
+Signal::disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
     typedef typename function_traits<SlotFunction>::object ReceiverType;
 
@@ -161,24 +140,44 @@ SignalType<void(Args...)>::disconnect(typename function_traits<SlotFunction>::ob
         receiverInstance = metaClass->castInstance(&receiver);
     }
 
-    return Signal::disconnect(receiverInstance, ::address(method));
+    return disconnectImpl(receiverInstance, ::address(method));
 }
 
-template <typename... Args>
 template <typename SlotFunction>
 typename std::enable_if<!std::is_base_of_v<Signal, SlotFunction>, bool>::type
-SignalType<void(Args...)>::disconnect(const SlotFunction& slot)
+Signal::disconnect(const SlotFunction& slot)
 {
-    return Signal::disconnect(std::any(), ::address(slot));
+    return disconnectImpl(std::any(), ::address(slot));
+}
+
+
+
+namespace impl
+{
+
+template <typename... Args>
+template <class SignalOwner>
+const MetaSignal& Signal<void(Args...)>::getMetaSignal(std::string_view name)
+{
+    const std::array<ArgumentDescriptor, sizeof... (Args)> des = {{ ArgumentDescriptor::get<Args>()... }};
+    const std::vector<ArgumentDescriptor> desArray(des.begin(), des.end());
+    auto visitor = [desArray = std::move(desArray), name = std::string(name)](const MetaSignal* signal)
+    {
+        return (signal->name() == name) && (signal->arguments() == desArray);
+    };
+    const MetaSignal* signal = SignalOwner::getStaticMetaClass()->visitSignals(visitor);
+    ASSERT(signal, std::string("Cannot create a signal without a metasignal for ") + std::string(name));
+    return *signal;
 }
 
 template <typename... Args>
-template <typename SignalClass>
-typename std::enable_if<std::is_base_of_v<Signal, SignalClass>, bool>::type
-SignalType<void(Args...)>::disconnect(const SignalClass& signal)
+template <class SignalOwner>
+Signal<void(Args...)>::Signal(SignalOwner& owner, std::string_view name)
+    : mox::Signal(owner, getMetaSignal<SignalOwner>(name))
 {
-    return Signal::disconnect(signal);
 }
+
+} // namespace impl
 
 } // namespace mox
 

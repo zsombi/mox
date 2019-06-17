@@ -158,11 +158,15 @@ SignalHost::~SignalHost()
 {
 }
 
-size_t SignalHost::registerSignal(Signal& signal)
+void SignalHost::registerSignal(Signal& signal)
 {
     ScopeLock lock(m_lock);
-    m_signals.push_back(&signal);
-    return m_signals.size() - 1u;
+    size_t index = signal.id();
+    if (m_signals.capacity() < index + 1)
+    {
+        m_signals.resize(index + 1);
+    }
+    m_signals[index] = &signal;
 }
 
 void SignalHost::removeSignal(Signal &signal)
@@ -175,9 +179,9 @@ void SignalHost::removeSignal(Signal &signal)
 Signal::Signal(SignalHost& host, const MetaSignal& metaSignal)
     : m_host(host)
     , m_metaSignal(metaSignal)
-    , m_id(host.registerSignal(*this))
     , m_triggering(false)
 {
+    host.registerSignal(*this);
 }
 
 Signal::~Signal()
@@ -207,6 +211,11 @@ void Signal::removeConnection(ConnectionSharedPtr connection)
     }
 }
 
+const MetaSignal& Signal::metaSignal() const
+{
+    return m_metaSignal;
+}
+
 SignalHost& Signal::host() const
 {
     return m_host;
@@ -214,12 +223,12 @@ SignalHost& Signal::host() const
 
 size_t Signal::id() const
 {
-    return m_id;
+    return m_metaSignal.id();
 }
 
 bool Signal::isValid() const
 {
-    return m_id != INVALID_SIGNAL;
+    return m_metaSignal.id() != INVALID_SIGNAL;
 }
 
 Signal::ConnectionSharedPtr Signal::connect(std::any receiver, const MetaMethod& metaMethod)
@@ -245,6 +254,14 @@ Signal::ConnectionSharedPtr Signal::connect(std::any receiver, Callable&& slot)
 
 Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 {
+    auto thatArgs = signal.metaSignal().arguments();
+    auto thisArgs = metaSignal().arguments();
+    auto argMatch = std::mismatch(thatArgs.cbegin(), thatArgs.cend(), thisArgs.cbegin(), thisArgs.cend());
+    if (argMatch.first != thatArgs.end())
+    {
+        return nullptr;
+    }
+
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, SignalConnection>(*this, signal);
     addConnection(connection);
     return connection;
@@ -273,7 +290,7 @@ bool Signal::disconnect(const Signal& signal)
     return false;
 }
 
-bool Signal::disconnect(std::any receiver, const void* callableAddress)
+bool Signal::disconnectImpl(std::any receiver, const void* callableAddress)
 {
     ScopeLock lock(m_host.m_lock);
     ConnectionList::iterator it, end = m_connections.end();
