@@ -22,7 +22,7 @@
 namespace mox {
 
 template <typename... Args>
-size_t Signal::operator()(Args... arguments)
+int Signal::operator()(Args... arguments)
 {
     Callable::Arguments argPack(arguments...);
     return activate(argPack);
@@ -42,7 +42,7 @@ mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const
     }
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaMethod* method) -> bool
     {
-        return (method->name() == name) && method->isInvocableWith(this->metaSignal().arguments());
+        return (method->name() == name) && isArgumentCompatible(method->descriptors(), this->metaSignal().descriptors());
     };
     const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
@@ -68,7 +68,7 @@ Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFu
         }
         auto visitor = [methodAddress = ::address(method), this](const MetaMethod* method) -> bool
         {
-            return (method->address() == methodAddress) && method->isInvocableWith(this->metaSignal().arguments());
+            return (method->address() == methodAddress) && isArgumentCompatible(method->descriptors(), this->metaSignal().descriptors());
         };
         const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
         if (metaMethod)
@@ -78,7 +78,7 @@ Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFu
     }
 
     Callable slotCallable(method);
-    if (!slotCallable.isInvocableWith(metaSignal().arguments()))
+    if (!isArgumentCompatible(slotCallable.descriptors(), metaSignal().descriptors()))
     {
         return nullptr;
     }
@@ -90,7 +90,7 @@ typename std::enable_if<!std::is_base_of_v<Signal, Function>, Signal::Connection
 Signal::connect(const Function& function)
 {
     Callable lambda(function);
-    if (!lambda.isInvocableWith(metaSignal().arguments()))
+    if (!isArgumentCompatible(lambda.descriptors(), metaSignal().descriptors()))
     {
         return nullptr;
     }
@@ -112,7 +112,7 @@ bool Signal::disconnect(const Receiver& receiver, const char* methodName)
     }
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaMethod* method) -> bool
     {
-        return (method->name() == name) && method->isInvocableWith(this->metaSignal().arguments());
+        return (method->name() == name) && isArgumentCompatible(method->descriptors(), this->metaSignal().descriptors());
     };
     const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
@@ -163,7 +163,7 @@ const MetaSignal& Signal<void(Args...)>::getMetaSignal(std::string_view name)
     const std::vector<ArgumentDescriptor> desArray(des.begin(), des.end());
     auto visitor = [desArray = std::move(desArray), name = std::string(name)](const MetaSignal* signal)
     {
-        return (signal->name() == name) && (signal->arguments() == desArray);
+        return (signal->name() == name) && (signal->descriptors() == desArray);
     };
     const MetaSignal* signal = SignalOwner::getStaticMetaClass()->visitSignals(visitor);
     ASSERT(signal, std::string("Cannot create a signal without a metasignal for ") + std::string(name));

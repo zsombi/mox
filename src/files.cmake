@@ -21,6 +21,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/locks.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/string.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/function_traits.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/type_traits.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype_descriptor.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metatype_impl.hpp

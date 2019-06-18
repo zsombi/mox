@@ -113,6 +113,7 @@ void MetaData::initialize()
     ATOMIC_TYPE("std::string", std::string, Metatype::String);
     ATOMIC_TYPE("MetaObject", MetaObject, Metatype::MetaObject);
     ATOMIC_TYPE("void*", void*, Metatype::VoidPtr);
+    ATOMIC_TYPE("cstr", char*, Metatype::CString);
 
     // Mark atomic type initialization completed.
     initialized = true;

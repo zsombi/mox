@@ -30,11 +30,16 @@ MetaSignal::MetaSignal(MetaClass& metaClass, std::string_view name, const Callab
 {
 }
 
-size_t MetaSignal::activate(SignalHost& sender, Callable::Arguments& arguments) const
+int MetaSignal::activate(SignalHost& sender, Callable::Arguments& arguments) const
 {
     UNUSED(sender);
     UNUSED(arguments);
-    return 0;
+
+    if (sender.m_signals[m_id])
+    {
+        return const_cast<Signal*>(sender.m_signals[m_id])->activate(arguments);
+    }
+    return -1;
 }
 
 Signal::Connection::Connection(Signal& signal)
@@ -97,7 +102,7 @@ bool MethodConnection::compare(std::any receiver, const void *funcAddress) const
 void MethodConnection::activate(Callable::Arguments& args)
 {
     Callable::Arguments copy(args);
-    copy.prepend(m_receiver);
+    copy.setInstance(m_receiver);
     FunctionConnection::activate(copy);
 }
 
@@ -123,7 +128,7 @@ bool MetaMethodConnection::compare(std::any receiver, const void *funcAddress) c
 void MetaMethodConnection::activate(Callable::Arguments& args)
 {
     Callable::Arguments copy(args);
-    copy.prepend(m_receiver);
+    copy.setInstance(m_receiver);
     m_slot->apply(copy);
 }
 
@@ -156,6 +161,20 @@ void SignalConnection::reset()
 
 SignalHost::~SignalHost()
 {
+}
+
+int SignalHost::activate(std::string_view signal, Callable::Arguments &args)
+{
+    ScopeLock lock(m_lock);
+    for (const Signal* sig : m_signals)
+    {
+        if (sig && (sig->metaSignal().name() == signal) && isArgumentCompatible(sig->metaSignal().descriptors(), args.descriptors()))
+        {
+            return int(sig->metaSignal().activate(*this, args));
+        }
+    }
+
+    return -1;
 }
 
 void SignalHost::registerSignal(Signal& signal)
@@ -254,10 +273,7 @@ Signal::ConnectionSharedPtr Signal::connect(std::any receiver, Callable&& slot)
 
 Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 {
-    auto thatArgs = signal.metaSignal().arguments();
-    auto thisArgs = metaSignal().arguments();
-    auto argMatch = std::mismatch(thatArgs.cbegin(), thatArgs.cend(), thisArgs.cbegin(), thisArgs.cend());
-    if (argMatch.first != thatArgs.end())
+    if (!isArgumentCompatible(signal.metaSignal().descriptors(), metaSignal().descriptors()))
     {
         return nullptr;
     }
@@ -314,7 +330,7 @@ bool Signal::disconnectImpl(std::any receiver, const void* callableAddress)
 }
 
 
-size_t Signal::activate(Callable::Arguments &args)
+int Signal::activate(Callable::Arguments &args)
 {
     if (m_triggering)
     {
@@ -322,7 +338,7 @@ size_t Signal::activate(Callable::Arguments &args)
     }
 
     FlagScope<true> lock(m_triggering);
-    size_t count = 0;
+    int count = 0;
 
     for (ConnectionList::const_iterator it = m_connections.cbegin(), end = m_connections.cend(); it != end; ++it)
     {

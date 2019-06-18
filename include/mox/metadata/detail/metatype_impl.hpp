@@ -19,7 +19,7 @@
 #ifndef METATYPE_IMPL_H
 #define METATYPE_IMPL_H
 
-#include <type_traits>
+#include <mox/utils/type_traits.hpp>
 #include <string>
 #include <mox/utils/globals.hpp>
 
@@ -29,8 +29,15 @@ namespace mox
 template <typename Type>
 Metatype metaType()
 {
-    typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
-    return registrar::findMetatype(typeid(NakedType));
+    if constexpr (is_cstring<Type>::value)
+    {
+        return registrar::findMetatype(typeid(char*));
+    }
+    else
+    {
+        typedef typename std::remove_cv<typename std::remove_pointer<typename std::remove_reference<Type>::type>::type>::type NakedType;
+        return registrar::findMetatype(typeid(NakedType));
+    }
 }
 
 template <typename Type>

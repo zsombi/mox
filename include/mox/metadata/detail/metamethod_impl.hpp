@@ -54,7 +54,7 @@ Ret invokeMethod(Class& instance, std::string_view method, Arguments... args)
     Callable::Arguments argPack(args...);
     if (metaMethod->type() == FunctionType::Method)
     {
-        argPack.prepend(metaMethod->ownerClass().castInstance(&instance));
+        argPack.setInstance(metaMethod->ownerClass().castInstance(&instance));
     }
 
     std::any result = metaMethod->apply(argPack);

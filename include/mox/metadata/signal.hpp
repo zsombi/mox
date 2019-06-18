@@ -54,12 +54,12 @@ public:
     }
 
     /// Returns an array with the argument descriptors of the signal.
-    const Callable::ArgumentDescriptorContainer arguments() const
+    const Callable::ArgumentDescriptorContainer& descriptors() const
     {
         return m_arguments;
     }
 
-    size_t activate(SignalHost& sender, Callable::Arguments& arguments) const;
+    int activate(SignalHost& sender, Callable::Arguments& arguments) const;
 
 protected:
     explicit MetaSignal(MetaClass& metaClass, std::string_view name, const Callable::ArgumentDescriptorContainer& args);
@@ -156,7 +156,7 @@ public:
     /// in the same activation cicle.
     /// \param arguments The arguments to pass to the slots, being the arguments passed to the signal.
     /// \return The number of connections activated.
-    size_t activate(Callable::Arguments& arguments);
+    int activate(Callable::Arguments& arguments);
 
 
     /// Signal emitter. Packs the \a arguments into a Callable::Arguments pack and activates
@@ -164,7 +164,7 @@ public:
     /// \param arguments... The variadic arguments passed.
     /// \return The number of connections activated.
     template <typename... Args>
-    size_t operator()(Args... arguments);
+    int operator()(Args... arguments);
 
     /// Creates a connection between a signal and a \a metaMethod of a \a receiver.
     /// \param receiver The receiver hosting the metamethod.
@@ -279,6 +279,8 @@ public:
     /// Destructor.
     virtual ~SignalHost();
 
+    int activate(std::string_view signal, Callable::Arguments& args);
+
 protected:
     /// Constructor.
     explicit SignalHost() = default;
@@ -297,6 +299,7 @@ protected:
     void removeSignal(Signal& signal);
 
     friend class Signal;
+    friend class MetaSignal;
 };
 
 namespace impl
@@ -332,6 +335,14 @@ public:
 };
 
 } // namespace impl
+
+template <class Sender, typename... Args>
+auto emit(std::string_view signal, Sender& sender, Args... arguments)
+{
+    static_assert(std::is_base_of_v<SignalHost, Sender>, "Sender must be derived from mox::SignalHost");
+    Callable::Arguments args(arguments...);
+    return sender.activate(signal, args);
+}
 
 } // mox
 

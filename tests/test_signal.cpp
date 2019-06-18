@@ -358,8 +358,8 @@ TEST_F(SignalTest, test_emit_signal_connected_to_signal)
     SlotHolder receiver;
 
     EXPECT_EQ(0u, emitter.sig2(1));
-    emitter.sig2.connect(receiver.sig);
-    EXPECT_EQ(1u, emitter.sig2(1));
+    EXPECT_NOT_NULL(emitter.sig2.connect(receiver.sig));
+    EXPECT_EQ(1, emitter.sig2(1));
     EXPECT_EQ(0u, receiver.slot2CallCount());
 
     EXPECT_NOT_NULL(receiver.sig.connect(receiver, &SlotHolder::method2));
@@ -448,6 +448,20 @@ TEST_F(SignalTest, test_metasignal_emit)
     EXPECT_EQ(0u, signal->activate(sender, args));
 
     sender.sig1.connect(receiver, &SlotHolder::method1);
-    EXPECT_EQ(1u, sender.sig1());
-    EXPECT_EQ(1u, signal->activate(sender, args));
+    EXPECT_EQ(1, sender.sig1());
+    EXPECT_EQ(1, signal->activate(sender, args));
+
+    EXPECT_EQ(1, emit("sig1", sender));
+    EXPECT_EQ(-1, emit("whatever", sender));
+}
+
+TEST_F(SignalTest, test_emit)
+{
+    SignalTestClass sender;
+
+    EXPECT_EQ(0, emit("sig1", sender));
+    EXPECT_EQ(0, emit("sig1", sender, 10, "bla"));
+    EXPECT_EQ(-1, emit("sig2", sender));
+    EXPECT_EQ(0, emit("sig2", sender, 10));
+    EXPECT_EQ(0, emit("sig2", sender, 10, "bla"));
 }

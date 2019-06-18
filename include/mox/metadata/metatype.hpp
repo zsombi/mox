@@ -52,6 +52,7 @@ enum class Metatype : int
     String,
     MetaObject,
     VoidPtr,
+    CString,
     // All user types to be installed here
     UserType
 };

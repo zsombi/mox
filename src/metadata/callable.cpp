@@ -31,6 +31,11 @@ size_t Callable::Arguments::count() const
     return size();
 }
 
+const Callable::ArgumentDescriptorContainer& Callable::Arguments::descriptors() const
+{
+    return m_descriptors;
+}
+
 /// String representation of the exception.
 const char* Callable::invalid_argument::what() const _NOEXCEPT
 {
@@ -72,10 +77,9 @@ const ArgumentDescriptor& Callable::argumentType(size_t index) const
     return m_args[index];
 }
 
-bool Callable::isInvocableWith(const ArgumentDescriptorContainer &arguments) const
+const Callable::ArgumentDescriptorContainer& Callable::descriptors() const
 {
-    auto match = std::mismatch(m_args.cbegin(), m_args.cend(), arguments.cbegin(), arguments.cend());
-    return (match.first == m_args.cend());
+    return m_args;
 }
 
 std::any Callable::apply(const Arguments& args) const
@@ -95,5 +99,12 @@ void Callable::reset()
     m_classType = Metatype::Invalid;
     m_type = FunctionType::Invalid;
 }
+
+bool isArgumentCompatible(const Callable::ArgumentDescriptorContainer& arguments, const Callable::ArgumentDescriptorContainer& parameters)
+{
+    auto match = std::mismatch(arguments.cbegin(), arguments.cend(), parameters.cbegin(), parameters.cend());
+    return (match.first == arguments.cend());
+}
+
 
 } // namespace mox

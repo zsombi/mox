@@ -19,6 +19,7 @@
 #ifndef CALLABLE_IMPL_HPP
 #define CALLABLE_IMPL_HPP
 
+#include <mox/utils/type_traits.hpp>
 #include <mox/utils/function_traits.hpp>
 
 namespace mox
@@ -51,17 +52,19 @@ Callable::Arguments::Arguments(Args... arguments)
 {
     std::array<std::any, sizeof... (Args)> aa = {{std::any(arguments)...}};
     insert(begin(), aa.begin(), aa.end());
+    m_descriptors = argument_descriptors<Args...>();
 }
 
 template <typename Type>
 Callable::Arguments& Callable::Arguments::add(const Type& value)
 {
     push_back(std::any(value));
+    m_descriptors.push_back(ArgumentDescriptor::get<Type>());
     return *this;
 }
 
 template <typename Type>
-Callable::Arguments& Callable::Arguments::prepend(Type value)
+Callable::Arguments& Callable::Arguments::setInstance(Type value)
 {
     insert(begin(), std::any(value));
     return *this;

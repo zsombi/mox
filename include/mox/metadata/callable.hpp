@@ -50,6 +50,9 @@ public:
         const char* what() const _NOEXCEPT override;
     };
 
+    /// Container for the argument types.
+    typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
+
     /// Argument value container.
     struct MOX_API Arguments : protected std::vector<std::any>
     {
@@ -70,11 +73,11 @@ public:
         template <typename Type>
         Arguments& add(const Type& value);
 
-        /// Prepends the \a value to the argument pack.
-        /// \param value The value to prepend to the argument pack.
+        /// Sets the instance\a value to the argument pack.
+        /// \param value The instance value to set to the argument pack.
         /// \return This argument object.
         template <typename Type>
-        Arguments& prepend(Type value);
+        Arguments& setInstance(Type value);
 
         /// Returns the argument from a given \a index that is less than the count().
         /// \param index The index of the argument requested.
@@ -91,10 +94,14 @@ public:
         /// Repacks the argument package into a tuple.
         template <typename Function>
         auto toTuple() const;
+
+        /// Returns the argument descriptors defining the arguments.
+        const ArgumentDescriptorContainer& descriptors() const;
+
+    private:
+        ArgumentDescriptorContainer m_descriptors;
     };
 
-    /// Container for the argument types.
-    typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
     /// Invoker function type.
     typedef std::function<std::any(Arguments const&)> InvokerFunction;
 
@@ -129,10 +136,9 @@ public:
     /// \throws Callable::invalid_argument if the \a index is out of arguments bounds.
     const ArgumentDescriptor& argumentType(size_t index) const;
 
-    /// Checks whether this callable is invocable with the argument types passed in \a arguments.
-    /// \param arguments The vector of argument descriptors defining the invoker.
-    /// \return If the invoke is possible with the argument types passed, \e true, otherwise \e false.
-    bool isInvocableWith(const ArgumentDescriptorContainer& arguments) const;
+    /// Returns the container with the argument descriptors.
+    /// \return The argument descriptor container of the callable.
+    const ArgumentDescriptorContainer& descriptors() const;
 
     /// Applies the arguments on a callable.
     /// \param args The arguments to apply. The collection must have at least as many arguments as many
@@ -148,7 +154,7 @@ public:
     std::any apply(Class& instance, const Arguments& args) const
     {
         Arguments thisArgs(args);
-        thisArgs.prepend(&instance);
+        thisArgs.setInstance(&instance);
         return apply(thisArgs);
     }
 
@@ -188,6 +194,11 @@ Ret invoke(const Callable& callable, Arguments... arguments);
 /// \return The return value of the callable, undefined if the callable has no return value.
 template <class Ret, class Class, typename... Arguments>
 typename std::enable_if<std::is_class<Class>::value, Ret>::type invoke(const Callable& callable, Class& instance, Arguments... arguments);
+
+/// Returns \e true if the \a arguments are compatible with the \a parameters
+/// \return If the \a parameters size is at least the size of the \a arguments, and the descriptors
+/// at the positions are compatible, returns \e true. Otherwise returns \e false.
+bool MOX_API isArgumentCompatible(const Callable::ArgumentDescriptorContainer& arguments, const Callable::ArgumentDescriptorContainer& parameters);
 
 } // namespace mox
 
