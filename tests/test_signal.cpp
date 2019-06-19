@@ -58,6 +58,8 @@ public:
         META_METHOD(SlotHolder, method2);
         META_METHOD(SlotHolder, method3);
         META_METHOD(SlotHolder, method4);
+        META_METHOD(SlotHolder, autoDisconnect1);
+        META_METHOD(SlotHolder, autoDisconnect2);
         META_SIGNAL(sig);
     };
 
@@ -102,6 +104,18 @@ public:
 
     void notMetaMethod()
     {
+    }
+
+    void autoDisconnect1(Signal::ConnectionSharedPtr connection)
+    {
+        connection->disconnect();
+    }
+    void autoDisconnect2(Signal::ConnectionSharedPtr connection, int v)
+    {
+        if (v == 10)
+        {
+            connection->disconnect();
+        }
     }
 };
 
@@ -409,7 +423,12 @@ TEST_F(SignalTest, test_emit_same_signal_in_slot_dismissed)
 
 TEST_F(SignalTest, test_disconnect_on_emit)
 {
+    SignalTestClass sender;
+    SlotHolder receiver;
 
+    EXPECT_NOT_NULL(sender.sig1.connect(receiver, &SlotHolder::autoDisconnect1));
+    EXPECT_EQ(1, sender.sig1());
+    EXPECT_EQ(0, sender.sig1());
 }
 
 TEST_F(SignalTest, test_delete_on_emit)

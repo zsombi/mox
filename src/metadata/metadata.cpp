@@ -21,6 +21,7 @@
 #include <mox/utils/locks.hpp>
 #include <mox/utils/string.hpp>
 #include <mox/metadata/variant.hpp>
+#include <mox/metadata/signal.hpp>
 
 namespace mox
 {
@@ -117,6 +118,8 @@ void MetaData::initialize()
 
     // Mark atomic type initialization completed.
     initialized = true;
+
+    registerMetaType<Signal::ConnectionSharedPtr>();
 
     // Register converters.
     default_converters::registerStringConverters();
