@@ -42,7 +42,7 @@ mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const
     }
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaMethod* method) -> bool
     {
-        return (method->name() == name) && isArgumentCompatible(method->descriptors(), this->metaSignal().descriptors());
+        return (method->name() == name) && isCallableWith(*method, this->metaSignal().descriptors());
     };
     const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
@@ -68,7 +68,7 @@ Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFu
         }
         auto visitor = [methodAddress = ::address(method), this](const MetaMethod* method) -> bool
         {
-            return (method->address() == methodAddress) && isArgumentCompatible(method->descriptors(), this->metaSignal().descriptors());
+            return (method->address() == methodAddress) && isCallableWith(*method, this->metaSignal().descriptors());
         };
         const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
         if (metaMethod)
@@ -78,7 +78,7 @@ Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFu
     }
 
     Callable slotCallable(method);
-    if (!isArgumentCompatible(slotCallable.descriptors(), metaSignal().descriptors()))
+    if (!isCallableWith(slotCallable, metaSignal().descriptors()))
     {
         return nullptr;
     }
@@ -90,7 +90,7 @@ typename std::enable_if<!std::is_base_of_v<Signal, Function>, Signal::Connection
 Signal::connect(const Function& function)
 {
     Callable lambda(function);
-    if (!isArgumentCompatible(lambda.descriptors(), metaSignal().descriptors()))
+    if (!isCallableWith(lambda, metaSignal().descriptors()))
     {
         return nullptr;
     }
@@ -112,7 +112,7 @@ bool Signal::disconnect(const Receiver& receiver, const char* methodName)
     }
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaMethod* method) -> bool
     {
-        return (method->name() == name) && isArgumentCompatible(method->descriptors(), this->metaSignal().descriptors());
+        return (method->name() == name) && isCallableWith(*method, this->metaSignal().descriptors());
     };
     const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
@@ -152,7 +152,7 @@ Signal::disconnect(const SlotFunction& slot)
 
 
 
-namespace impl
+namespace decl
 {
 
 template <typename... Args>

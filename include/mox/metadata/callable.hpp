@@ -50,9 +50,6 @@ public:
         const char* what() const _NOEXCEPT override;
     };
 
-    /// Container for the argument types.
-    typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
-
     /// Argument value container.
     struct MOX_API Arguments : protected std::vector<std::any>
     {
@@ -97,6 +94,8 @@ public:
 
         /// Returns the argument descriptors defining the arguments.
         const ArgumentDescriptorContainer& descriptors() const;
+
+        Arguments& operator +=(const Arguments& other);
 
     private:
         ArgumentDescriptorContainer m_descriptors;
@@ -198,7 +197,7 @@ typename std::enable_if<std::is_class<Class>::value, Ret>::type invoke(const Cal
 /// Returns \e true if the \a arguments are compatible with the \a parameters
 /// \return If the \a parameters size is at least the size of the \a arguments, and the descriptors
 /// at the positions are compatible, returns \e true. Otherwise returns \e false.
-bool MOX_API isArgumentCompatible(const Callable::ArgumentDescriptorContainer& arguments, const Callable::ArgumentDescriptorContainer& parameters);
+bool isCallableWith(const Callable& callable, const ArgumentDescriptorContainer& parameters);
 
 } // namespace mox
 

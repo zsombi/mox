@@ -22,7 +22,7 @@
 namespace mox
 {
 
-MetaSignal::MetaSignal(MetaClass& metaClass, std::string_view name, const Callable::ArgumentDescriptorContainer& args)
+MetaSignal::MetaSignal(MetaClass& metaClass, std::string_view name, const ArgumentDescriptorContainer& args)
     : m_ownerClass(metaClass)
     , m_arguments(args)
     , m_name(name)
@@ -44,6 +44,7 @@ int MetaSignal::activate(SignalHost& sender, Callable::Arguments& arguments) con
 
 Signal::Connection::Connection(Signal& signal)
     : m_signal(signal)
+    , m_passConnectionObject(false)
 {
 }
 
@@ -70,6 +71,7 @@ FunctionConnection::FunctionConnection(Signal& signal, Callable&& callable)
     : Signal::Connection(signal)
     , m_slot(callable)
 {
+    m_passConnectionObject = !m_slot.descriptors().empty() && m_slot.descriptors()[0].type == metaType<Signal::ConnectionSharedPtr>();
 }
 
 bool FunctionConnection::compare(std::any, const void *funcAddress) const
@@ -79,7 +81,13 @@ bool FunctionConnection::compare(std::any, const void *funcAddress) const
 
 void FunctionConnection::activate(Callable::Arguments& args)
 {
-    m_slot.apply(args);
+    Callable::Arguments copy;
+    if (m_passConnectionObject)
+    {
+        copy.add(shared_from_this());
+    }
+    copy += args;
+    m_slot.apply(copy);
 }
 
 void FunctionConnection::reset()
@@ -101,9 +109,15 @@ bool MethodConnection::compare(std::any receiver, const void *funcAddress) const
 
 void MethodConnection::activate(Callable::Arguments& args)
 {
-    Callable::Arguments copy(args);
+    Callable::Arguments copy;
+    if (m_passConnectionObject)
+    {
+        copy.add(shared_from_this());
+    }
+    copy += args;
     copy.setInstance(m_receiver);
-    FunctionConnection::activate(copy);
+
+    m_slot.apply(copy);
 }
 
 void MethodConnection::reset()
@@ -118,6 +132,7 @@ MetaMethodConnection::MetaMethodConnection(Signal& signal, std::any receiver, co
     , m_receiver(receiver)
     , m_slot(&slot)
 {
+    m_passConnectionObject = !m_slot->descriptors().empty() && m_slot->descriptors()[0].type == metaType<Signal::ConnectionSharedPtr>();
 }
 
 bool MetaMethodConnection::compare(std::any receiver, const void *funcAddress) const
@@ -127,7 +142,12 @@ bool MetaMethodConnection::compare(std::any receiver, const void *funcAddress) c
 
 void MetaMethodConnection::activate(Callable::Arguments& args)
 {
-    Callable::Arguments copy(args);
+    Callable::Arguments copy;
+    if (m_passConnectionObject)
+    {
+        copy.add(shared_from_this());
+    }
+    copy += args;
     copy.setInstance(m_receiver);
     m_slot->apply(copy);
 }
@@ -158,6 +178,19 @@ void SignalConnection::reset()
     m_receiverSignal = nullptr;
 }
 
+/******************************************************************************
+ *
+ */
+namespace
+{
+
+bool isInvocableWith(const ArgumentDescriptorContainer& arguments, const ArgumentDescriptorContainer& parameters)
+{
+    auto match = std::mismatch(arguments.cbegin(), arguments.cend(), parameters.cbegin(), parameters.cend());
+    return (match.first == arguments.cend());
+}
+
+} // noname
 
 SignalHost::~SignalHost()
 {
@@ -168,7 +201,7 @@ int SignalHost::activate(std::string_view signal, Callable::Arguments &args)
     ScopeLock lock(m_lock);
     for (const Signal* sig : m_signals)
     {
-        if (sig && (sig->metaSignal().name() == signal) && isArgumentCompatible(sig->metaSignal().descriptors(), args.descriptors()))
+        if (sig && (sig->metaSignal().name() == signal) && isInvocableWith(sig->metaSignal().descriptors(), args.descriptors()))
         {
             return int(sig->metaSignal().activate(*this, args));
         }
@@ -273,7 +306,7 @@ Signal::ConnectionSharedPtr Signal::connect(std::any receiver, Callable&& slot)
 
 Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 {
-    if (!isArgumentCompatible(signal.metaSignal().descriptors(), metaSignal().descriptors()))
+    if (!isInvocableWith(signal.metaSignal().descriptors(), metaSignal().descriptors()))
     {
         return nullptr;
     }
@@ -354,5 +387,18 @@ int Signal::activate(Callable::Arguments &args)
     return count;
 }
 
+
+bool isCallableWith(const Callable& callable, const ArgumentDescriptorContainer& parameters)
+{
+    const ArgumentDescriptorContainer& arguments = callable.descriptors();
+    ArgumentDescriptorContainer::const_iterator start = arguments.begin();
+    if (!arguments.empty() && arguments[0].type == metaType<Signal::ConnectionSharedPtr>())
+    {
+        ++start;
+    }
+
+    auto match = std::mismatch(start, arguments.cend(), parameters.cbegin(), parameters.cend());
+    return (match.first == arguments.cend());
+}
 
 } // mox

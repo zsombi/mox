@@ -28,10 +28,10 @@ using namespace mox;
 class SignalTestClass : public SignalHost
 {
 public:
-    impl::Signal<void()> sig1{*this, "sig1"};
-    impl::Signal<void(int)> sig2{*this, "sig2"};
-    impl::Signal<void(int, std::string)> sig3{*this, "sig3"};
-    impl::Signal<void()> sigB{*this, "sigB"};
+    decl::Signal<void()> sig1{*this, "sig1"};
+    decl::Signal<void(int)> sig2{*this, "sig2"};
+    decl::Signal<void(int, std::string)> sig3{*this, "sig3"};
+    decl::Signal<void()> sigB{*this, "sigB"};
 
     MIXIN_METACLASS_BASE(SignalTestClass)
     {
@@ -50,7 +50,7 @@ class  SlotHolder : public SignalHost
     int slot4Call = 0;
 
 public:
-    impl::Signal<void(int)> sig{*this, "sig"};
+    decl::Signal<void(int)> sig{*this, "sig"};
 
     MIXIN_METACLASS_BASE(SlotHolder)
     {
@@ -429,26 +429,65 @@ TEST_F(SignalTest, test_disconnect_on_emit)
     EXPECT_NOT_NULL(sender.sig1.connect(receiver, &SlotHolder::autoDisconnect1));
     EXPECT_EQ(1, sender.sig1());
     EXPECT_EQ(0, sender.sig1());
+
+    EXPECT_NOT_NULL(sender.sig2.connect(receiver, &SlotHolder::autoDisconnect2));
+    EXPECT_EQ(1, sender.sig2(1001));
+    EXPECT_EQ(1, sender.sig2(10));
+    EXPECT_EQ(0, sender.sig2(1));
+    EXPECT_EQ(0, sender.sig2(10));
 }
 
-TEST_F(SignalTest, test_delete_on_emit)
+void autoDisconnect(Signal::ConnectionSharedPtr connection, int v)
 {
-
+    if (v == 2)
+    {
+        connection->disconnect();
+    }
 }
 
-TEST_F(SignalTest, test_delete_connection)
+struct TestFunctor
 {
+    SignalTestClass* sender;
+    void explicitDisconnect(int v)
+    {
+        if (v == 3)
+        {
+            sender->sig2.disconnect(*this, &TestFunctor::explicitDisconnect);
+        }
+    }
+};
 
+TEST_F(SignalTest, test_disconnect_on_emit_from_function)
+{
+    SignalTestClass sender;
+
+    EXPECT_NOT_NULL(sender.sig2.connect(autoDisconnect));
+    EXPECT_EQ(1, sender.sig2(2));
+    EXPECT_EQ(0, sender.sig2(2));
 }
 
-TEST_F(SignalTest, test_delete_signal_source)
+TEST_F(SignalTest, test_explicit_disconnect_in_signal_activation)
 {
+    SignalTestClass sender;
+    TestFunctor receiver = {&sender};
 
+    EXPECT_NOT_NULL(sender.sig2.connect(receiver, &TestFunctor::explicitDisconnect));
+    EXPECT_EQ(1, sender.sig2(3));
+    EXPECT_EQ(0, sender.sig2(3));
 }
 
-TEST_F(SignalTest, test_delete_connection_destination)
+TEST_F(SignalTest, test_disconnect_on_emit_from_lambda)
 {
+    SignalTestClass sender;
 
+    auto lambda = [](Signal::ConnectionSharedPtr connection)
+    {
+        connection->disconnect();
+    };
+
+    EXPECT_NOT_NULL(sender.sig2.connect(lambda));
+    EXPECT_EQ(1, sender.sig2(1));
+    EXPECT_EQ(0, sender.sig2(1));
 }
 
 TEST_F(SignalTest, test_metasignal_emit)

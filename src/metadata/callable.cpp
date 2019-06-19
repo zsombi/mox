@@ -31,9 +31,19 @@ size_t Callable::Arguments::count() const
     return size();
 }
 
-const Callable::ArgumentDescriptorContainer& Callable::Arguments::descriptors() const
+const ArgumentDescriptorContainer& Callable::Arguments::descriptors() const
 {
     return m_descriptors;
+}
+
+Callable::Arguments& Callable::Arguments::operator+=(const Arguments &other)
+{
+    insert(end(), other.begin(), other.end());
+    for (const ArgumentDescriptor& des : other.m_descriptors)
+    {
+        m_descriptors.push_back(des);
+    }
+    return *this;
 }
 
 /// String representation of the exception.
@@ -77,7 +87,7 @@ const ArgumentDescriptor& Callable::argumentType(size_t index) const
     return m_args[index];
 }
 
-const Callable::ArgumentDescriptorContainer& Callable::descriptors() const
+const ArgumentDescriptorContainer& Callable::descriptors() const
 {
     return m_args;
 }
@@ -98,12 +108,6 @@ void Callable::reset()
     m_args.clear();
     m_classType = Metatype::Invalid;
     m_type = FunctionType::Invalid;
-}
-
-bool isArgumentCompatible(const Callable::ArgumentDescriptorContainer& arguments, const Callable::ArgumentDescriptorContainer& parameters)
-{
-    auto match = std::mismatch(arguments.cbegin(), arguments.cend(), parameters.cbegin(), parameters.cend());
-    return (match.first == arguments.cend());
 }
 
 

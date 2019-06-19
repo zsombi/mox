@@ -54,7 +54,7 @@ public:
     }
 
     /// Returns an array with the argument descriptors of the signal.
-    const Callable::ArgumentDescriptorContainer& descriptors() const
+    const ArgumentDescriptorContainer& descriptors() const
     {
         return m_arguments;
     }
@@ -62,11 +62,11 @@ public:
     int activate(SignalHost& sender, Callable::Arguments& arguments) const;
 
 protected:
-    explicit MetaSignal(MetaClass& metaClass, std::string_view name, const Callable::ArgumentDescriptorContainer& args);
+    explicit MetaSignal(MetaClass& metaClass, std::string_view name, const ArgumentDescriptorContainer& args);
     virtual ~MetaSignal() =  default;
 
     MetaClass& m_ownerClass;
-    Callable::ArgumentDescriptorContainer m_arguments;
+    ArgumentDescriptorContainer m_arguments;
     std::string m_name;
     size_t m_id;
 };
@@ -86,11 +86,19 @@ public:
 
 } // namespace meta
 
-/// Signal is the base class of the Mox signals. You can declare signals using the Signal template class.
+/// Signal is the base class of the Mox signals. You can declare signals using the decl::Signal template class.
+/// You can connect a signal to a method, a metamethod, a function, a functor or a lambda using one of the connect()
+/// functions. The functions connected to a signal are called slots. These slots must have at maximum the same
+/// amount and type of arguments as the signal they are connected to has. A slot that has different argument type
+/// at a given argument index, or has more arguments than the signal signature has will fail to connect.
+///
+/// Optionally, a slot can have the first argument a Signal::ConnectionSharedPtr argument. When that is the case,
+/// during the signal activation the connection that connects the slot with the signal is passed to the slot.
+/// The slot can use this connection object to disconnect the slot from the signal.
 class MOX_API Signal
 {
 public:
-    /// The class reptresents a connection to a signal. The connection is a token which holds the
+    /// The class represents a connection to a signal. The connection is a token which holds the
     /// signal connected, and the function, method, metamethod, functor or lambda the signal is
     /// connected to. This function is called slot.
     class MOX_API Connection : public std::enable_shared_from_this<Connection>
@@ -100,7 +108,7 @@ public:
         virtual ~Connection() = default;
 
         /// Returns the state of the connection.
-        /// \return If teh connection is connected, \e true, otherwise \e false.
+        /// \return If the connection is connected, \e true, otherwise \e false.
         virtual bool isConnected() const = 0;
 
         /// Disconnects the signal.
@@ -127,6 +135,8 @@ public:
 
         /// The signal the connection is attached to.
         Signal& m_signal;
+        /// Pass the connection object to the slot.
+        bool m_passConnectionObject;
 
         friend class Signal;
     };
@@ -302,7 +312,7 @@ protected:
     friend class MetaSignal;
 };
 
-namespace impl
+namespace decl
 {
 
 /// Signal template specialization for a generic signature.

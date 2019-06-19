@@ -67,11 +67,13 @@ struct MOX_API ArgumentDescriptor
     }
 };
 
+typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
+
 template <typename... Args>
-std::vector<ArgumentDescriptor> argument_descriptors()
+ArgumentDescriptorContainer argument_descriptors()
 {
     const std::array<ArgumentDescriptor, sizeof... (Args)> aa = {{ ArgumentDescriptor::get<Args>()... }};
-    return std::vector<ArgumentDescriptor>(aa.begin(), aa.end());
+    return ArgumentDescriptorContainer(aa.begin(), aa.end());
 }
 
 bool operator ==(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2);
