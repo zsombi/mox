@@ -47,22 +47,23 @@ public:
         Abort
     };
 
+    typedef std::tuple<VisitorResult, std::any> VisitorResultType;
     /// Method visitor function.
     typedef std::function<bool(const MetaMethod*)> MethodVisitor;
     /// Metasignal visitor function.
     typedef std::function<bool(const MetaSignal*)> SignalVisitor;
     /// Metaclass visitor function.
-    typedef std::function<VisitorResult(const MetaClass&)> MetaClassVisitor;
+    typedef std::function<VisitorResultType(const MetaClass&)> MetaClassVisitor;
 
     /// Visits a metaclass and its superclasses. The superclasses are visited if the \a visitor
     /// tells to continue visiting..
     /// \param visitor The visitor function.
     /// \return The visiting result.
-    VisitorResult visit(const MetaClassVisitor& visitor) const;
+    VisitorResultType visit(const MetaClassVisitor& visitor) const;
     /// Visit the superclasses of a metaclass.
     /// \param visitor The visitor function.
     /// \return The visiting result.
-    virtual VisitorResult visitSuperclasses(const MetaClassVisitor& visitor) const;
+    virtual VisitorResultType visitSuperclasses(const MetaClassVisitor& visitor) const;
 
     /// Destructor.
     virtual ~MetaClass();
@@ -138,17 +139,18 @@ protected:
         SuperClasses::StaticMetaClass::get()...
     }};
 
-    VisitorResult visitSuperclasses(const MetaClassVisitor& visitor) const override
+    VisitorResultType visitSuperclasses(const MetaClassVisitor& visitor) const override
     {
         for (const mox::MetaClass* metaClass : m_superMetaClasses)
         {
-            if (metaClass->visit(visitor) == Abort)
+            VisitorResultType result = metaClass->visit(visitor);
+            if (std::get<0>(result) == Abort)
             {
-                return Abort;
+                return result;
             }
         }
 
-        return Continue;
+        return std::make_tuple(Continue, std::any());
     }
 
 public:

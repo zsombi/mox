@@ -42,16 +42,16 @@ bool MetaClass::isSuperClassOf(const MetaClass &metaClass) const
 
 bool MetaClass::derivesFrom(const MetaClass &metaClass) const
 {
-    auto deriveTester = [&metaClass](const MetaClass& mc) -> MetaClass::VisitorResult
+    auto deriveTester = [&metaClass](const MetaClass& mc) -> VisitorResultType
     {
         if (&mc == &metaClass)
         {
-            return MetaClass::Abort;
+            return std::make_tuple(MetaClass::Abort, &mc);
         }
-        return MetaClass::Continue;
+        return std::make_tuple(MetaClass::Continue, std::any());
     };
     // Visitor aborts if the metaclass is derived from a superclass.
-    return visit(MetaClassVisitor(deriveTester)) == Abort;
+    return std::get<0>(visit(MetaClassVisitor(deriveTester))) == Abort;
 }
 
 const MetaClass* MetaClass::find(std::string_view className)
@@ -59,61 +59,58 @@ const MetaClass* MetaClass::find(std::string_view className)
     return metadata().findMetaClass(className);
 }
 
-MetaClass::VisitorResult MetaClass::visit(const MetaClassVisitor &visitor) const
+MetaClass::VisitorResultType MetaClass::visit(const MetaClassVisitor &visitor) const
 {
-    if (visitor(*this) == Abort)
+    VisitorResultType result = visitor(*this);
+    if (std::get<0>(result) == Abort)
     {
-        return Abort;
+        return result;
     }
     return visitSuperclasses(visitor);
 }
 
-MetaClass::VisitorResult MetaClass::visitSuperclasses(const MetaClassVisitor &visitor) const
+MetaClass::VisitorResultType MetaClass::visitSuperclasses(const MetaClassVisitor &visitor) const
 {
     UNUSED(visitor);
-    return Continue;
+    return std::make_tuple(Continue, std::any());
 }
 
 const MetaMethod* MetaClass::visitMethods(const MethodVisitor& visitor) const
 {
-    const MetaMethod* result = nullptr;
-
-    auto tester = [&result, &visitor](const MetaClass& mc) -> VisitorResult
+    auto tester = [&visitor](const MetaClass& mc) -> VisitorResultType
     {
         for (const MetaMethod* method : mc.m_methods)
         {
             if (visitor(method))
             {
-                result = method;
-                return Abort;
+                return std::make_tuple(Abort, method);
             }
         }
-        return Continue;
+        return std::make_tuple(Continue, std::any());
     };
 
-    visit(MetaClassVisitor(tester));
-    return result;
+    VisitorResultType result = visit(MetaClassVisitor(tester));
+    std::any method = std::get<1>(result);
+    return (std::get<0>(result) == Abort) ? std::any_cast<const MetaMethod*>(method) : nullptr;
 }
 
 const MetaSignal* MetaClass::visitSignals(const SignalVisitor& visitor) const
 {
-    const MetaSignal* result = nullptr;
-
-    auto tester = [&result, &visitor](const MetaClass& mc) -> VisitorResult
+    auto tester = [&visitor](const MetaClass& mc) -> VisitorResultType
     {
         for (const MetaSignal* signal : mc.m_signals)
         {
             if (visitor(signal))
             {
-                result = signal;
-                return Abort;
+                return std::make_tuple(Abort, signal);;
             }
         }
-        return Continue;
+        return std::make_tuple(Continue, std::any());
     };
 
-    visit(MetaClassVisitor(tester));
-    return result;
+    VisitorResultType result = visit(MetaClassVisitor(tester));
+    std::any signal = std::get<1>(result);
+    return (std::get<0>(result) == Abort) ? std::any_cast<const MetaSignal*>(signal) : nullptr;
 }
 
 
