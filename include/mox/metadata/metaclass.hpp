@@ -38,10 +38,31 @@ class MetaSignal;
 struct MOX_API MetaClass
 {
 public:
+    /// Visitor result values.
+    enum VisitorResult
+    {
+        /// Informs that visiting continues.
+        Continue,
+        /// Informs visiting abort.
+        Abort
+    };
+
     /// Method visitor function.
     typedef std::function<bool(const MetaMethod*)> MethodVisitor;
     /// Metasignal visitor function.
     typedef std::function<bool(const MetaSignal*)> SignalVisitor;
+    /// Metaclass visitor function.
+    typedef std::function<VisitorResult(const MetaClass&)> MetaClassVisitor;
+
+    /// Visits a metaclass and its superclasses. The superclasses are visited if the \a visitor
+    /// tells to continue visiting..
+    /// \param visitor The visitor function.
+    /// \return The visiting result.
+    VisitorResult visit(const MetaClassVisitor& visitor) const;
+    /// Visit the superclasses of a metaclass.
+    /// \param visitor The visitor function.
+    /// \return The visiting result.
+    virtual VisitorResult visitSuperclasses(const MetaClassVisitor& visitor) const;
 
     /// Destructor.
     virtual ~MetaClass();
@@ -74,10 +95,7 @@ public:
     }
 
     /// Returns true if the class managed by this meta-class is abstract.
-    bool isAbstract() const
-    {
-        return m_isAbstract;
-    }
+    virtual bool isAbstract() const = 0;
 
     /// Check whether the MetaClass is the class of the passed MetaObject.
     virtual bool isClassOf(const MetaObject&) const = 0;
@@ -88,22 +106,18 @@ public:
     virtual std::any castInstance(void* instance) const = 0;
 
 protected:
-    typedef std::vector<const MetaClass*> MetaClassContainer;
     typedef std::vector<const MetaMethod*> MetaMethodContainer;
     typedef std::vector<const MetaSignal*> MetaSignalContainer;
 
     /// Creates a metaclass with a registered MetatypeDescriptor identifier.
-    explicit MetaClass(const MetatypeDescriptor& type, bool abstract);
-    explicit MetaClass(const MetatypeDescriptor& type, bool abstract, const MetaClassContainer& superClasses);
+    explicit MetaClass(const MetatypeDescriptor& type);
 
     void addMethod(MetaMethod* method);
     size_t addSignal(MetaSignal& signal);
 
-    MetaClassContainer m_superClasses;
     MetaMethodContainer m_methods;
     MetaSignalContainer m_signals;
     const MetatypeDescriptor& m_type;
-    const bool m_isAbstract:1;
 
     friend class MetaMethod;
     friend class MetaSignal;
@@ -118,8 +132,26 @@ namespace decl
 template <class MetaClassDecl, class BaseClass, class... SuperClasses>
 struct MetaClass : mox::MetaClass
 {
-    static constexpr bool abstract = std::is_abstract_v<BaseClass>;
+protected:
+    std::array<const mox::MetaClass*, sizeof... (SuperClasses)> m_superMetaClasses =
+    {{
+        SuperClasses::StaticMetaClass::get()...
+    }};
 
+    VisitorResult visitSuperclasses(const MetaClassVisitor& visitor) const override
+    {
+        for (const mox::MetaClass* metaClass : m_superMetaClasses)
+        {
+            if (metaClass->visit(visitor) == Abort)
+            {
+                return Abort;
+            }
+        }
+
+        return Continue;
+    }
+
+public:
     static const mox::MetaClass* get()
     {
         static MetaClassDecl metaClass;
@@ -127,14 +159,15 @@ struct MetaClass : mox::MetaClass
     }
 
     explicit MetaClass()
-        : mox::MetaClass(metatypeDescriptor<BaseClass>(), abstract)
+        : mox::MetaClass(metatypeDescriptor<BaseClass>())
     {
-        std::array<const mox::MetaClass*, sizeof... (SuperClasses)> aa =
-        {{
-            SuperClasses::StaticMetaClass::get()...
-        }};
-        m_superClasses = MetaClassContainer(aa.begin(), aa.end());
     }
+
+    bool isAbstract() const override
+    {
+        return std::is_abstract_v<BaseClass>;
+    }
+
     /// Checks whether the \a metaObject is derived from this interface.
     bool isClassOf(const MetaObject& metaObject) const override
     {
@@ -158,8 +191,6 @@ struct MetaClass : mox::MetaClass
 /// Declare the static metaclass for a class that has base classes with metaclasses.
 #define STATIC_METACLASS(Base, ...) \
     struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, Base, __VA_ARGS__>
-
-
 
 /// Declares the static metaclass for a class or interface, adding the dynamic metaclass fetching
 /// function override. One of the base classes must declare the getMetaClass() method.

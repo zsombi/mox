@@ -23,19 +23,10 @@
 namespace mox
 {
 
-MetaClass::MetaClass(const MetatypeDescriptor& type, bool abstract)
+MetaClass::MetaClass(const MetatypeDescriptor& type)
     : m_type(type)
-    , m_isAbstract(abstract)
 {
     UNUSED(__padding);
-    metadata().addMetaClass(*this);
-}
-
-MetaClass::MetaClass(const MetatypeDescriptor& type, bool abstract, const MetaClassContainer& superClasses)
-    : m_superClasses(superClasses)
-    , m_type(type)
-    , m_isAbstract(abstract)
-{
     metadata().addMetaClass(*this);
 }
 
@@ -51,21 +42,16 @@ bool MetaClass::isSuperClassOf(const MetaClass &metaClass) const
 
 bool MetaClass::derivesFrom(const MetaClass &metaClass) const
 {
-    auto tester = [&metaClass] (const MetaClass* mc) -> bool
+    auto deriveTester = [&metaClass](const MetaClass& mc) -> MetaClass::VisitorResult
     {
-        if (mc == &metaClass)
+        if (&mc == &metaClass)
         {
-            return true;
+            return MetaClass::Abort;
         }
-        else if (mc->derivesFrom(metaClass))
-        {
-            return true;
-        }
-        return false;
+        return MetaClass::Continue;
     };
-
-    MetaClassContainer::const_iterator it = std::find_if(m_superClasses.cbegin(), m_superClasses.cend(), tester);
-    return (it != m_superClasses.cend());
+    // Visitor aborts if the metaclass is derived from a superclass.
+    return visit(MetaClassVisitor(deriveTester)) == Abort;
 }
 
 const MetaClass* MetaClass::find(std::string_view className)
@@ -73,48 +59,61 @@ const MetaClass* MetaClass::find(std::string_view className)
     return metadata().findMetaClass(className);
 }
 
+MetaClass::VisitorResult MetaClass::visit(const MetaClassVisitor &visitor) const
+{
+    if (visitor(*this) == Abort)
+    {
+        return Abort;
+    }
+    return visitSuperclasses(visitor);
+}
+
+MetaClass::VisitorResult MetaClass::visitSuperclasses(const MetaClassVisitor &visitor) const
+{
+    UNUSED(visitor);
+    return Continue;
+}
+
 const MetaMethod* MetaClass::visitMethods(const MethodVisitor& visitor) const
 {
-    for (const MetaMethod* method : m_methods)
-    {
-        if (visitor(method))
-        {
-            return method;
-        }
-    }
+    const MetaMethod* result = nullptr;
 
-    for (const MetaClass* super : m_superClasses)
+    auto tester = [&result, &visitor](const MetaClass& mc) -> VisitorResult
     {
-        const MetaMethod* method = super->visitMethods(visitor);
-        if (method)
+        for (const MetaMethod* method : mc.m_methods)
         {
-            return method;
+            if (visitor(method))
+            {
+                result = method;
+                return Abort;
+            }
         }
-    }
+        return Continue;
+    };
 
-    return nullptr;
+    visit(MetaClassVisitor(tester));
+    return result;
 }
 
 const MetaSignal* MetaClass::visitSignals(const SignalVisitor& visitor) const
 {
-    for (const MetaSignal* signal : m_signals)
-    {
-        if (visitor(signal))
-        {
-            return signal;
-        }
-    }
+    const MetaSignal* result = nullptr;
 
-    for (const MetaClass* super : m_superClasses)
+    auto tester = [&result, &visitor](const MetaClass& mc) -> VisitorResult
     {
-        const MetaSignal* signal = super->visitSignals(visitor);
-        if (signal)
+        for (const MetaSignal* signal : mc.m_signals)
         {
-            return signal;
+            if (visitor(signal))
+            {
+                result = signal;
+                return Abort;
+            }
         }
-    }
+        return Continue;
+    };
 
-    return nullptr;
+    visit(MetaClassVisitor(tester));
+    return result;
 }
 
 

@@ -156,8 +156,6 @@ TEST_F(MetaClasses, test_superclass)
 
 TEST_F(MetaClasses, test_abstract)
 {
-    EXPECT_TRUE(SecondLevelDerived::StaticMetaClass::abstract);
-    EXPECT_FALSE(DerivedClass::StaticMetaClass::abstract);
     EXPECT_TRUE(SecondLevelDerived::StaticMetaClass::get()->isAbstract());
     EXPECT_FALSE(DerivedClass::StaticMetaClass::get()->isAbstract());
 }
