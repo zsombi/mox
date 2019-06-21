@@ -59,7 +59,7 @@ public:
         return m_arguments;
     }
 
-    int activate(SignalHost& sender, Callable::Arguments& arguments) const;
+    bool invocableWith(const ArgumentDescriptorContainer& args) const;
 
 protected:
     explicit MetaSignal(MetaClass& metaClass, std::string_view name, const ArgumentDescriptorContainer& args);
@@ -110,6 +110,8 @@ public:
         /// Returns the state of the connection.
         /// \return If the connection is connected, \e true, otherwise \e false.
         virtual bool isConnected() const = 0;
+
+        Signal& signal() const;
 
         /// Disconnects the signal.
         /// \return If the disconnect succeeds, \e true. If the disconnect fails, \e false.
@@ -289,7 +291,7 @@ public:
     /// Destructor.
     virtual ~SignalHost();
 
-    int activate(std::string_view signal, Callable::Arguments& args);
+    int activate(int signal, Callable::Arguments& args);
 
 protected:
     /// Constructor.
@@ -346,13 +348,15 @@ public:
 
 } // namespace impl
 
+/// Emits a \a signal on \a sender with the optional \a arguments. If the signal exists on the sender
+/// and is invocable with the given arguments, returns the number of activations of that signal.
+/// \param signal The signal name to emit.
+/// \param sender The sender object that has the signal.
+/// \param arguments The optional arguments to pass to the signal.
+/// \return If the signal is not found on the sender, returns -1. If the signal is found, returns the
+/// number of activations.
 template <class Sender, typename... Args>
-auto emit(std::string_view signal, Sender& sender, Args... arguments)
-{
-    static_assert(std::is_base_of_v<SignalHost, Sender>, "Sender must be derived from mox::SignalHost");
-    Callable::Arguments args(arguments...);
-    return sender.activate(signal, args);
-}
+auto emit(std::string_view signal, Sender& sender, Args... arguments);
 
 } // mox
 

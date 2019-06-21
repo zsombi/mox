@@ -179,6 +179,30 @@ Signal<void(Args...)>::Signal(SignalOwner& owner, std::string_view name)
 
 } // namespace impl
 
+template <class Sender, typename... Args>
+auto emit(std::string_view signal, Sender& sender, Args... arguments)
+{
+    static_assert(std::is_base_of_v<SignalHost, Sender>, "Sender must be derived from mox::SignalHost");
+    const MetaClass* metaClass = Sender::StaticMetaClass::get();
+    ASSERT(metaClass, "Sender has no metaclass");
+    if (!metaClass)
+    {
+        return -1;
+    }
+
+    Callable::Arguments args(arguments...);
+    auto tester = [&signal, &args](const MetaSignal* metaSignal) -> bool
+    {
+        return (metaSignal->name() == signal) && metaSignal->invocableWith(args.descriptors());
+    };
+    const MetaSignal* metaSignal = metaClass->visitSignals(tester);
+    if (!metaSignal)
+    {
+        return -1;
+    }
+    return sender.activate(metaSignal->id(), args);
+}
+
 } // namespace mox
 
 #endif // SIGNAL_IMPL_HPP

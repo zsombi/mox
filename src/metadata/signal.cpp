@@ -22,6 +22,17 @@
 namespace mox
 {
 
+namespace
+{
+
+bool isInvocableWith(const ArgumentDescriptorContainer& arguments, const ArgumentDescriptorContainer& parameters)
+{
+    auto match = std::mismatch(arguments.cbegin(), arguments.cend(), parameters.cbegin(), parameters.cend());
+    return (match.first == arguments.cend());
+}
+
+} // noname
+
 MetaSignal::MetaSignal(MetaClass& metaClass, std::string_view name, const ArgumentDescriptorContainer& args)
     : m_ownerClass(metaClass)
     , m_arguments(args)
@@ -30,22 +41,21 @@ MetaSignal::MetaSignal(MetaClass& metaClass, std::string_view name, const Argume
 {
 }
 
-int MetaSignal::activate(SignalHost& sender, Callable::Arguments& arguments) const
+bool MetaSignal::invocableWith(const ArgumentDescriptorContainer &args) const
 {
-    UNUSED(sender);
-    UNUSED(arguments);
-
-    if (sender.m_signals[m_id])
-    {
-        return const_cast<Signal*>(sender.m_signals[m_id])->activate(arguments);
-    }
-    return -1;
+    auto match = std::mismatch(m_arguments.cbegin(), m_arguments.cend(), args.cbegin(), args.cend());
+    return (match.first == m_arguments.cend());
 }
 
 Signal::Connection::Connection(Signal& signal)
     : m_signal(signal)
     , m_passConnectionObject(false)
 {
+}
+
+Signal& Signal::Connection::signal() const
+{
+    return m_signal;
 }
 
 bool Signal::Connection::disconnect()
@@ -181,30 +191,29 @@ void SignalConnection::reset()
 /******************************************************************************
  *
  */
-namespace
-{
-
-bool isInvocableWith(const ArgumentDescriptorContainer& arguments, const ArgumentDescriptorContainer& parameters)
-{
-    auto match = std::mismatch(arguments.cbegin(), arguments.cend(), parameters.cbegin(), parameters.cend());
-    return (match.first == arguments.cend());
-}
-
-} // noname
-
 SignalHost::~SignalHost()
 {
 }
 
-int SignalHost::activate(std::string_view signal, Callable::Arguments &args)
+int SignalHost::activate(int signal, Callable::Arguments &args)
 {
     ScopeLock lock(m_lock);
-    for (const Signal* sig : m_signals)
+    if (signal < 0)
     {
-        if (sig && (sig->metaSignal().name() == signal) && isInvocableWith(sig->metaSignal().descriptors(), args.descriptors()))
+        // Activate all signals that can get activated with the given arguments.
+        int activationCount = 0;
+        for (const Signal* sig : m_signals)
         {
-            return int(sig->metaSignal().activate(*this, args));
+            if (sig && sig->metaSignal().invocableWith(args.descriptors()))
+            {
+                activationCount += const_cast<Signal*>(sig)->activate(args);
+            }
         }
+        return activationCount;
+    }
+    else if (size_t(signal) < m_signals.size())
+    {
+        return const_cast<Signal*>(m_signals[size_t(signal)])->activate(args);
     }
 
     return -1;

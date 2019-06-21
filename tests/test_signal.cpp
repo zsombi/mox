@@ -33,7 +33,6 @@ public:
     decl::Signal<void(int, std::string)> sig3{*this, "sig3"};
     decl::Signal<void()> sigB{*this, "sigB"};
 
-//    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SignalTestClass>
     STATIC_METACLASS_BASE(SignalTestClass)
     {
         META_SIGNAL(sig1);
@@ -48,7 +47,6 @@ class DerivedEmitter : public SignalTestClass
 public:
     decl::Signal<void(std::vector<int>)> sigV{*this, "sigV"};
 
-//    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, DerivedEmitter, SignalTestClass>
     STATIC_METACLASS(DerivedEmitter, SignalTestClass)
     {
         META_SIGNAL(sigV);
@@ -510,20 +508,7 @@ TEST_F(SignalTest, test_metasignal_emit)
     SignalTestClass sender;
     SlotHolder receiver;
 
-    const MetaClass* metaClass = SignalTestClass::StaticMetaClass::get();
-    auto visitor = [](const MetaSignal* signal)
-    {
-        return bool(signal->name() == "sig1");
-    };
-    const MetaSignal* signal = metaClass->visitSignals(visitor);
-    EXPECT_NOT_NULL(signal);
-    Callable::Arguments args;
-    EXPECT_EQ(0u, signal->activate(sender, args));
-
     sender.sig1.connect(receiver, &SlotHolder::method1);
-    EXPECT_EQ(1, sender.sig1());
-    EXPECT_EQ(1, signal->activate(sender, args));
-
     EXPECT_EQ(1, emit("sig1", sender));
     EXPECT_EQ(-1, emit("whatever", sender));
 }
@@ -537,4 +522,46 @@ TEST_F(SignalTest, test_emit)
     EXPECT_EQ(-1, emit("sig2", sender));
     EXPECT_EQ(0, emit("sig2", sender, 10));
     EXPECT_EQ(0, emit("sig2", sender, 10, "bla"));
+}
+
+TEST_F(SignalTest, test_proper_signal_ids)
+{
+    DerivedEmitter sender;
+
+    EXPECT_EQ(0, sender.sig1.id());
+    EXPECT_EQ(1, sender.sigB.id());
+    EXPECT_EQ(2, sender.sig2.id());
+    EXPECT_EQ(3, sender.sig3.id());
+    EXPECT_EQ(4, sender.sigV.id());
+}
+
+TEST_F(SignalTest, test_signal_in_derived)
+{
+    DerivedEmitter sender;
+    SignalTestClass receiver1;
+    SlotHolder receiver2;
+
+    EXPECT_NOT_NULL(sender.sigV.connect(receiver1.sig1));
+    EXPECT_NOT_NULL(sender.sig1.connect(receiver1.sig1));
+    Signal::ConnectionSharedPtr connection = sender.sigV.connect(receiver2, &SlotHolder::method1);
+    EXPECT_NOT_NULL(connection);
+
+    EXPECT_EQ(2, sender.sigV());
+    EXPECT_EQ(1, sender.sig1());
+}
+
+TEST_F(SignalTest, test_disconnect_next_connection_in_activation)
+{
+    DerivedEmitter sender;
+    SlotHolder receiver;
+
+    auto lambda = [&receiver](Signal::ConnectionSharedPtr connection)
+    {
+        connection->signal().disconnect(receiver, &SlotHolder::method1);
+    };
+    EXPECT_NOT_NULL(sender.sigV.connect(lambda));
+    EXPECT_NOT_NULL(sender.sigV.connect(receiver, &SlotHolder::method1));
+
+    // There should be only 1 activation, as lambda disconnects the other connection.
+    EXPECT_EQ(1, sender.sigV());
 }

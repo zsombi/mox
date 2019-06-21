@@ -102,7 +102,7 @@ const MetaSignal* MetaClass::visitSignals(const SignalVisitor& visitor) const
         {
             if (visitor(signal))
             {
-                return std::make_tuple(Abort, signal);;
+                return std::make_tuple(Abort, signal);
             }
         }
         return std::make_tuple(Continue, std::any());
@@ -122,7 +122,16 @@ void MetaClass::addMethod(MetaMethod *method)
 size_t MetaClass::addSignal(MetaSignal &signal)
 {
     m_signals.push_back(&signal);
-    return m_signals.size() - 1;
+
+    // Get the next signal ID.
+    size_t id = 0;
+    auto looper = [&id](const MetaClass& metaClass) -> VisitorResultType
+    {
+        id += metaClass.m_signals.size();
+        return make_tuple(Continue, std::any());
+    };
+    visit(looper);
+    return id - 1;
 }
 
 } // namespace mox
