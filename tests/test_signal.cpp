@@ -33,12 +33,25 @@ public:
     decl::Signal<void(int, std::string)> sig3{*this, "sig3"};
     decl::Signal<void()> sigB{*this, "sigB"};
 
-    MIXIN_METACLASS_BASE(SignalTestClass)
+//    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SignalTestClass>
+    STATIC_METACLASS_BASE(SignalTestClass)
     {
         META_SIGNAL(sig1);
         META_SIGNAL(sigB);
         META_SIGNAL(sig2);
         META_SIGNAL(sig3);
+    };
+};
+
+class DerivedEmitter : public SignalTestClass
+{
+public:
+    decl::Signal<void(std::vector<int>)> sigV{*this, "sigV"};
+
+//    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, DerivedEmitter, SignalTestClass>
+    STATIC_METACLASS(DerivedEmitter, SignalTestClass)
+    {
+        META_SIGNAL(sigV);
     };
 };
 
@@ -52,7 +65,7 @@ class  SlotHolder : public SignalHost
 public:
     decl::Signal<void(int)> sig{*this, "sig"};
 
-    MIXIN_METACLASS_BASE(SlotHolder)
+    STATIC_METACLASS_BASE(SlotHolder)
     {
         META_METHOD(SlotHolder, method1);
         META_METHOD(SlotHolder, method2);
@@ -124,7 +137,7 @@ class DerivedHolder : public SlotHolder
     int derived1Call = 0;
     int derived2Call = 0;
 public:
-    MIXIN_METACLASS(DerivedHolder, SlotHolder)
+    STATIC_METACLASS(DerivedHolder, SlotHolder)
     {
         META_METHOD(DerivedHolder, derivedMethod1);
         META_METHOD(DerivedHolder, derivedMethod2);
@@ -163,9 +176,11 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
+        registerTestType<std::vector<int>>();
         registerTestType<SignalTestClass>();
         registerTestType<SlotHolder>();
         registerTestType<DerivedHolder>();
+        registerTestType<DerivedEmitter>();
     }
 };
 
@@ -495,7 +510,7 @@ TEST_F(SignalTest, test_metasignal_emit)
     SignalTestClass sender;
     SlotHolder receiver;
 
-    const MetaClass* metaClass = sender.getStaticMetaClass();
+    const MetaClass* metaClass = SignalTestClass::StaticMetaClass::get();
     auto visitor = [](const MetaSignal* signal)
     {
         return bool(signal->name() == "sig1");

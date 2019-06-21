@@ -81,7 +81,7 @@ struct has_static_metaclass
 private:
     typedef char yes_type;
     typedef long no_type;
-    template <typename U> static yes_type test(decltype(&U::getStaticMetaClass));
+    template <typename U> static yes_type test(decltype(&U::StaticMetaClass::get));
     template <typename U> static no_type  test(...);
 public:
     static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);
@@ -96,7 +96,7 @@ struct has_dynamic_metaclass
 private:
     typedef char yes_type;
     typedef long no_type;
-    template <typename U> static yes_type test(decltype(&U::getDynamicMetaClass));
+    template <typename U> static yes_type test(decltype(&U::getMetaClass));
     template <typename U> static no_type  test(...);
 public:
     static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);

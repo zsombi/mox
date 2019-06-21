@@ -30,15 +30,9 @@ MetaObject::~MetaObject()
 {
 }
 
-const MetaClass* MetaObject::getStaticMetaClass()
+const MetaClass* MetaObject::getMetaClass() const
 {
-    static ObjectMetaClass<MetaObject> metaClass;
-    return &metaClass;
-}
-
-const MetaClass* MetaObject::getDynamicMetaClass() const
-{
-    return getStaticMetaClass();
+    return StaticMetaClass::get();
 }
 
 } // namespace mox

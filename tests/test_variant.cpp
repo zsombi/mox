@@ -92,6 +92,6 @@ TEST(Variants, test_metaobject)
 
     var = &obj;
     EXPECT_NE(mox::Metatype::MetaObject, var.type());
-    EXPECT_EQ(obj.getStaticMetaClass()->metaType(), var.type());
+    EXPECT_EQ(TestObject::StaticMetaClass::get()->metaType(), var.type());
     EXPECT_EQ(&obj, var);
 }

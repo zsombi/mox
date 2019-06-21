@@ -35,10 +35,10 @@ mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const
     {
         return nullptr;
     }
-    const MetaClass* metaClass = Receiver::getStaticMetaClass();
+    const MetaClass* metaClass = Receiver::StaticMetaClass::get();
     if constexpr (has_dynamic_metaclass_v<Receiver>)
     {
-        metaClass = Receiver::getDynamicMetaClass();
+        metaClass = Receiver::getMetaClass();
     }
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaMethod* method) -> bool
     {
@@ -61,10 +61,10 @@ Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFu
 
     if constexpr (has_static_metaclass_v<ReceiverType>)
     {
-        const MetaClass* metaClass = ReceiverType::getStaticMetaClass();
+        const MetaClass* metaClass = ReceiverType::StaticMetaClass::get();
         if constexpr (has_dynamic_metaclass_v<ReceiverType>)
         {
-            metaClass = ReceiverType::getDynamicMetaClass();
+            metaClass = ReceiverType::getMetaClass();
         }
         auto visitor = [methodAddress = ::address(method), this](const MetaMethod* method) -> bool
         {
@@ -105,10 +105,10 @@ bool Signal::disconnect(const Receiver& receiver, const char* methodName)
     {
         return false;
     }
-    const MetaClass* metaClass = Receiver::getStaticMetaClass();
+    const MetaClass* metaClass = Receiver::StaticMetaClass::get();
     if constexpr (has_dynamic_metaclass_v<Receiver>)
     {
-        metaClass = Receiver::getDynamicMetaClass();
+        metaClass = Receiver::getMetaClass();
     }
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaMethod* method) -> bool
     {
@@ -132,10 +132,10 @@ Signal::disconnect(typename function_traits<SlotFunction>::object& receiver, Slo
     std::any receiverInstance(&receiver);
     if constexpr (has_static_metaclass_v<ReceiverType>)
     {
-        const MetaClass* metaClass = ReceiverType::getStaticMetaClass();
+        const MetaClass* metaClass = ReceiverType::StaticMetaClass::get();
         if constexpr (has_dynamic_metaclass_v<ReceiverType>)
         {
-            metaClass = ReceiverType::getDynamicMetaClass();
+            metaClass = ReceiverType::getMetaClass();
         }
         receiverInstance = metaClass->castInstance(&receiver);
     }
@@ -165,7 +165,7 @@ const MetaSignal& Signal<void(Args...)>::getMetaSignal(std::string_view name)
     {
         return (signal->name() == name) && (signal->descriptors() == desArray);
     };
-    const MetaSignal* signal = SignalOwner::getStaticMetaClass()->visitSignals(visitor);
+    const MetaSignal* signal = SignalOwner::StaticMetaClass::get()->visitSignals(visitor);
     ASSERT(signal, std::string("Cannot create a signal without a metasignal for ") + std::string(name));
     return *signal;
 }

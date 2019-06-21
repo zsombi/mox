@@ -19,6 +19,8 @@
 #ifndef METAOBJECT_HPP
 #define METAOBJECT_HPP
 
+#include <mox/metadata/metaclass.hpp>
+
 namespace mox
 {
 
@@ -29,11 +31,12 @@ public:
     /// Destructor.
     virtual ~MetaObject();
 
-    /// Returns the static metaclass of the metaobject.
-    static const MetaClass* getStaticMetaClass();
+    STATIC_METACLASS_BASE(MetaObject)
+    {
+    };
 
     /// Returns the dynamic metaclass of the metaobject.
-    virtual const MetaClass* getDynamicMetaClass() const;
+    virtual const MetaClass* getMetaClass() const;
 
 protected:
     /// Constructor.

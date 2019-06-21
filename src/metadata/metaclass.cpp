@@ -31,6 +31,14 @@ MetaClass::MetaClass(const MetatypeDescriptor& type, bool abstract)
     metadata().addMetaClass(*this);
 }
 
+MetaClass::MetaClass(const MetatypeDescriptor& type, bool abstract, const MetaClassContainer& superClasses)
+    : m_superClasses(superClasses)
+    , m_type(type)
+    , m_isAbstract(abstract)
+{
+    metadata().addMetaClass(*this);
+}
+
 MetaClass::~MetaClass()
 {
     metadata().removeMetaClass(*this);

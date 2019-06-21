@@ -88,15 +88,16 @@ public:
     virtual std::any castInstance(void* instance) const = 0;
 
 protected:
-    /// Creates a metaclass with a registered MetatypeDescriptor identifier.
-    explicit MetaClass(const MetatypeDescriptor& type, bool abstract);
-
-    void addMethod(MetaMethod* method);
-    size_t addSignal(MetaSignal& signal);
-
     typedef std::vector<const MetaClass*> MetaClassContainer;
     typedef std::vector<const MetaMethod*> MetaMethodContainer;
     typedef std::vector<const MetaSignal*> MetaSignalContainer;
+
+    /// Creates a metaclass with a registered MetatypeDescriptor identifier.
+    explicit MetaClass(const MetatypeDescriptor& type, bool abstract);
+    explicit MetaClass(const MetatypeDescriptor& type, bool abstract, const MetaClassContainer& superClasses);
+
+    void addMethod(MetaMethod* method);
+    size_t addSignal(MetaSignal& signal);
 
     MetaClassContainer m_superClasses;
     MetaMethodContainer m_methods;
@@ -111,19 +112,26 @@ private:
     byte __padding[3];
 };
 
-/// MetaClass template specialized on non-MetaObject base classes, aswell as for interfaces.
-template <class BaseClass, class... SuperClasses>
-struct InterfaceMetaClass : MetaClass
+namespace decl
+{
+
+template <class MetaClassDecl, class BaseClass, class... SuperClasses>
+struct MetaClass : mox::MetaClass
 {
     static constexpr bool abstract = std::is_abstract_v<BaseClass>;
 
-    explicit InterfaceMetaClass()
-        : MetaClass(metatypeDescriptor<BaseClass>(), abstract)
+    static const mox::MetaClass* get()
     {
-        static_assert(!std::is_base_of<MetaObject, BaseClass>::value, "InterfaceMetaClassImpl reflects a non-MetaObject class.");
-        std::array<const MetaClass*, sizeof... (SuperClasses)> aa =
+        static MetaClassDecl metaClass;
+        return &metaClass;
+    }
+
+    explicit MetaClass()
+        : mox::MetaClass(metatypeDescriptor<BaseClass>(), abstract)
+    {
+        std::array<const mox::MetaClass*, sizeof... (SuperClasses)> aa =
         {{
-            SuperClasses::getStaticMetaClass()...
+            SuperClasses::StaticMetaClass::get()...
         }};
         m_superClasses = MetaClassContainer(aa.begin(), aa.end());
     }
@@ -139,72 +147,27 @@ struct InterfaceMetaClass : MetaClass
     }
 };
 
-/// MetaClass template specialized on MetaObject-derived classes. The super-classes are interface
-/// classes with reflection.
-template <class BaseClass, class... SuperClasses>
-struct ObjectMetaClass : MetaClass
-{
-    static constexpr bool abstract = std::is_abstract_v<BaseClass>;
-
-    explicit ObjectMetaClass()
-        : MetaClass(metatypeDescriptor<BaseClass>(), abstract)
-    {
-        static_assert(std::is_base_of<MetaObject, BaseClass>::value, "MetaClassImpl reflects a MetaObject derived class.");
-        std::array<const MetaClass*, sizeof... (SuperClasses)> aa =
-        {{
-            SuperClasses::getStaticMetaClass()...
-        }};
-        m_superClasses = MetaClassContainer(aa.begin(), aa.end());
-    }
-
-    /// Checks whether this MetaClass reflects the \a metaObject.
-    bool isClassOf(const MetaObject& metaObject) const override
-    {
-        return dynamic_cast<const BaseClass*>(&metaObject) != nullptr;
-    }
-    std::any castInstance(void* instance) const override
-    {
-        return reinterpret_cast<BaseClass*>(instance);
-    }
-};
+} // decl
 
 } // namespace mox
 
-/// Declares the MetaClass of a non-MetaObject derived base class or interface. The meta-class name associated to the
-/// \a Class is built by appending the MetaClass to the class' name. E.g. A class BaseClass gets BaseClassMetaClass
-/// as meta-class name. Use the macro when defining a class that has no base meta-classes.
-#define MIXIN_METACLASS_BASE(Class) \
-    static const mox::MetaClass* getStaticMetaClass() \
-    { \
-        static Class##MetaClass metaObject; \
-        return &metaObject; \
-    } \
-    struct MOX_API Class##MetaClass : mox::InterfaceMetaClass<Class> \
+/// Declares the static metaclass for a class that has no base metaclasses.
+#define STATIC_METACLASS_BASE(Base) \
+    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, Base>
 
-/// Declares the MetaClass of a non-MetaObject derived base class or interface. The meta-class name associated to the
-/// \a Class is built by appending the MetaClass to the class' name. E.g. A class BaseClass gets BaseClassMetaClass
-/// as meta-class name. Use the macro when defining a class that has base meta-classes.
-#define MIXIN_METACLASS(Class, ...) \
-    static const mox::MetaClass* getStaticMetaClass() \
-    { \
-        static Class##MetaClass metaObject; \
-        return &metaObject; \
-    } \
-    struct MOX_API Class##MetaClass : mox::InterfaceMetaClass<Class, __VA_ARGS__> \
+/// Declare the static metaclass for a class that has base classes with metaclasses.
+#define STATIC_METACLASS(Base, ...) \
+    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, Base, __VA_ARGS__>
 
-/// Declares the MetaClass of a MetaObject derived base class or interface. The meta-class name associated to the
-/// \a Class is built by appending the MetaClass to the class' name. E.g. A class BaseClass gets BaseClassMetaClass
-/// as meta-class name.
+
+
+/// Declares the static metaclass for a class or interface, adding the dynamic metaclass fetching
+/// function override. One of the base classes must declare the getMetaClass() method.
 #define METACLASS(Class, ...) \
-    static const mox::MetaClass* getStaticMetaClass() \
+    const mox::MetaClass* getMetaClass() const override \
     { \
-        static Class##MetaClass metaObject; \
-        return &metaObject; \
+        return StaticMetaClass::get(); \
     } \
-    const mox::MetaClass* getDynamicMetaClass() const override \
-    { \
-        return getStaticMetaClass(); \
-    } \
-    struct MOX_API Class##MetaClass : mox::ObjectMetaClass<Class, __VA_ARGS__>
+    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, Class, __VA_ARGS__>
 
 #endif // METACLASS_HPP

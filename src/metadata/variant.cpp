@@ -58,7 +58,7 @@ Metatype Variant::type() const
         case Metatype::MetaObject:
         {
             MetaObject* mo = value<MetaObject*>();
-            return mo->getDynamicMetaClass()->metaType();
+            return mo->getMetaClass()->metaType();
         }
         default:
         {

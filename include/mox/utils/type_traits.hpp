@@ -49,6 +49,28 @@ struct is_cstring<char[N]> : public std::true_type
 {
 };
 
+
+//namespace
+//{
+
+//template <typename T, typename U>
+//constexpr size_t offsetOf_impl(T const* t, U T::* a)
+//{
+//    return (char const*)t - (char const*)&(t->*a) >= 0 ?
+//               (char const*)t - (char const*)&(t->*a)      :
+//               (char const*)&(t->*a) - (char const*)t;
+//}
+
+//} // noname
+
+//#define offsetOf(Type, Attr)    offsetOf_impl((Type const*)nullptr, &Type::Attr)
+
+template <typename T, typename U>
+constexpr size_t offset_of(U T::*member)
+{
+    return (char*)&((T*)nullptr->*member) - (char*)nullptr;
+}
+
 } // namespace mox
 
 #endif // TYPE_TRAITS_HPP

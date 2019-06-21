@@ -56,7 +56,7 @@ Metatype registerMetaType()
     Metatype newType = registrar::tryRegisterMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
     if constexpr (has_static_metaclass<Type>::value)
     {
-        Type::getStaticMetaClass();
+        Type::StaticMetaClass::get();
     }
     return newType;
 }
