@@ -18,6 +18,7 @@
 
 #include <mox/metadata/variant.hpp>
 #include <mox/metadata/metaclass.hpp>
+#include <mox/metadata/metaobject.hpp>
 
 #include "metadata_p.h"
 
@@ -44,20 +45,20 @@ Variant::operator bool() const
     return (index() > 0);
 }
 
-MetaType::TypeId Variant::type() const
+Metatype Variant::type() const
 {
     if (!(*this))
     {
-        return MetaType::TypeId::Invalid;
+        return Metatype::Invalid;
     }
 
-    MetaType::TypeId id = static_cast<MetaType::TypeId>(index());
+    Metatype id = static_cast<Metatype>(index());
     switch (id)
     {
-        case MetaType::TypeId::MetaObject:
+        case Metatype::MetaObject:
         {
             MetaObject* mo = value<MetaObject*>();
-            return mo->getDynamicMetaClass()->metaType();
+            return mo->getMetaClass()->metaType();
         }
         default:
         {
@@ -66,7 +67,7 @@ MetaType::TypeId Variant::type() const
     }
 }
 
-bool Variant::canConvert(MetaType::TypeId toType) const
+bool Variant::canConvert(Metatype toType) const
 {
     return metadata().findConverter(type(), toType) != nullptr;
 }

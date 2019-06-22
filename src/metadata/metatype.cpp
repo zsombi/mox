@@ -17,16 +17,67 @@
  */
 
 #include <mox/metadata/metatype.hpp>
+#include <mox/metadata/metatype_descriptor.hpp>
 #include <string.h>
 #include "metadata_p.h"
 #include <cxxabi.h>
 
+#include <mox/utils/function_traits.hpp>
+
 namespace mox
 {
 
-MetaType::MetaType(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass)
+bool operator ==(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2)
+{
+    return arg1.type == arg2.type &&
+            arg1.isPointer == arg2.isPointer &&
+            arg1.isReference == arg2.isReference &&
+            arg1.isConst == arg2.isConst;
+}
+
+bool operator !=(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2)
+{
+    return arg1.type != arg2.type ||
+            arg1.isPointer != arg2.isPointer ||
+            arg1.isReference != arg2.isReference ||
+            arg1.isConst != arg2.isConst;
+}
+
+
+namespace registrar
+{
+
+const MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti)
+{
+    return metadata().findMetaType(rtti);
+}
+
+Metatype findMetatype(const std::type_info& rtti)
+{
+    const MetatypeDescriptor* descriptor = findMetatypeDescriptor(rtti);
+    ASSERT(descriptor, std::string("unregistered metatype: ") + rtti.name());
+    return descriptor->id();
+}
+
+Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass)
+{
+    const MetatypeDescriptor* type = findMetatypeDescriptor(rtti);
+    ASSERT(!type, std::string("Metatype already registered: ") + rtti.name());
+    if (!type)
+    {
+        const MetatypeDescriptor& newType = metadata().addMetaType(nullptr, rtti, isEnum, isClass);
+        ASSERT(newType.id() >= Metatype::UserType, "Type not registered in the user space.");
+        type = &newType;
+    }
+    return type->id();
+}
+
+} // registrar
+
+
+MetatypeDescriptor::MetatypeDescriptor(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass)
     : m_rtti(&rtti)
-    , m_id(TypeId(id))
+    , m_id(Metatype(id))
     , m_isEnum(isEnum)
     , m_isClass(isClass)
 {
@@ -44,72 +95,89 @@ MetaType::MetaType(const char* name, int id, const std::type_info& rtti, bool is
     ASSERT(m_name, "Null name type!");
 }
 
-MetaType::~MetaType()
+MetatypeDescriptor::~MetatypeDescriptor()
 {
     free(m_name);
 }
 
-const MetaType* MetaType::findMetaType(const std::type_info &rtti)
+bool MetatypeDescriptor::isCustomType()
 {
-    return metadata().findMetaType(rtti);
+    return m_id >= Metatype::UserType;
 }
 
-const MetaType& MetaType::newMetatype(const std::type_info &rtti, bool isEnum, bool isClass)
-{
-    const MetaType* type = findMetaType(rtti);
-    if (!type)
-    {
-        const MetaType& newType = metadata().addMetaType(nullptr, rtti, isEnum, isClass);
-        ASSERT(newType.id() >= TypeId::UserType, "Type not registered in the user space.");
-        type = &newType;
-    }
-    return *type;
-}
-
-const MetaType& MetaType::get(TypeId typeId)
+const MetatypeDescriptor& MetatypeDescriptor::get(Metatype typeId)
 {
     return metadata().getMetaType(typeId);
 }
 
-bool MetaType::isValid() const
+bool MetatypeDescriptor::isSupertypeOf(const MetatypeDescriptor& type) const
+{
+    if (!isClass() || !type.isClass())
+    {
+        return false;
+    }
+
+    const MetaClass* thisClass = metadata().getMetaClass(m_id);
+    ASSERT(thisClass, "No MetaClass for the class type.");
+
+    const MetaClass* typeClass = metadata().getMetaClass(type.id());
+    ASSERT(typeClass, "No MetaClass for the class type.");
+    return thisClass->isSuperClassOf(*typeClass);
+}
+
+bool MetatypeDescriptor::derivesFrom(const MetatypeDescriptor& type) const
+{
+    if (!isClass() || !type.isClass())
+    {
+        return false;
+    }
+
+    const MetaClass* thisClass = metadata().getMetaClass(m_id);
+    ASSERT(thisClass, "No MetaClass for the class type.");
+
+    const MetaClass* typeClass = metadata().getMetaClass(type.id());
+    ASSERT(typeClass, "No MetaClass for the class type.");
+    return thisClass->derivesFrom(*typeClass);
+}
+
+bool MetatypeDescriptor::isValid() const
 {
     return m_rtti != nullptr;
 }
 
-bool MetaType::isVoid() const
+bool MetatypeDescriptor::isVoid() const
 {
-    return isValid() && (m_id == TypeId::Void);
+    return isValid() && (m_id == Metatype::Void);
 }
 
-MetaType::TypeId MetaType::id() const
+Metatype MetatypeDescriptor::id() const
 {
     return m_id;
 }
 
-const char* MetaType::name() const
+const char* MetatypeDescriptor::name() const
 {
-    ASSERT(m_name, "Empty type name");
     return m_name;
 }
 
-bool MetaType::isEnum() const
+bool MetatypeDescriptor::isEnum() const
 {
     return m_isEnum;
 }
 
-bool MetaType::isClass() const
+bool MetatypeDescriptor::isClass() const
 {
     return m_isClass;
 }
 
-const std::type_info* MetaType::rtti() const
+const std::type_info* MetatypeDescriptor::rtti() const
 {
     return m_rtti;
 }
 
 //----------------------------
 // Converters
-bool MetaType::registerConverterFunction(AbstractConverterSharedPtr converter, TypeId fromType, TypeId toType)
+bool MetatypeDescriptor::registerConverterFunction(AbstractConverterSharedPtr converter, Metatype fromType, Metatype toType)
 {
     if (!metadata().addConverter(converter, fromType, toType))
     {
@@ -119,12 +187,12 @@ bool MetaType::registerConverterFunction(AbstractConverterSharedPtr converter, T
     return true;
 }
 
-void MetaType::unregisterConverterFunction(TypeId fromType, TypeId toType)
+void MetatypeDescriptor::unregisterConverterFunction(Metatype fromType, Metatype toType)
 {
     metadata().removeConverter(fromType, toType);
 }
 
-MetaType::AbstractConverterSharedPtr MetaType::findConverter(TypeId from, TypeId to)
+MetatypeDescriptor::AbstractConverterSharedPtr MetatypeDescriptor::findConverter(Metatype from, Metatype to)
 {
     return metadata().findConverter(from, to);
 }

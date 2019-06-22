@@ -19,37 +19,46 @@
 #ifndef METATYPE_IMPL_H
 #define METATYPE_IMPL_H
 
-#include <type_traits>
+#include <mox/utils/type_traits.hpp>
+#include <string>
+#include <mox/utils/globals.hpp>
 
 namespace mox
 {
 
 template <typename Type>
-const MetaType& MetaType::registerMetaType()
+Metatype metaType()
 {
-    typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
-    return MetaType::newMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
+    if constexpr (is_cstring<Type>::value)
+    {
+        return registrar::findMetatype(typeid(char*));
+    }
+    else
+    {
+        typedef typename std::remove_cv<typename std::remove_pointer<typename std::remove_reference<Type>::type>::type>::type NakedType;
+        return registrar::findMetatype(typeid(NakedType));
+    }
 }
 
-template<typename Type>
-const MetaType& MetaType::get()
+template <typename Type>
+const MetatypeDescriptor& metatypeDescriptor()
 {
     typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
-    const MetaType* type = findMetaType(typeid(NakedType));
-    ASSERT(type, std::string("MetaType::get<>: unregistered metatype: ") + typeid(Type).name());
-    return *type;
+    const MetatypeDescriptor* descriptor = registrar::findMetatypeDescriptor(typeid(NakedType));
+    ASSERT(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + typeid(NakedType).name());
+    return *descriptor;
 }
 
 template <typename Type>
-MetaType::TypeId MetaType::typeId()
+Metatype registerMetaType()
 {
-    return get<Type>().id();
-}
-
-template <typename Type>
-bool MetaType::isCustomType()
-{
-    return get<Type>().id() >= TypeId::UserType;
+    typedef typename std::remove_reference<typename std::remove_pointer<Type>::type>::type NakedType;
+    Metatype newType = registrar::tryRegisterMetatype(typeid(NakedType), std::is_enum<Type>(), std::is_class<NakedType>());
+    if constexpr (has_static_metaclass<Type>::value)
+    {
+        Type::StaticMetaClass::get();
+    }
+    return newType;
 }
 
 } // namespace mox

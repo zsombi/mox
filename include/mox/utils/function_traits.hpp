@@ -19,9 +19,12 @@
 #ifndef FUNCTION_TRAITS_HPP
 #define FUNCTION_TRAITS_HPP
 
+#include <array>
 #include <cstddef>
 #include <tuple>
+#include <vector>
 
+#include <mox/utils/globals.hpp>
 #include <mox/metadata/metatype.hpp>
 
 namespace mox
@@ -32,7 +35,7 @@ namespace mox
 struct MOX_API ArgumentDescriptor
 {
     /// Tye metatype of the argument.
-    const MetaType::TypeId type = MetaType::TypeId::Invalid;
+    const Metatype type = Metatype::Invalid;
     /// \e true if the argument is a pointer, \e false if not.
     const bool isPointer = false;
     /// \e true if the argument is a reference, \e false if not.
@@ -42,7 +45,7 @@ struct MOX_API ArgumentDescriptor
 
     /// Constructor.
     ArgumentDescriptor() = default;
-    ArgumentDescriptor(MetaType::TypeId type, bool ptr, bool ref, bool c)
+    ArgumentDescriptor(Metatype type, bool ptr, bool ref, bool c)
         : type(type)
         , isPointer(ptr)
         , isReference(ref)
@@ -56,13 +59,25 @@ struct MOX_API ArgumentDescriptor
     static ArgumentDescriptor&& get()
     {
         return std::move(ArgumentDescriptor{
-                             MetaType::typeId<Type>(),
+                             metaType<Type>(),
                              std::is_pointer<Type>(),
                              std::is_reference<Type>(),
                              std::is_const<Type>()
                          });
     }
 };
+
+typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
+
+template <typename... Args>
+ArgumentDescriptorContainer argument_descriptors()
+{
+    const std::array<ArgumentDescriptor, sizeof... (Args)> aa = {{ ArgumentDescriptor::get<Args>()... }};
+    return ArgumentDescriptorContainer(aa.begin(), aa.end());
+}
+
+bool operator ==(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2);
+bool operator !=(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2);
 
 
 enum FunctionType
@@ -105,8 +120,7 @@ struct function_traits<TRet(TObject::*)(Args...)>
 
     static std::vector<ArgumentDescriptor> argument_descriptors()
     {
-        const std::array<ArgumentDescriptor, arity> aa = {{ ArgumentDescriptor::get<Args>()... }};
-        return std::vector<ArgumentDescriptor>(aa.begin(), aa.end());
+        return mox::argument_descriptors<Args...>();
     }
 };
 
@@ -131,8 +145,7 @@ struct function_traits<TRet(TObject::*)(Args...) const>
 
     static std::vector<ArgumentDescriptor> argument_descriptors()
     {
-        const std::array<ArgumentDescriptor, arity> aa = {{ ArgumentDescriptor::get<Args>()... }};
-        return std::vector<ArgumentDescriptor>(aa.begin(), aa.end());
+        return mox::argument_descriptors<Args...>();
     }
 };
 
@@ -156,8 +169,7 @@ struct function_traits<TRet(*)(Args...)>
 
     static std::vector<ArgumentDescriptor> argument_descriptors()
     {
-        const std::array<ArgumentDescriptor, arity> aa = {{ ArgumentDescriptor::get<Args>()... }};
-        return std::vector<ArgumentDescriptor>(aa.begin(), aa.end());
+        return mox::argument_descriptors<Args...>();
     }
 };
 

@@ -19,6 +19,7 @@
 #ifndef CALLABLE_IMPL_HPP
 #define CALLABLE_IMPL_HPP
 
+#include <mox/utils/type_traits.hpp>
 #include <mox/utils/function_traits.hpp>
 
 namespace mox
@@ -51,17 +52,19 @@ Callable::Arguments::Arguments(Args... arguments)
 {
     std::array<std::any, sizeof... (Args)> aa = {{std::any(arguments)...}};
     insert(begin(), aa.begin(), aa.end());
+    m_descriptors = argument_descriptors<Args...>();
 }
 
 template <typename Type>
 Callable::Arguments& Callable::Arguments::add(const Type& value)
 {
     push_back(std::any(value));
+    m_descriptors.push_back(ArgumentDescriptor::get<Type>());
     return *this;
 }
 
 template <typename Type>
-Callable::Arguments& Callable::Arguments::prepend(Type value)
+Callable::Arguments& Callable::Arguments::setInstance(Type value)
 {
     insert(begin(), std::any(value));
     return *this;
@@ -97,12 +100,13 @@ template <typename Function>
 Callable::Callable(Function fn)
     : m_ret(ArgumentDescriptor::get<typename function_traits<Function>::return_type>())
     , m_args(function_traits<Function>::argument_descriptors())
+    , m_address(::address(fn))
     , m_type(static_cast<FunctionType>(function_traits<Function>::type))
     , m_isConst(function_traits<Function>::is_const)
 {
     if constexpr (function_traits<Function>::type == FunctionType::Method)
     {
-        m_classType = MetaType::typeId<typename function_traits<Function>::object>();
+        m_classType = metaType<typename function_traits<Function>::object>();
     }
 
     m_invoker = [function = std::forward<Function>(fn)](const Arguments& args) -> std::any
@@ -126,6 +130,7 @@ Callable::Callable(Function fn)
 /******************************************************************************
  * invokes
  */
+
 template <class Ret, typename... Arguments>
 Ret invoke(const Callable& callable, Arguments... arguments)
 {
@@ -137,6 +142,16 @@ Ret invoke(const Callable& callable, Arguments... arguments)
     }
 }
 
+template <class Ret, class Class, typename... Arguments>
+typename std::enable_if<std::is_class<Class>::value, Ret>::type invoke(const Callable& callable, Class& instance, Arguments... arguments)
+{
+    Callable::Arguments vargs(arguments...);
+    std::any ret = callable.apply(instance, vargs);
+    if constexpr (!std::is_void<Ret>::value)
+    {
+        return std::any_cast<Ret>(ret);
+    }
+}
 } // namespace mox
 
 #endif // CALLABLE_IMPL_HPP

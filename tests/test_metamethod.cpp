@@ -19,6 +19,7 @@
 #include "test_framework.h"
 #include <mox/metadata/metaclass.hpp>
 #include <mox/metadata/metamethod.hpp>
+#include <mox/metadata/metaobject.hpp>
 #include <mox/metadata/callable.hpp>
 
 using namespace mox;
@@ -28,12 +29,12 @@ class TestMixin
 public:
     bool invoked = false;
 
-    MIXIN_METACLASS_BASE(TestMixin)
+    STATIC_METACLASS_BASE(TestMixin)
     {
         META_METHOD(TestMixin, testFunc1);
         META_METHOD(TestMixin, testFunc2);
         META_METHOD(TestMixin, staticFunc);
-        MetaMethod lambda = {*this, [](TestMixin* instance) { instance->invoked = true; }, "lambda"};
+        MetaMethod lambda{*this, [](TestMixin* instance) { instance->invoked = true; }, "lambda"};
     };
 
     void testFunc1()
@@ -56,7 +57,7 @@ class TestSecond
 {
 public:
 
-    MIXIN_METACLASS_BASE(TestSecond)
+    STATIC_METACLASS_BASE(TestSecond)
     {
         META_METHOD(TestSecond, testFunc1);
     };
@@ -71,7 +72,7 @@ class Mixin : public TestMixin, public TestSecond
 {
 public:
 
-    MIXIN_METACLASS(Mixin, TestMixin, TestSecond)
+    STATIC_METACLASS(Mixin, TestMixin, TestSecond)
     {
     };
 
@@ -86,12 +87,15 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
+        registerTestType<TestMixin>();
+        registerTestType<TestSecond>();
+        registerTestType<Mixin>();
     }
 };
 
 TEST_F(MetaMethods, test_mixin_methods)
 {
-    const MetaClass* mc = TestMixin::getStaticMetaClass();
+    const MetaClass* mc = TestMixin::StaticMetaClass::get();
     auto visitor = [](const MetaMethod* method) -> bool
     {
         return method->name() == "testFunc1";
@@ -115,7 +119,7 @@ TEST_F(MetaMethods, test_invoke_undeclared_method)
 TEST_F(MetaMethods, test_mixin_method_invoke_directly)
 {
     TestMixin mixin, *ptrMixin = &mixin;
-    const TestMixin::TestMixinMetaClass* metaClass = dynamic_cast<const TestMixin::TestMixinMetaClass*>(mixin.getStaticMetaClass());
+    const TestMixin::StaticMetaClass* metaClass = dynamic_cast<const TestMixin::StaticMetaClass*>(TestMixin::StaticMetaClass::get());
     EXPECT_NOT_NULL(metaClass);
 
     invoke<void>(metaClass->testFunc1, ptrMixin);

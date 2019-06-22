@@ -23,11 +23,9 @@
 namespace mox
 {
 
-MetaClass::MetaClass(MetaType::TypeId type, bool abstract)
+MetaClass::MetaClass(const MetatypeDescriptor& type)
     : m_type(type)
-    , m_isAbstract(abstract)
 {
-    UNUSED(__padding);
     metadata().addMetaClass(*this);
 }
 
@@ -38,20 +36,21 @@ MetaClass::~MetaClass()
 
 bool MetaClass::isSuperClassOf(const MetaClass &metaClass) const
 {
-    auto tester = [this, &metaClass] (const MetaClass* mc) -> bool
-    {
-        if (mc == this)
-        {
-            return true;
-        }
-        else
-        {
-            return mc->isSuperClassOf(metaClass);
-        }
-    };
+    return metaClass.derivesFrom(*this);
+}
 
-    MetaClassContainer::const_iterator it = std::find_if(metaClass.m_superClasses.cbegin(), metaClass.m_superClasses.cend(), tester);
-    return (it != m_superClasses.cend());
+bool MetaClass::derivesFrom(const MetaClass &metaClass) const
+{
+    auto deriveTester = [&metaClass](const MetaClass& mc) -> VisitorResultType
+    {
+        if (&mc == &metaClass)
+        {
+            return std::make_tuple(MetaClass::Abort, &mc);
+        }
+        return std::make_tuple(MetaClass::Continue, std::any());
+    };
+    // Visitor aborts if the metaclass is derived from a superclass.
+    return std::get<0>(visit(MetaClassVisitor(deriveTester))) == Abort;
 }
 
 const MetaClass* MetaClass::find(std::string_view className)
@@ -59,50 +58,79 @@ const MetaClass* MetaClass::find(std::string_view className)
     return metadata().findMetaClass(className);
 }
 
+MetaClass::VisitorResultType MetaClass::visit(const MetaClassVisitor &visitor) const
+{
+    VisitorResultType result = visitor(*this);
+    if (std::get<0>(result) == Abort)
+    {
+        return result;
+    }
+    return visitSuperClasses(visitor);
+}
+
+MetaClass::VisitorResultType MetaClass::visitSuperClasses(const MetaClassVisitor &visitor) const
+{
+    UNUSED(visitor);
+    return std::make_tuple(Continue, std::any());
+}
+
 const MetaMethod* MetaClass::visitMethods(const MethodVisitor& visitor) const
 {
-    for (const MetaMethod* method : m_methods)
+    auto tester = [&visitor](const MetaClass& mc) -> VisitorResultType
     {
-        if (visitor(method))
+        for (const MetaMethod* method : mc.m_methods)
         {
-            return method;
+            if (visitor(method))
+            {
+                return std::make_tuple(Abort, method);
+            }
         }
-    }
+        return std::make_tuple(Continue, std::any());
+    };
 
-    for (const MetaClass* super : m_superClasses)
-    {
-        const MetaMethod* method = super->visitMethods(visitor);
-        if (method)
-        {
-            return method;
-        }
-    }
-
-    return nullptr;
+    VisitorResultType result = visit(MetaClassVisitor(tester));
+    std::any method = std::get<1>(result);
+    return (std::get<0>(result) == Abort) ? std::any_cast<const MetaMethod*>(method) : nullptr;
 }
+
+const MetaSignal* MetaClass::visitSignals(const SignalVisitor& visitor) const
+{
+    auto tester = [&visitor](const MetaClass& mc) -> VisitorResultType
+    {
+        for (const MetaSignal* signal : mc.m_signals)
+        {
+            if (visitor(signal))
+            {
+                return std::make_tuple(Abort, signal);
+            }
+        }
+        return std::make_tuple(Continue, std::any());
+    };
+
+    VisitorResultType result = visit(MetaClassVisitor(tester));
+    std::any signal = std::get<1>(result);
+    return (std::get<0>(result) == Abort) ? std::any_cast<const MetaSignal*>(signal) : nullptr;
+}
+
 
 void MetaClass::addMethod(MetaMethod *method)
 {
     m_methods.push_back(method);
 }
 
-MetaObject::MetaObject()
+size_t MetaClass::addSignal(MetaSignal &signal)
 {
-}
+    m_signals.push_back(&signal);
 
-MetaObject::~MetaObject()
-{
-}
-
-const MetaClass* MetaObject::getStaticMetaClass()
-{
-    static ObjectMetaClass<MetaObject> metaClass;
-    return &metaClass;
-}
-
-const MetaClass* MetaObject::getDynamicMetaClass() const
-{
-    return getStaticMetaClass();
+    // Get the next signal ID.
+    size_t id = 0;
+    auto looper = [&id](const MetaClass& metaClass) -> VisitorResultType
+    {
+        id += metaClass.m_signals.size();
+        return make_tuple(Continue, std::any());
+    };
+    visit(looper);
+    return id - 1;
 }
 
 } // namespace mox

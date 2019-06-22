@@ -166,9 +166,9 @@ public:
 
 /// Creates a polymorphic shared pointer.
 template <typename BaseType, typename Type, typename... Args>
-std::shared_ptr<Type> make_polymorphic_shared(Args... args)
+std::shared_ptr<Type> make_polymorphic_shared(Args&&... args)
 {
-    Type *p = new Type(args...);
+    Type *p = new Type(std::forward<Args>(args)...);
     std::shared_ptr<BaseType> baseShared(static_cast<BaseType*>(p));
     return std::static_pointer_cast<Type>(baseShared);
 }
@@ -187,6 +187,16 @@ void* address(Ret(Class::*func)(Args...) const)
     return (void*&)func;
 }
 
-typedef std::unique_lock<std::mutex> MutexLock;
+template <typename Ret, typename... Args>
+void* address(Ret(*func)(Args...))
+{
+    return (void*&)func;
+}
+
+template <typename Functor>
+void* address(Functor fn)
+{
+    return (void*&)fn;
+}
 
 #endif // GLOBALS

@@ -19,6 +19,7 @@
 #include "test_framework.h"
 #include <mox/metadata/variant.hpp>
 #include <mox/metadata/metaclass.hpp>
+#include <mox/metadata/metaobject.hpp>
 
 class TestObject : public mox::MetaObject
 {
@@ -69,11 +70,11 @@ TEST(Variants, test_convert)
 TEST(Variants, test_convert_string)
 {
     mox::Variant var(std::string("True"));
-    EXPECT_EQ(mox::MetaType::TypeId::String, var.type());
+    EXPECT_EQ(mox::Metatype::String, var.type());
     EXPECT_TRUE(mox::variant_cast<bool>(var));
 
     var = false;
-    EXPECT_EQ(mox::MetaType::TypeId::Bool, var.type());
+    EXPECT_EQ(mox::Metatype::Bool, var.type());
     EXPECT_EQ("false", mox::variant_cast<std::string>(var));
 }
 
@@ -83,14 +84,14 @@ TEST(Variants, test_metaobject)
     void* p1 = &obj;
     mox::Variant var;
 
-    mox::MetaType::registerMetaType<TestObject>();
+    mox::registerMetaType<TestObject>();
 
     var = p1;
-    EXPECT_EQ(mox::MetaType::TypeId::VoidPtr, var.type());
+    EXPECT_EQ(mox::Metatype::VoidPtr, var.type());
     EXPECT_EQ(p1, var);
 
     var = &obj;
-    EXPECT_NE(mox::MetaType::TypeId::MetaObject, var.type());
-    EXPECT_EQ(obj.getStaticMetaClass()->metaType(), var.type());
+    EXPECT_NE(mox::Metatype::MetaObject, var.type());
+    EXPECT_EQ(TestObject::StaticMetaClass::get()->metaType(), var.type());
     EXPECT_EQ(&obj, var);
 }

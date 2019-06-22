@@ -31,6 +31,21 @@ size_t Callable::Arguments::count() const
     return size();
 }
 
+const ArgumentDescriptorContainer& Callable::Arguments::descriptors() const
+{
+    return m_descriptors;
+}
+
+Callable::Arguments& Callable::Arguments::operator+=(const Arguments &other)
+{
+    insert(end(), other.begin(), other.end());
+    for (const ArgumentDescriptor& des : other.m_descriptors)
+    {
+        m_descriptors.push_back(des);
+    }
+    return *this;
+}
+
 /// String representation of the exception.
 const char* Callable::invalid_argument::what() const _NOEXCEPT
 {
@@ -52,7 +67,7 @@ const ArgumentDescriptor& Callable::returnType() const
     return m_ret;
 }
 
-MetaType::TypeId Callable::classType() const
+Metatype Callable::classType() const
 {
     return m_classType;
 }
@@ -72,9 +87,27 @@ const ArgumentDescriptor& Callable::argumentType(size_t index) const
     return m_args[index];
 }
 
+const ArgumentDescriptorContainer& Callable::descriptors() const
+{
+    return m_args;
+}
+
 std::any Callable::apply(const Arguments& args) const
 {
     return m_invoker(args);
+}
+
+const void* Callable::address() const
+{
+    return m_address;
+}
+
+void Callable::reset()
+{
+    m_address = nullptr;
+    m_args.clear();
+    m_classType = Metatype::Invalid;
+    m_type = FunctionType::Invalid;
 }
 
 

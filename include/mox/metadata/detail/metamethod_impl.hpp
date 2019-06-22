@@ -35,13 +35,13 @@ MetaMethod::MetaMethod(MetaClass& metaClass, Function fn, std::string_view name)
 template <typename Ret, class Class, typename... Arguments>
 Ret invokeMethod(Class& instance, std::string_view method, Arguments... args)
 {
-    const MetaClass* metaClass = instance.getStaticMetaClass();
+    const MetaClass* metaClass = Class::StaticMetaClass::get();
     if constexpr (std::is_base_of<MetaObject, Class>::value)
     {
-        metaClass = instance.getDynamicMetaClass();
+        metaClass = instance.getMetaClass();
     }
 
-    auto visitor = [name = std::forward<std::string_view>(method), retType = MetaType::typeId<Ret>()](const MetaMethod* method) -> bool
+    auto visitor = [name = std::forward<std::string_view>(method), retType = metaType<Ret>()](const MetaMethod* method) -> bool
     {
         return (method->name() == name) && (method->returnType().type == retType);
     };
@@ -54,7 +54,7 @@ Ret invokeMethod(Class& instance, std::string_view method, Arguments... args)
     Callable::Arguments argPack(args...);
     if (metaMethod->type() == FunctionType::Method)
     {
-        argPack.prepend(metaMethod->ownerClass().castInstance(&instance));
+        argPack.setInstance(metaMethod->ownerClass().castInstance(&instance));
     }
 
     std::any result = metaMethod->apply(argPack);

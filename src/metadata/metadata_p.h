@@ -24,12 +24,14 @@
 #include <string>
 #include <functional>
 #include <mox/metadata/metatype.hpp>
+#include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/metadata/metaclass.hpp>
+#include <mox/metadata/metaobject.hpp>
 
 namespace mox
 {
 
-typedef std::pair<MetaType::TypeId, MetaType::TypeId> ConverterKeyType;
+typedef std::pair<Metatype, Metatype> ConverterKeyType;
 
 } // namespace mox
 
@@ -56,24 +58,27 @@ public:
     ~MetaData();
     void initialize();
 
-    const MetaType& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass);
-    const MetaType* findMetaType(const std::type_info& rtti);
-    const MetaType& getMetaType(MetaType::TypeId type);
+    const MetatypeDescriptor& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass);
+    const MetatypeDescriptor* findMetaType(const std::type_info& rtti);
+    const MetatypeDescriptor& getMetaType(Metatype type);
 
     void addMetaClass(const MetaClass& metaClass);
     void removeMetaClass(const MetaClass& metaClass);
     const MetaClass* findMetaClass(std::string_view name);
+    const MetaClass* getMetaClass(Metatype metaType);
 
-    bool addConverter(MetaType::AbstractConverterSharedPtr converter, MetaType::TypeId fromType, MetaType::TypeId toType);
-    void removeConverter(MetaType::TypeId fromType, MetaType::TypeId toType);
-    MetaType::AbstractConverterSharedPtr findConverter(MetaType::TypeId fromType, MetaType::TypeId toType);
+    bool addConverter(MetatypeDescriptor::AbstractConverterSharedPtr converter, Metatype fromType, Metatype toType);
+    void removeConverter(Metatype fromType, Metatype toType);
+    MetatypeDescriptor::AbstractConverterSharedPtr findConverter(Metatype fromType, Metatype toType);
 
-    typedef std::vector<std::unique_ptr<MetaType>> MetaTypeContainer;
+    typedef std::vector<std::unique_ptr<MetatypeDescriptor>> MetaTypeContainer;
+    typedef std::unordered_map<Metatype, const MetaClass*> MetaClassTypeRegister;
     typedef std::unordered_map<std::string, const MetaClass*> MetaClassContainer;
-    typedef std::unordered_map<ConverterKeyType, MetaType::AbstractConverterSharedPtr> ConverterContainer;
+    typedef std::unordered_map<ConverterKeyType, MetatypeDescriptor::AbstractConverterSharedPtr> ConverterContainer;
 
     MetaTypeContainer metaTypes;
     ConverterContainer converters;
+    MetaClassTypeRegister metaClassRegister;
     MetaClassContainer metaClasses;
     std::mutex sync;
 };

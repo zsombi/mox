@@ -59,7 +59,7 @@ class MOX_API MetaMethod : public Callable
 public:
     /// Constructs a metamethod with the \a function identified with \a name, and attaches to the \a metaClass.
     template <typename Function>
-    MetaMethod(MetaClass& metaClass, Function fn, std::string_view name);
+    explicit MetaMethod(MetaClass& metaClass, Function fn, std::string_view name);
 
     /// Returns the name of the metamethod.
     /// \return The name of the metamethod.
@@ -78,6 +78,9 @@ public:
 private:
     MetaClass& m_ownerClass;
     std::string m_name;
+
+    MetaMethod(MetaMethod const&) = delete;
+    MetaMethod(MetaMethod&&) = delete;
 };
 
 /// Invokes a \a method on an \a instance, passing the given \a arguments. The instance must have
@@ -97,6 +100,6 @@ Ret invokeMethod(Class& instance, std::string_view method, Arguments... args);
 
 #include <mox/metadata/detail/metamethod_impl.hpp>
 
-#define META_METHOD(Class, name)  mox::MetaMethod name = {*this, &Class::name, #name}
+#define META_METHOD(Class, name)  mox::MetaMethod name{*this, &Class::name, #name}
 
 #endif // METAMETHOD_HPP
