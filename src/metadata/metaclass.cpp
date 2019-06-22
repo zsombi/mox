@@ -26,7 +26,6 @@ namespace mox
 MetaClass::MetaClass(const MetatypeDescriptor& type)
     : m_type(type)
 {
-    UNUSED(__padding);
     metadata().addMetaClass(*this);
 }
 
@@ -66,10 +65,10 @@ MetaClass::VisitorResultType MetaClass::visit(const MetaClassVisitor &visitor) c
     {
         return result;
     }
-    return visitSuperclasses(visitor);
+    return visitSuperClasses(visitor);
 }
 
-MetaClass::VisitorResultType MetaClass::visitSuperclasses(const MetaClassVisitor &visitor) const
+MetaClass::VisitorResultType MetaClass::visitSuperClasses(const MetaClassVisitor &visitor) const
 {
     UNUSED(visitor);
     return std::make_tuple(Continue, std::any());

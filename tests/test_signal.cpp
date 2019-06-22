@@ -28,10 +28,10 @@ using namespace mox;
 class SignalTestClass : public SignalHost
 {
 public:
-    decl::Signal<void()> sig1{*this, "sig1"};
-    decl::Signal<void(int)> sig2{*this, "sig2"};
-    decl::Signal<void(int, std::string)> sig3{*this, "sig3"};
-    decl::Signal<void()> sigB{*this, "sigB"};
+    SIGNAL(sig1, void());
+    SIGNAL(sig2, void(int));
+    SIGNAL(sig3, void(int, std::string));
+    SIGNAL(sigB, void());
 
     STATIC_METACLASS_BASE(SignalTestClass)
     {
@@ -45,7 +45,7 @@ public:
 class DerivedEmitter : public SignalTestClass
 {
 public:
-    decl::Signal<void(std::vector<int>)> sigV{*this, "sigV"};
+    SIGNAL(sigV, void(std::vector<int>));
 
     STATIC_METACLASS(DerivedEmitter, SignalTestClass)
     {
@@ -61,7 +61,7 @@ class  SlotHolder : public SignalHost
     int slot4Call = 0;
 
 public:
-    decl::Signal<void(int)> sig{*this, "sig"};
+    SIGNAL(sig, void(int));
 
     STATIC_METACLASS_BASE(SlotHolder)
     {

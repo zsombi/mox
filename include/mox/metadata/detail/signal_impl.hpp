@@ -193,7 +193,7 @@ auto emit(std::string_view signal, Sender& sender, Args... arguments)
     Callable::Arguments args(arguments...);
     auto tester = [&signal, &args](const MetaSignal* metaSignal) -> bool
     {
-        return (metaSignal->name() == signal) && metaSignal->invocableWith(args.descriptors());
+        return (metaSignal->name() == signal) && metaSignal->activableWith(args.descriptors());
     };
     const MetaSignal* metaSignal = metaClass->visitSignals(tester);
     if (!metaSignal)

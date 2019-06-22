@@ -32,7 +32,11 @@
 #include <mox/utils/function_traits.hpp>
 
 /// Metasignal declarator macro
-#define META_SIGNAL(name)  mox::meta::MetaSignal<decltype(name)> meta_##name{*this, #name}
+#define META_SIGNAL(name)           mox::meta::MetaSignal<decltype(name)> meta_##name{*this, #name}
+
+/// Declares a signal with \a name and \a signature. The signal must have a metasignal
+/// declared with the same name.
+#define SIGNAL(name, signature)     decl::Signal<signature> name{*this, #name}
 
 namespace mox
 {
@@ -40,14 +44,17 @@ namespace mox
 class Signal;
 class SignalHost;
 
+/// MetaSignal holds the metadata of a signal.
 class MOX_API MetaSignal
 {
 public:
+    /// Returns the name of the signal.
     std::string name() const
     {
         return m_name;
     }
 
+    /// Returns the ID of the signal.
     size_t id() const
     {
         return m_id;
@@ -59,9 +66,14 @@ public:
         return m_arguments;
     }
 
-    bool invocableWith(const ArgumentDescriptorContainer& args) const;
+    /// Tests whether the signal is activable with the \a args.
+    /// \param args The argument descriptors to test against.
+    /// \return If the signal is activable with the arguments passed, returns \e true.
+    /// Otherwise returns \e false.
+    bool activableWith(const ArgumentDescriptorContainer& args) const;
 
 protected:
+    /// Creates a metasignal.
     explicit MetaSignal(MetaClass& metaClass, std::string_view name, const ArgumentDescriptorContainer& args);
     virtual ~MetaSignal() =  default;
 
@@ -74,6 +86,7 @@ protected:
 namespace meta
 {
 
+/// MetaSignal declarator.
 template <class SignalType>
 class MetaSignal : public mox::MetaSignal
 {

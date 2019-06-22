@@ -50,26 +50,46 @@ struct is_cstring<char[N]> : public std::true_type
 };
 
 
-//namespace
-//{
-
-//template <typename T, typename U>
-//constexpr size_t offsetOf_impl(T const* t, U T::* a)
-//{
-//    return (char const*)t - (char const*)&(t->*a) >= 0 ?
-//               (char const*)t - (char const*)&(t->*a)      :
-//               (char const*)&(t->*a) - (char const*)t;
-//}
-
-//} // noname
-
-//#define offsetOf(Type, Attr)    offsetOf_impl((Type const*)nullptr, &Type::Attr)
-
 template <typename T, typename U>
 constexpr size_t offset_of(U T::*member)
 {
     return (char*)&((T*)nullptr->*member) - (char*)nullptr;
 }
+
+/// Tests whether the T class has a StaticMetaClass declared.
+template <class T>
+struct has_static_metaclass
+{
+    typedef char yes;
+    typedef long no;
+
+    template <class C>
+    static yes test(typename C::StaticMetaClass* = 0);
+    template <class C>
+    static no test(...);
+
+    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes);
+};
+
+template <typename T>
+inline constexpr bool has_static_metaclass_v = has_static_metaclass<T>::value;
+
+/// Tests whether the T class has dynamic metaclass getter.
+template <typename T>
+struct has_dynamic_metaclass
+{
+private:
+    typedef char yes_type;
+    typedef long no_type;
+    template <typename U> static yes_type test(decltype(&U::getMetaClass));
+    template <typename U> static no_type  test(...);
+public:
+    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);
+};
+
+template <typename T>
+inline constexpr bool has_dynamic_metaclass_v = has_dynamic_metaclass<T>::value;
+
 
 } // namespace mox
 

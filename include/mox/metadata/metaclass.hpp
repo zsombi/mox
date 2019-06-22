@@ -63,7 +63,7 @@ public:
     /// Visit the superclasses of a metaclass.
     /// \param visitor The visitor function.
     /// \return The visiting result.
-    virtual VisitorResultType visitSuperclasses(const MetaClassVisitor& visitor) const;
+    virtual VisitorResultType visitSuperClasses(const MetaClassVisitor& visitor) const;
 
     /// Destructor.
     virtual ~MetaClass();
@@ -122,9 +122,6 @@ protected:
 
     friend class MetaMethod;
     friend class MetaSignal;
-
-private:
-    byte __padding[3];
 };
 
 namespace decl
@@ -134,14 +131,10 @@ template <class MetaClassDecl, class BaseClass, class... SuperClasses>
 struct MetaClass : mox::MetaClass
 {
 protected:
-    std::array<const mox::MetaClass*, sizeof... (SuperClasses)> m_superMetaClasses =
-    {{
-        SuperClasses::StaticMetaClass::get()...
-    }};
-
-    VisitorResultType visitSuperclasses(const MetaClassVisitor& visitor) const override
+    VisitorResultType visitSuperClasses(const MetaClassVisitor& visitor) const override
     {
-        for (const mox::MetaClass* metaClass : m_superMetaClasses)
+        std::array<const mox::MetaClass*, sizeof... (SuperClasses)> supers = {{SuperClasses::StaticMetaClass::get()...}};
+        for (const mox::MetaClass* metaClass : supers)
         {
             VisitorResultType result = metaClass->visit(visitor);
             if (std::get<0>(result) == Abort)

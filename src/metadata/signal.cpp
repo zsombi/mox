@@ -41,7 +41,7 @@ MetaSignal::MetaSignal(MetaClass& metaClass, std::string_view name, const Argume
 {
 }
 
-bool MetaSignal::invocableWith(const ArgumentDescriptorContainer &args) const
+bool MetaSignal::activableWith(const ArgumentDescriptorContainer &args) const
 {
     auto match = std::mismatch(m_arguments.cbegin(), m_arguments.cend(), args.cbegin(), args.cend());
     return (match.first == m_arguments.cend());
@@ -204,7 +204,7 @@ int SignalHost::activate(int signal, Callable::Arguments &args)
         int activationCount = 0;
         for (const Signal* sig : m_signals)
         {
-            if (sig && sig->metaSignal().invocableWith(args.descriptors()))
+            if (sig && sig->metaSignal().activableWith(args.descriptors()))
             {
                 activationCount += const_cast<Signal*>(sig)->activate(args);
             }
