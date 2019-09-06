@@ -50,23 +50,21 @@ struct AnyToTuple
 template <typename... Args>
 Callable::Arguments::Arguments(Args... arguments)
 {
-    std::array<std::any, sizeof... (Args)> aa = {{std::any(arguments)...}};
+    std::array<Argument, sizeof... (Args)> aa = {{Argument(arguments)...}};
     insert(begin(), aa.begin(), aa.end());
-    m_descriptors = argument_descriptors<Args...>();
 }
 
 template <typename Type>
 Callable::Arguments& Callable::Arguments::add(const Type& value)
 {
-    push_back(std::any(value));
-    m_descriptors.push_back(ArgumentDescriptor::get<Type>());
+    emplace_back(Argument(value));
     return *this;
 }
 
 template <typename Type>
 Callable::Arguments& Callable::Arguments::setInstance(Type value)
 {
-    insert(begin(), std::any(value));
+    insert(begin(), Argument(value));
     return *this;
 }
 
@@ -77,7 +75,7 @@ Type Callable::Arguments::get(size_t index) const
     {
         throw Callable::invalid_argument();
     }
-    return std::any_cast<Type>(operator[](index));
+    return at(index);
 }
 
 template <typename Function>
@@ -109,19 +107,19 @@ Callable::Callable(Function fn)
         m_classType = metaType<typename function_traits<Function>::object>();
     }
 
-    m_invoker = [function = std::forward<Function>(fn)](const Arguments& args) -> std::any
+    m_invoker = [function = std::forward<Function>(fn)](const Arguments& args) -> Argument
     {
         auto args_tuple = args.toTuple<Function>();
 
-        if constexpr (std::is_void<typename function_traits<Function>::return_type>::value)
+        if constexpr (std::is_void_v<typename function_traits<Function>::return_type>)
         {
             std::apply(function, args_tuple);
-            return std::any();
+            return Argument();
         }
         else
         {
             auto ret = std::apply(function, args_tuple);
-            return std::any(ret);
+            return Argument(ret);
         }
     };
 }
@@ -135,21 +133,21 @@ template <class Ret, typename... Arguments>
 Ret invoke(const Callable& callable, Arguments... arguments)
 {
     Callable::Arguments vargs(arguments...);
-    std::any ret = callable.apply(vargs);
-    if constexpr (!std::is_void<Ret>::value)
+    Argument ret = callable.apply(vargs);
+    if constexpr (!std::is_void_v<Ret>)
     {
-        return std::any_cast<Ret>(ret);
+        return ret;
     }
 }
 
 template <class Ret, class Class, typename... Arguments>
-typename std::enable_if<std::is_class<Class>::value, Ret>::type invoke(const Callable& callable, Class& instance, Arguments... arguments)
+std::enable_if_t<std::is_class<Class>::value, Ret> invoke(const Callable& callable, Class& instance, Arguments... arguments)
 {
     Callable::Arguments vargs(arguments...);
-    std::any ret = callable.apply(instance, vargs);
-    if constexpr (!std::is_void<Ret>::value)
+    Argument ret = callable.apply(instance, vargs);
+    if constexpr (!std::is_void_v<Ret>)
     {
-        return std::any_cast<Ret>(ret);
+        return ret;
     }
 }
 } // namespace mox

@@ -54,14 +54,14 @@ Ret invokeMethod(Class& instance, std::string_view method, Arguments... args)
     Callable::Arguments argPack(args...);
     if (metaMethod->type() == FunctionType::Method)
     {
-        argPack.setInstance(metaMethod->ownerClass().castInstance(&instance));
+        argPack.setInstance(&instance);
     }
 
-    std::any result = metaMethod->apply(argPack);
+    Argument result = metaMethod->apply(argPack);
 
     if constexpr (!std::is_void<Ret>::value)
     {
-        return std::any_cast<Ret>(result);
+        return result;
     }
 }
 

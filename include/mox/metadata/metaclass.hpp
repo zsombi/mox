@@ -19,10 +19,10 @@
 #ifndef METACLASS_HPP
 #define METACLASS_HPP
 
-#include <any>
 #include <vector>
 
 #include <mox/utils/globals.hpp>
+#include <mox/metadata/argument.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 
 namespace mox
@@ -47,7 +47,7 @@ public:
         Abort
     };
 
-    typedef std::tuple<VisitorResult, std::any> VisitorResultType;
+    typedef std::tuple<VisitorResult, ArgumentBase> VisitorResultType;
     /// Method visitor function.
     typedef std::function<bool(const MetaMethod*)> MethodVisitor;
     /// Metasignal visitor function.
@@ -101,14 +101,20 @@ public:
     /// Check whether the MetaClass is the class of the passed MetaObject.
     virtual bool isClassOf(const MetaObject&) const = 0;
 
-    /// Casts the instance to a std::any using the class type reflected by the metaclass.
-    /// \param instance The instance to convert.
-    /// \return The std::any holding the value casted using the class type reflected.
-    virtual std::any castInstance(void* instance) const = 0;
-
 protected:
     typedef std::vector<const MetaMethod*> MetaMethodContainer;
     typedef std::vector<const MetaSignal*> MetaSignalContainer;
+
+    struct MetaclassConverter : MetatypeConverter
+    {
+        const Metatype m_from;
+        const Metatype m_to;
+
+        explicit MetaclassConverter(Metatype from, Metatype to, ConverterFunction function)
+            : MetatypeConverter(function), m_from(from), m_to(to)
+        {
+        }
+    };
 
     /// Creates a metaclass with a registered MetatypeDescriptor identifier.
     explicit MetaClass(const MetatypeDescriptor& type);
@@ -134,7 +140,7 @@ protected:
     VisitorResultType visitSuperClasses(const MetaClassVisitor& visitor) const override
     {
         std::array<const mox::MetaClass*, sizeof... (SuperClasses)> supers = {{SuperClasses::StaticMetaClass::get()...}};
-        for (const mox::MetaClass* metaClass : supers)
+        for (auto metaClass : supers)
         {
             VisitorResultType result = metaClass->visit(visitor);
             if (std::get<0>(result) == Abort)
@@ -143,10 +149,26 @@ protected:
             }
         }
 
-        return std::make_tuple(Continue, std::any());
+        return std::make_tuple(Continue, ArgumentBase());
     }
 
-public:
+    template <typename From, typename To>
+    struct Caster : MetaclassConverter
+    {
+        static ArgumentBase convert(const MetatypeConverter&, const void* value)
+        {
+            auto src = const_cast<From*>(reinterpret_cast<const From*>(value));
+            auto dst = dynamic_cast<To*>(src);
+            return dst;
+        }
+
+        explicit Caster()
+            : MetaclassConverter(mox::metaType<From*>(), mox::metaType<To*>(), convert)
+        {
+        }
+    };
+
+public:    
     static const mox::MetaClass* get()
     {
         static MetaClassDecl metaClass;
@@ -156,6 +178,15 @@ public:
     explicit MetaClass()
         : mox::MetaClass(metatypeDescriptor<BaseClass>())
     {
+        std::array<MetaclassConverter*, 2 * sizeof...(SuperClasses)> casters =
+        {{
+            new Caster<SuperClasses, BaseClass>()...,
+            new Caster<BaseClass, SuperClasses>()...
+        }};
+        for (auto& caster : casters)
+        {
+            registrar::registerConverter(std::unique_ptr<MetaclassConverter>(caster), caster->m_from, caster->m_to);
+        }
     }
 
     bool isAbstract() const override
@@ -167,11 +198,6 @@ public:
     bool isClassOf(const MetaObject& metaObject) const override
     {
         return dynamic_cast<const BaseClass*>(&metaObject) != nullptr;
-    }
-
-    std::any castInstance(void* instance) const override
-    {
-        return reinterpret_cast<BaseClass*>(instance);
     }
 };
 

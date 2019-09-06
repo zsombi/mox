@@ -25,8 +25,9 @@ set(SOURCES
     test_framework.h
     test_main.cpp
     test_metatypes.cpp
+    test_converters.cpp
+    test_argument.cpp
     test_metaclass.cpp
-    test_variant.cpp
     test_callables.cpp
     test_metamethod.cpp
     test_signal.cpp

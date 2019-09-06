@@ -29,6 +29,8 @@ class TestMixin
 public:
     bool invoked = false;
 
+    virtual ~TestMixin() = default;
+
     STATIC_METACLASS_BASE(TestMixin)
     {
         META_METHOD(TestMixin, testFunc1);
@@ -56,6 +58,8 @@ public:
 class TestSecond
 {
 public:
+
+    virtual ~TestSecond() = default;
 
     STATIC_METACLASS_BASE(TestSecond)
     {
@@ -149,12 +153,16 @@ TEST_F(MetaMethods, test_mixin_invoke_lambda)
     EXPECT_TRUE(mixin.invoked);
 }
 
-TEST_F(MetaMethods, test_mixin_method_defined_in_superclass)
+TEST_F(MetaMethods, test_mixin_metamethod)
 {
     Mixin mixin;
     invokeMethod<void>(mixin, "lambda", static_cast<TestMixin*>(&mixin));
     EXPECT_TRUE(mixin.invoked);
+}
 
+TEST_F(MetaMethods, test_mixin_method_defined_in_superclass)
+{
+    Mixin mixin;
     EXPECT_EQ(1234321, invokeMethod<int>(mixin, "testFunc2"));
 }
 
@@ -162,4 +170,11 @@ TEST_F(MetaMethods, test_mixin_same_name_methods)
 {
     Mixin mixin;
     EXPECT_EQ(987, invokeMethod<int>(mixin, "testFunc1"));
+}
+
+TEST_F(MetaMethods, test_invoked_with_convertible_arguments)
+{
+    Mixin mixin;
+    EXPECT_EQ(987, invokeMethod<int>(mixin, "staticFunc", std::string("987")));
+    EXPECT_EQ(123, invokeMethod<int>(mixin, "staticFunc", 123.2f));
 }

@@ -19,11 +19,11 @@
 #ifndef CALLABLE_HPP
 #define CALLABLE_HPP
 
-#include <any>
 #include <functional>
 #include <tuple>
 #include <type_traits>
 
+#include <mox/metadata/argument.hpp>
 #include <mox/utils/function_traits.hpp>
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metatype.hpp>
@@ -51,10 +51,10 @@ public:
     };
 
     /// Argument value container.
-    struct MOX_API Arguments : protected std::vector<std::any>
+    struct MOX_API Arguments : protected std::vector<Argument>
     {
         /// Argument base type.
-        typedef std::vector<std::any> ArgumentsBase;
+        typedef std::vector<Argument> ArgumentsBase;
 
         Arguments() = default;
         Arguments(const Arguments&) = default;
@@ -93,16 +93,13 @@ public:
         auto toTuple() const;
 
         /// Returns the argument descriptors defining the arguments.
-        const ArgumentDescriptorContainer& descriptors() const;
+        const ArgumentDescriptorContainer descriptors() const;
 
         Arguments& operator +=(const Arguments& other);
-
-    private:
-        ArgumentDescriptorContainer m_descriptors;
     };
 
     /// Invoker function type.
-    typedef std::function<std::any(Arguments const&)> InvokerFunction;
+    typedef std::function<Argument(Arguments const&)> InvokerFunction;
 
     /// Creates a callable for a function, method or functor.
     template <typename Function>
@@ -143,14 +140,14 @@ public:
     /// \param args The arguments to apply. The collection must have at least as many arguments as many
     /// formal parameters are defined for the callable. When the callable is a method, the first argument
     /// must be the instance of the class the method belongs to.
-    /// \return The return value of the callable, or an invalid \c std::any if the callable is a void type.
+    /// \return The return value of the callable, or an invalid \l Argument if the callable is a void type.
     /// \throws Callable::invalid_argument if the argument count is less than the defined argument count
     /// for the callable.
-    /// \throws std::bad_any_cast if the arguments mismatch.
-    std::any apply(const Arguments& args) const;
+    /// \throws bad_conversion if the arguments mismatch.
+    Argument apply(const Arguments& args) const;
 
     template <class Class>
-    std::any apply(Class& instance, const Arguments& args) const
+    Argument apply(Class& instance, const Arguments& args) const
     {
         Arguments thisArgs(args);
         thisArgs.setInstance(&instance);
@@ -192,7 +189,7 @@ Ret invoke(const Callable& callable, Arguments... arguments);
 /// \param arguments The arguments to pass to the callable.
 /// \return The return value of the callable, undefined if the callable has no return value.
 template <class Ret, class Class, typename... Arguments>
-typename std::enable_if<std::is_class<Class>::value, Ret>::type invoke(const Callable& callable, Class& instance, Arguments... arguments);
+std::enable_if_t<std::is_class<Class>::value, Ret> invoke(const Callable& callable, Class& instance, Arguments... arguments);
 
 /// Returns \e true if the \a arguments are compatible with the \a parameters
 /// \return If the \a parameters size is at least the size of the \a arguments, and the descriptors

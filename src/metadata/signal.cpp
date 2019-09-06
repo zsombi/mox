@@ -69,7 +69,7 @@ bool Signal::Connection::disconnect()
     return true;
 }
 
-bool Signal::Connection::compare(std::any receiver, const void* funcAddress) const
+bool Signal::Connection::compare(Argument receiver, const void* funcAddress) const
 {
     UNUSED(receiver);
     UNUSED(funcAddress);
@@ -84,7 +84,7 @@ FunctionConnection::FunctionConnection(Signal& signal, Callable&& callable)
     m_passConnectionObject = !m_slot.descriptors().empty() && m_slot.descriptors()[0].type == metaType<Signal::ConnectionSharedPtr>();
 }
 
-bool FunctionConnection::compare(std::any, const void *funcAddress) const
+bool FunctionConnection::compare(Argument, const void *funcAddress) const
 {
     return (m_slot.address() == funcAddress);
 }
@@ -106,15 +106,15 @@ void FunctionConnection::reset()
 }
 
 
-MethodConnection::MethodConnection(Signal& signal, std::any receiver, Callable&& callable)
+MethodConnection::MethodConnection(Signal& signal, Argument receiver, Callable&& callable)
     : FunctionConnection(signal, std::forward<Callable>(callable))
     , m_receiver(receiver)
 {
 }
 
-bool MethodConnection::compare(std::any receiver, const void *funcAddress) const
+bool MethodConnection::compare(Argument receiver, const void *funcAddress) const
 {
-    return (m_receiver.type() == receiver.type()) && FunctionConnection::compare(receiver, funcAddress);
+    return (m_receiver.metaType() == receiver.metaType()) && FunctionConnection::compare(receiver, funcAddress);
 }
 
 void MethodConnection::activate(Callable::Arguments& args)
@@ -137,7 +137,7 @@ void MethodConnection::reset()
 }
 
 
-MetaMethodConnection::MetaMethodConnection(Signal& signal, std::any receiver, const MetaMethod& slot)
+MetaMethodConnection::MetaMethodConnection(Signal& signal, Argument receiver, const MetaMethod& slot)
     : Signal::Connection(signal)
     , m_receiver(receiver)
     , m_slot(&slot)
@@ -145,9 +145,9 @@ MetaMethodConnection::MetaMethodConnection(Signal& signal, std::any receiver, co
     m_passConnectionObject = !m_slot->descriptors().empty() && m_slot->descriptors()[0].type == metaType<Signal::ConnectionSharedPtr>();
 }
 
-bool MetaMethodConnection::compare(std::any receiver, const void *funcAddress) const
+bool MetaMethodConnection::compare(Argument receiver, const void *funcAddress) const
 {
-    return (m_receiver.type() == receiver.type()) && (m_slot->address() == funcAddress);
+    return (m_receiver.metaType() == receiver.metaType()) && (m_slot->address() == funcAddress);
 }
 
 void MetaMethodConnection::activate(Callable::Arguments& args)
@@ -292,7 +292,7 @@ bool Signal::isValid() const
     return m_metaSignal.id() != INVALID_SIGNAL;
 }
 
-Signal::ConnectionSharedPtr Signal::connect(std::any receiver, const MetaMethod& metaMethod)
+Signal::ConnectionSharedPtr Signal::connect(Argument receiver, const MetaMethod& metaMethod)
 {
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MetaMethodConnection>(*this, receiver, metaMethod);
     addConnection(connection);
@@ -306,7 +306,7 @@ Signal::ConnectionSharedPtr Signal::connect(Callable&& lambda)
     return connection;
 }
 
-Signal::ConnectionSharedPtr Signal::connect(std::any receiver, Callable&& slot)
+Signal::ConnectionSharedPtr Signal::connect(Argument receiver, Callable&& slot)
 {
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MethodConnection>(*this, receiver, std::forward<Callable>(slot));
     addConnection(connection);
@@ -348,7 +348,7 @@ bool Signal::disconnect(const Signal& signal)
     return false;
 }
 
-bool Signal::disconnectImpl(std::any receiver, const void* callableAddress)
+bool Signal::disconnectImpl(Argument receiver, const void* callableAddress)
 {
     ScopeLock lock(m_host.m_lock);
     ConnectionList::iterator it, end = m_connections.end();
@@ -396,6 +396,16 @@ int Signal::activate(Callable::Arguments &args)
     return count;
 }
 
+// Inspired from a possible implementation of std::mismatch in cppreference.com
+template<class InputIt1, class InputIt2>
+std::pair<InputIt1, InputIt2> mismatch(InputIt1 first1, InputIt1 last1, InputIt2 first2, InputIt2 last2)
+{
+    while (first1 != last1 && first2 != last2 && first2->invocableWith(*first1))
+    {
+        ++first1, ++first2;
+    }
+    return std::make_pair(first1, first2);
+}
 
 bool isCallableWith(const Callable& callable, const ArgumentDescriptorContainer& parameters)
 {
@@ -406,7 +416,7 @@ bool isCallableWith(const Callable& callable, const ArgumentDescriptorContainer&
         ++start;
     }
 
-    auto match = std::mismatch(start, arguments.cend(), parameters.cbegin(), parameters.cend());
+    auto match = mox::mismatch(start, arguments.cend(), parameters.cbegin(), parameters.cend());
     return (match.first == arguments.cend());
 }
 

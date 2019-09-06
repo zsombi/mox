@@ -30,43 +30,6 @@
 namespace mox
 {
 
-/// Defines the type of an argument. Callable holds the argument descriptors for the return type aswell
-/// as for the callable arguments.
-struct MOX_API ArgumentDescriptor
-{
-    /// Tye metatype of the argument.
-    const Metatype type = Metatype::Invalid;
-    /// \e true if the argument is a pointer, \e false if not.
-    const bool isPointer = false;
-    /// \e true if the argument is a reference, \e false if not.
-    const bool isReference = false;
-    /// \e true if the argument is a const, \e false if not.
-    const bool isConst = false;
-
-    /// Constructor.
-    ArgumentDescriptor() = default;
-    ArgumentDescriptor(Metatype type, bool ptr, bool ref, bool c)
-        : type(type)
-        , isPointer(ptr)
-        , isReference(ref)
-        , isConst(c)
-    {
-    }
-
-    /// Returns the argument descriptor for the \e Type.
-    /// \return The argument descriptor for the \e Type.
-    template <typename Type>
-    static ArgumentDescriptor&& get()
-    {
-        return std::move(ArgumentDescriptor{
-                             metaType<Type>(),
-                             std::is_pointer<Type>(),
-                             std::is_reference<Type>(),
-                             std::is_const<Type>()
-                         });
-    }
-};
-
 typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
 
 template <typename... Args>
@@ -75,10 +38,6 @@ ArgumentDescriptorContainer argument_descriptors()
     const std::array<ArgumentDescriptor, sizeof... (Args)> aa = {{ ArgumentDescriptor::get<Args>()... }};
     return ArgumentDescriptorContainer(aa.begin(), aa.end());
 }
-
-bool operator ==(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2);
-bool operator !=(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2);
-
 
 enum FunctionType
 {

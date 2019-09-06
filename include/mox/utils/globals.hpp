@@ -25,6 +25,18 @@
 #include <bitset>
 #include <cstddef>  // std::byte
 
+// Standard integer types
+#include <inttypes.h>
+
+typedef int8_t Int8;
+typedef uint8_t UInt8;
+typedef int16_t Int16;
+typedef uint16_t UInt16;
+typedef int32_t Int32;
+typedef uint32_t UInt32;
+typedef int64_t Int64;
+typedef uint64_t UInt64;
+
 // OSX and Linux use the same declaration mode for inport and export
 #define DECL_EXPORT         __attribute__((visibility("default")))
 #define DECL_IMPORT         __attribute__((visibility("default")))

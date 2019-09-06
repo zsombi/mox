@@ -189,7 +189,7 @@ TEST_F(SignalTest, test_connect_method)
 
     EXPECT_NOT_NULL(host.sig1.connect(slots, &SlotHolder::method1));
     EXPECT_NOT_NULL(host.sig2.connect(slots, &SlotHolder::method1));
-    EXPECT_NULL(host.sig2.connect(slots, &SlotHolder::method4));
+    EXPECT_NOT_NULL(host.sig2.connect(slots, &SlotHolder::method4));
 }
 
 TEST_F(SignalTest, test_connect_metamethod)
@@ -201,12 +201,12 @@ TEST_F(SignalTest, test_connect_metamethod)
     EXPECT_NOT_NULL(host.sig2.connect(slots, "method1"));
     EXPECT_NOT_NULL(host.sig2.connect(slots, "method2"));
     EXPECT_NULL(host.sig2.connect(slots, "method3"));
-    EXPECT_NULL(host.sig2.connect(slots, "method4"));
+    EXPECT_NOT_NULL(host.sig2.connect(slots, "method4"));
 
     EXPECT_NOT_NULL(host.sig3.connect(slots, "method1"));
     EXPECT_NOT_NULL(host.sig3.connect(slots, "method2"));
     EXPECT_NOT_NULL(host.sig3.connect(slots, "method3"));
-    EXPECT_NULL(host.sig3.connect(slots, "method4"));
+    EXPECT_NOT_NULL(host.sig3.connect(slots, "method4"));
 }
 
 TEST_F(SignalTest, test_connect_function)
@@ -240,8 +240,8 @@ TEST_F(SignalTest, test_connect_lambda)
 
     auto lambda3 = [](float) {};
     EXPECT_NULL(host.sig1.connect(lambda3));
-    EXPECT_NULL(host.sig2.connect(lambda3));
-    EXPECT_NULL(host.sig3.connect(lambda3));
+    EXPECT_NOT_NULL(host.sig3.connect(lambda3));
+    EXPECT_NOT_NULL(host.sig2.connect(lambda3));
 
     auto lambda4 = [](int, std::string) {};
     EXPECT_NULL(host.sig1.connect(lambda4));
@@ -518,10 +518,10 @@ TEST_F(SignalTest, test_emit)
     SignalTestClass sender;
 
     EXPECT_EQ(0, emit("sig1", sender));
-    EXPECT_EQ(0, emit("sig1", sender, 10, "bla"));
+    EXPECT_EQ(0, emit("sig1", sender, 10, std::string("bla")));
     EXPECT_EQ(-1, emit("sig2", sender));
     EXPECT_EQ(0, emit("sig2", sender, 10));
-    EXPECT_EQ(0, emit("sig2", sender, 10, "bla"));
+    EXPECT_EQ(0, emit("sig2", sender, 10, std::string("bla")));
 }
 
 TEST_F(SignalTest, test_proper_signal_ids)

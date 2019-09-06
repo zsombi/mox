@@ -24,25 +24,10 @@
 
 #include <mox/utils/function_traits.hpp>
 
+#include <sstream>
+
 namespace mox
 {
-
-bool operator ==(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2)
-{
-    return arg1.type == arg2.type &&
-            arg1.isPointer == arg2.isPointer &&
-            arg1.isReference == arg2.isReference &&
-            arg1.isConst == arg2.isConst;
-}
-
-bool operator !=(const ArgumentDescriptor& arg1, const ArgumentDescriptor& arg2)
-{
-    return arg1.type != arg2.type ||
-            arg1.isPointer != arg2.isPointer ||
-            arg1.isReference != arg2.isReference ||
-            arg1.isConst != arg2.isConst;
-}
-
 
 namespace registrar
 {
@@ -59,32 +44,53 @@ Metatype findMetatype(const std::type_info& rtti)
     return descriptor->id();
 }
 
-Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass)
+Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name)
 {
     const MetatypeDescriptor* type = findMetatypeDescriptor(rtti);
     ASSERT(!type, std::string("Metatype already registered: ") + rtti.name());
     if (!type)
     {
-        const MetatypeDescriptor& newType = metadata().addMetaType(nullptr, rtti, isEnum, isClass);
+        const MetatypeDescriptor& newType = metadata().addMetaType(name.data(), rtti, isEnum, isClass, isPointer);
         ASSERT(newType.id() >= Metatype::UserType, "Type not registered in the user space.");
         type = &newType;
     }
     return type->id();
 }
 
+bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType)
+{
+    MetatypeDescriptor& descriptor = metadata().getMetaType(fromType);
+    return descriptor.addConverter(std::forward<MetatypeConverterPtr>(converter), toType);
+}
+
+MetatypeConverter* findConverter(Metatype from, Metatype to)
+{
+    MetatypeDescriptor& descriptor = metadata().getMetaType(from);
+    return descriptor.findConverterTo(to);
+}
+
 } // registrar
 
+bool ArgumentDescriptor::invocableWith(const ArgumentDescriptor& other) const
+{
+    return ((other.type == type) || registrar::findConverter(other.type, type)) &&
+            other.isReference == isReference &&
+            other.isConst == isConst;
+}
 
-MetatypeDescriptor::MetatypeDescriptor(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass)
+
+
+MetatypeDescriptor::MetatypeDescriptor(std::string_view name, int id, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer)
     : m_rtti(&rtti)
     , m_id(Metatype(id))
     , m_isEnum(isEnum)
     , m_isClass(isClass)
+    , m_isPointer(isPointer)
 {
-    if (name)
+    if (!name.empty())
     {
         // Use the name to override RTTI name.
-        m_name = strdup(name);
+        m_name = strdup(name.data());
     }
     else
     {
@@ -170,31 +176,34 @@ bool MetatypeDescriptor::isClass() const
     return m_isClass;
 }
 
+bool MetatypeDescriptor::isPointer() const
+{
+    return m_isPointer;
+}
+
 const std::type_info* MetatypeDescriptor::rtti() const
 {
     return m_rtti;
 }
 
-//----------------------------
-// Converters
-bool MetatypeDescriptor::registerConverterFunction(AbstractConverterSharedPtr converter, Metatype fromType, Metatype toType)
+MetatypeConverter* MetatypeDescriptor::findConverterTo(Metatype target)
 {
-    if (!metadata().addConverter(converter, fromType, toType))
+    ConverterMap::iterator i = m_converters.find(target);
+    if (i == m_converters.end())
+        return nullptr;
+    else
+        return i->second.get();
+}
+
+bool MetatypeDescriptor::addConverter(MetatypeConverterPtr&& converter, Metatype target)
+{
+    if (m_converters.find(target) == m_converters.end())
     {
-        // LOG a warning.
-        return false;
+        m_converters.insert(std::make_pair(target, std::forward<MetatypeConverterPtr>(converter)));
+        return true;
     }
-    return true;
+    return false;
 }
 
-void MetatypeDescriptor::unregisterConverterFunction(Metatype fromType, Metatype toType)
-{
-    metadata().removeConverter(fromType, toType);
-}
-
-MetatypeDescriptor::AbstractConverterSharedPtr MetatypeDescriptor::findConverter(Metatype from, Metatype to)
-{
-    return metadata().findConverter(from, to);
-}
 
 }// namespace mox

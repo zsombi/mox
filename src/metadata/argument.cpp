@@ -16,43 +16,38 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#ifndef STRING_HPP
-#define STRING_HPP
+#include "metadata_p.h"
 
-#include <string>
-
-#ifdef ANDROID
-
-#include <sstream>
-
-namespace std
-{
-
-template<typename T>
-string to_string(T const& value)
-{
-    stringstream stream;
-    stream << value;
-    return stream.str();
-}
-
-} // namespace std
-
-#endif // ANDROID
+#include <mox/metadata/argument.hpp>
 
 namespace mox
 {
 
-inline std::string string_tolower(std::string data)
+Argument::Argument(const Argument& other)
+    : m_data(other.m_data)
 {
-    auto predicate = [] (unsigned char c)
-    {
-        return tolower(c);
-    };
-    std::transform(data.begin(), data.end(), data.begin(), predicate);
-    return data;
 }
 
-} //namespace mox
+bool Argument::isValid() const
+{
+    return m_data && m_data->m_value.has_value();
+}
 
-#endif // STRING_HPP
+void Argument::reset()
+{
+    m_data.reset();
+}
+
+Metatype Argument::metaType() const
+{
+    ASSERT(m_data, "Argument is not initialized.");
+    return m_data->m_typeDescriptor.type;
+}
+
+const ArgumentDescriptor& Argument::descriptor() const
+{
+    ASSERT(m_data, "Argument is not initialized.");
+    return m_data->m_typeDescriptor;
+}
+
+} // namespace mox

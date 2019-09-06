@@ -25,31 +25,12 @@
 #include <functional>
 #include <mox/metadata/metatype.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
+#include <mox/metadata/argument.hpp>
 #include <mox/metadata/metaclass.hpp>
 #include <mox/metadata/metaobject.hpp>
 
 namespace mox
 {
-
-typedef std::pair<Metatype, Metatype> ConverterKeyType;
-
-} // namespace mox
-
-namespace std
-{
-
-template<>
-struct hash<mox::ConverterKeyType>
-{
-    std::size_t operator()(const mox::ConverterKeyType& arg) const
-    {
-        return hash<int>()(int(arg.first)) ^ (hash<int>()(int(arg.second)) << 1);
-    }
-};
-
-} // namespace std
-
-namespace mox {
 
 class MetaData
 {
@@ -58,32 +39,28 @@ public:
     ~MetaData();
     void initialize();
 
-    const MetatypeDescriptor& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass);
+    const MetatypeDescriptor& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer);
     const MetatypeDescriptor* findMetaType(const std::type_info& rtti);
-    const MetatypeDescriptor& getMetaType(Metatype type);
+    MetatypeDescriptor& getMetaType(Metatype type);
 
     void addMetaClass(const MetaClass& metaClass);
     void removeMetaClass(const MetaClass& metaClass);
     const MetaClass* findMetaClass(std::string_view name);
     const MetaClass* getMetaClass(Metatype metaType);
 
-    bool addConverter(MetatypeDescriptor::AbstractConverterSharedPtr converter, Metatype fromType, Metatype toType);
-    void removeConverter(Metatype fromType, Metatype toType);
-    MetatypeDescriptor::AbstractConverterSharedPtr findConverter(Metatype fromType, Metatype toType);
-
     typedef std::vector<std::unique_ptr<MetatypeDescriptor>> MetaTypeContainer;
     typedef std::unordered_map<Metatype, const MetaClass*> MetaClassTypeRegister;
     typedef std::unordered_map<std::string, const MetaClass*> MetaClassContainer;
-    typedef std::unordered_map<ConverterKeyType, MetatypeDescriptor::AbstractConverterSharedPtr> ConverterContainer;
 
     MetaTypeContainer metaTypes;
-    ConverterContainer converters;
     MetaClassTypeRegister metaClassRegister;
     MetaClassContainer metaClasses;
     std::mutex sync;
 };
 
 MetaData& metadata();
+
+void registerConverters();
 
 } // namespace mox
 

@@ -171,13 +171,13 @@ TEST_F(Types, test_composit_types)
     const MetatypeDescriptor* type;
 
     type = &metatypeDescriptor<int*>();
-    EXPECT_EQ(Metatype::Int, type->id());
+    EXPECT_EQ(Metatype::IntPtr, type->id());
 
     type = &metatypeDescriptor<int&>();
     EXPECT_EQ(Metatype::Int, type->id());
 
-    type = &metatypeDescriptor<const int*>();
-    EXPECT_EQ(Metatype::Int, type->id());
+    type = &metatypeDescriptor<int* const>();
+    EXPECT_EQ(Metatype::IntPtr, type->id());
 
     type = &metatypeDescriptor<const int&>();
     EXPECT_EQ(Metatype::Int, type->id());
@@ -194,5 +194,5 @@ TEST_F(Types, test_user_types)
     type = &metatypeDescriptor<UserClass>();
     EXPECT_GE(type->id(), Metatype::UserType);
 
-    EXPECT_EQ(metaType<UserClass>(), metaType<UserClass*>());
+    EXPECT_NOT_EQ(metaType<UserClass>(), metaType<UserClass*>());
 }

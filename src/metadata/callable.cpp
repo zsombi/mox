@@ -31,18 +31,19 @@ size_t Callable::Arguments::count() const
     return size();
 }
 
-const ArgumentDescriptorContainer& Callable::Arguments::descriptors() const
+const ArgumentDescriptorContainer Callable::Arguments::descriptors() const
 {
-    return m_descriptors;
+    ArgumentDescriptorContainer container;
+    for (auto& arg : *this)
+    {
+        container.push_back(arg.descriptor());
+    }
+    return container;
 }
 
 Callable::Arguments& Callable::Arguments::operator+=(const Arguments &other)
 {
     insert(end(), other.begin(), other.end());
-    for (const ArgumentDescriptor& des : other.m_descriptors)
-    {
-        m_descriptors.push_back(des);
-    }
     return *this;
 }
 
@@ -92,7 +93,7 @@ const ArgumentDescriptorContainer& Callable::descriptors() const
     return m_args;
 }
 
-std::any Callable::apply(const Arguments& args) const
+Argument Callable::apply(const Arguments& args) const
 {
     return m_invoker(args);
 }

@@ -24,6 +24,7 @@
 #include <functional>
 #include <typeindex>
 #include <typeinfo>
+#include <unordered_map>
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metatype.hpp>
 
@@ -78,78 +79,32 @@ public:
     /// Returns \e true if the type held by this MetatypeDescriptor is a class.
     bool isClass() const;
 
+    /// Return \e true if the type held by this MetatypeDescriptor is a pointer.
+    bool isPointer() const;
+
     /// Returns the RTTI (Run-time Type Information) of the MetatypeDescriptor.
     const std::type_info* rtti() const;
 
-    /// Converters
-    /// \{
-    struct AbstractConverter : public std::enable_shared_from_this<AbstractConverter>
-    {
-        typedef bool (*ConverterFunction)(const AbstractConverter& /*converter*/, const void*/*from*/, void* /*to*/);
-        explicit AbstractConverter(ConverterFunction function = nullptr) :
-            m_convert(function)
-        {
-        }
-        DISABLE_COPY(AbstractConverter)
-        ConverterFunction m_convert;
-    };
-    typedef std::shared_ptr<AbstractConverter> AbstractConverterSharedPtr;
+    MetatypeConverter* findConverterTo(Metatype target);
 
-    template <typename From, typename To, typename Function>
-    struct ConverterFunctor : public MetatypeDescriptor::AbstractConverter
-    {
-        Function m_function;
-
-        explicit ConverterFunctor(Function function) :
-            MetatypeDescriptor::AbstractConverter(convert),
-            m_function(function)
-        {
-        }
-
-        static bool convert(const MetatypeDescriptor::AbstractConverter& converter, const void* from, void* to)
-        {
-            const From* in = reinterpret_cast<const From*>(from);
-            To* out = reinterpret_cast<To*>(to);
-            const ConverterFunctor& that = reinterpret_cast<const ConverterFunctor&>(converter);
-            *out = that.m_function(*in);
-            return true;
-        }
-    };
-
-    template <typename From, typename To, typename Function>
-    static bool registerConverter(Function function)
-    {
-        const Metatype fromType = metaType<From>();
-        const Metatype toType = metaType<To>();
-        AbstractConverterSharedPtr converter = make_polymorphic_shared<AbstractConverter, ConverterFunctor<From, To, Function> >(function);
-        return registerConverterFunction(converter, fromType, toType);
-    }
-    /// Look for the converter that converts a type between \a from and \a to.
-    /// \param from The source type.
-    /// \param to The destination type.
-    /// \return The converter found, nullptr if there is no converter registered for the type.
-    static AbstractConverterSharedPtr findConverter(Metatype from, Metatype to);
-    /// \}
+    bool addConverter(MetatypeConverterPtr&& converter, Metatype target);
 
 private:
     /// MetatypeDescriptor constructor.
-    explicit MetatypeDescriptor(const char* name, int id, const std::type_info& rtti, bool isEnum, bool isClass);
+    explicit MetatypeDescriptor(std::string_view name, int id, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer);
 
-    /// Registers a \a converter that converts a value from \a fromType to \a toType.
-    static bool registerConverterFunction(AbstractConverterSharedPtr converter, Metatype fromType, Metatype toType);
-    /// Removes a converter between \a fromType and \a toType that is registered for the \a forType.
-    static void unregisterConverterFunction(Metatype fromType, Metatype toType);
+    typedef std::unordered_map<Metatype, MetatypeConverterPtr> ConverterMap;
 
+    ConverterMap m_converters;
     char* m_name{nullptr};
     const std::type_info* m_rtti{nullptr};
     Metatype m_id{Metatype::Invalid};
     bool m_isEnum:1;
     bool m_isClass:1;
+    bool m_isPointer:1;
 
     friend class MetaData;
     friend const MetatypeDescriptor* tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass);
-    template <typename Type>
-    friend Metatype registerMetaType();
 
     DISABLE_COPY(MetatypeDescriptor)
     DISABLE_MOVE(MetatypeDescriptor)

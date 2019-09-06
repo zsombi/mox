@@ -20,6 +20,7 @@
 #define TYPE_TRAITS_HPP
 
 #include <type_traits>
+#include <mox/utils/type_traits/enum_operators.hpp>
 
 namespace mox
 {
@@ -90,6 +91,23 @@ public:
 template <typename T>
 inline constexpr bool has_dynamic_metaclass_v = has_dynamic_metaclass<T>::value;
 
+/// Tests whether the T class has a Converter declared.
+template <class T>
+struct has_converter
+{
+    typedef char yes;
+    typedef long no;
+
+    template <class C>
+    static yes test(typename C::Converter* = 0);
+    template <class C>
+    static no test(...);
+
+    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes);
+};
+
+template <typename T>
+inline constexpr bool has_converter_v = has_converter<T>::value;
 
 } // namespace mox
 

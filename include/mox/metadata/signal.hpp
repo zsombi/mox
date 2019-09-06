@@ -135,7 +135,7 @@ public:
         /// \param funcAddress The function address to test the connection against.
         /// \return If the connection holds the receiver and the function address passed as argument,
         /// returns \e true. Otherwise \e false.
-        virtual bool compare(std::any receiver, const void* funcAddress) const;
+        virtual bool compare(Argument receiver, const void* funcAddress) const;
 
     protected:
         /// Constructs a connection attached to the \a signal.
@@ -195,7 +195,7 @@ public:
     /// \param receiver The receiver hosting the metamethod.
     /// \param metaMethod The metamethod to connect to.
     /// \return The connection shared object.
-    ConnectionSharedPtr connect(std::any receiver, const MetaMethod& metaMethod);
+    ConnectionSharedPtr connect(Argument receiver, const MetaMethod& metaMethod);
 
     /// Creates a connection between this signal and a receiver \a signal.
     /// \param signal The receiver signal connected to this signal.
@@ -217,7 +217,7 @@ public:
     /// \return If the connection succeeds, returns the shared pointer to the connection. If the connection
     /// fails, returns \e nullptr.
     template <typename SlotFunction>
-    typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, ConnectionSharedPtr>::type
+    std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, ConnectionSharedPtr>
     connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method);
 
     /// Connects a \a function, or a lambda to this signal.
@@ -225,7 +225,7 @@ public:
     /// \return If the connection succeeds, returns the shared pointer to the connection. If the connection
     /// fails, returns \e nullptr.
     template <typename Function>
-    typename std::enable_if<!std::is_base_of_v<mox::Signal, Function>, ConnectionSharedPtr>::type
+    std::enable_if_t<!std::is_base_of_v<mox::Signal, Function>, ConnectionSharedPtr>
     connect(const Function& function);
 
     /// Disconnects a metamethod with \a methodName. The metamethod must be registered in the \a receiver's
@@ -243,7 +243,7 @@ public:
     /// \return If the method with the \a methodName and \a receiver was connected, and the disconnect
     /// succeeded, returns \e true. Otherwise returns \e false.
     template <typename SlotFunction>
-    typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, bool>::type
+    std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, bool>
     disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method);
 
     /// Disonnects a \a function, functor or a lambda from this signal.
@@ -251,7 +251,7 @@ public:
     /// \return If the \a function, functor or lambda was connected, and the disconnect succeeded,
     /// returns \e true. Otherwise returns \e false.
     template <typename SlotFunction>
-    typename std::enable_if<!std::is_base_of_v<Signal, SlotFunction>, bool>::type
+    std::enable_if_t<!std::is_base_of_v<Signal, SlotFunction>, bool>
     disconnect(const SlotFunction& slot);
 
     /// Disconnects a \a signal from this signal.
@@ -278,10 +278,10 @@ protected:
     /// Creates a connection to a \a lambda. The connection owns the callable.
     ConnectionSharedPtr connect(Callable&& lambda);
     /// Creates a connection to a \a receiver and a \a slot. The connection owns the callable.
-    ConnectionSharedPtr connect(std::any receiver, Callable&& slot);
+    ConnectionSharedPtr connect(Argument receiver, Callable&& slot);
 
     /// Disconnects a connection that holds a \a receiver and \a callableAddress.
-    bool disconnectImpl(std::any receiver, const void* callableAddress);
+    bool disconnectImpl(Argument receiver, const void* callableAddress);
 
     /// Connection container type.
     typedef std::vector<ConnectionSharedPtr> ConnectionList;

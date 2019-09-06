@@ -34,7 +34,7 @@ protected:
 public:
     FunctionConnection(Signal& signal, Callable&& callable);
 
-    bool compare(std::any receiver, const void* funcAddress) const override;
+    bool compare(Argument receiver, const void* funcAddress) const override;
     bool isConnected() const override
     {
         return m_slot.type() != FunctionType::Invalid;
@@ -46,19 +46,19 @@ public:
 
 class MethodConnection : public FunctionConnection
 {
-    std::any m_receiver;
+    Argument m_receiver;
 
 public:
-    MethodConnection(Signal& signal, std::any receiver, Callable&& callable);
+    MethodConnection(Signal& signal, Argument receiver, Callable&& callable);
 
-    bool compare(std::any receiver, const void* funcAddress) const override;
+    bool compare(Argument receiver, const void* funcAddress) const override;
     void activate(Callable::Arguments& args) override;
     void reset() override;
 };
 
 class MetaMethodConnection : public Signal::Connection
 {
-    std::any m_receiver;
+    Argument m_receiver;
     const MetaMethod* m_slot;
 
 public:
@@ -67,13 +67,13 @@ public:
         return m_slot;
     }
 
-    MetaMethodConnection(Signal& signal, std::any receiver, const MetaMethod& slot);
+    MetaMethodConnection(Signal& signal, Argument receiver, const MetaMethod& slot);
 
     bool isConnected() const override
     {
         return m_slot && (m_slot->type() != FunctionType::Invalid);
     }
-    bool compare(std::any receiver, const void* funcAddress) const override;
+    bool compare(Argument receiver, const void* funcAddress) const override;
     void activate(Callable::Arguments& args) override;
     void reset() override;
 };

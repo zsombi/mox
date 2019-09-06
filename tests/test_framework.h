@@ -34,8 +34,7 @@ protected:
 template <typename Type>
 mox::Metatype registerTestType()
 {
-    typedef typename std::remove_pointer<typename std::remove_reference<Type>::type>::type NakedType;
-    const mox::MetatypeDescriptor* descriptor = mox::registrar::findMetatypeDescriptor(typeid(NakedType));
+    const mox::MetatypeDescriptor* descriptor = mox::registrar::findMetatypeDescriptor(mox::registrar::remove_cv<Type>());
     if (!descriptor)
     {
         return mox::registerMetaType<Type>();
@@ -44,7 +43,8 @@ mox::Metatype registerTestType()
 }
 
 #define SLEEP(msec) std::this_thread::sleep_for(std::chrono::milliseconds(msec))
-#define EXPECT_NULL(ptr)        EXPECT_TRUE(ptr == nullptr)
-#define EXPECT_NOT_NULL(ptr)    EXPECT_TRUE(ptr != nullptr)
+#define EXPECT_NULL(ptr)        EXPECT_EQ(nullptr, ptr)
+#define EXPECT_NOT_NULL(ptr)    EXPECT_NE(nullptr, ptr)
+#define EXPECT_NOT_EQ(A, B)     EXPECT_NE(A, B)
 
 #endif // TEST_FRAMEWORK_H

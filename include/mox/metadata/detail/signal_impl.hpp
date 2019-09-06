@@ -50,11 +50,11 @@ mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const
         return nullptr;
     }
 
-    return connect(metaClass->castInstance(const_cast<Receiver*>(&receiver)), *metaMethod);
+    return connect(Argument(const_cast<Receiver*>(&receiver)), *metaMethod);
 }
 
 template <typename SlotFunction>
-typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, Signal::ConnectionSharedPtr>::type
+std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, Signal::ConnectionSharedPtr>
 Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
     typedef typename function_traits<SlotFunction>::object ReceiverType;
@@ -73,7 +73,7 @@ Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFu
         const MetaMethod* metaMethod = metaClass->visitMethods(visitor);
         if (metaMethod)
         {
-            return connect(metaClass->castInstance(const_cast<ReceiverType*>(&receiver)), *metaMethod);
+            return connect(Argument(const_cast<ReceiverType*>(&receiver)), *metaMethod);
         }
     }
 
@@ -82,11 +82,11 @@ Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFu
     {
         return nullptr;
     }
-    return connect(&receiver, std::forward<Callable>(slotCallable));
+    return connect(Argument(&receiver), std::forward<Callable>(slotCallable));
 }
 
 template <typename Function>
-typename std::enable_if<!std::is_base_of_v<Signal, Function>, Signal::ConnectionSharedPtr>::type
+std::enable_if_t<!std::is_base_of_v<Signal, Function>, Signal::ConnectionSharedPtr>
 Signal::connect(const Function& function)
 {
     Callable lambda(function);
@@ -120,34 +120,22 @@ bool Signal::disconnect(const Receiver& receiver, const char* methodName)
         return false;
     }
 
-    return disconnectImpl(metaClass->castInstance(const_cast<Receiver*>(&receiver)), metaMethod->address());
+    return disconnectImpl(Argument(const_cast<Receiver*>(&receiver)), metaMethod->address());
 }
 
 template <typename SlotFunction>
-typename std::enable_if<std::is_member_function_pointer_v<SlotFunction>, bool>::type
+std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, bool>
 Signal::disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
-    typedef typename function_traits<SlotFunction>::object ReceiverType;
-
-    std::any receiverInstance(&receiver);
-    if constexpr (has_static_metaclass_v<ReceiverType>)
-    {
-        const MetaClass* metaClass = ReceiverType::StaticMetaClass::get();
-        if constexpr (has_dynamic_metaclass_v<ReceiverType>)
-        {
-            metaClass = ReceiverType::getMetaClass();
-        }
-        receiverInstance = metaClass->castInstance(&receiver);
-    }
-
+    Argument receiverInstance(&receiver);
     return disconnectImpl(receiverInstance, ::address(method));
 }
 
 template <typename SlotFunction>
-typename std::enable_if<!std::is_base_of_v<Signal, SlotFunction>, bool>::type
+std::enable_if_t<!std::is_base_of_v<Signal, SlotFunction>, bool>
 Signal::disconnect(const SlotFunction& slot)
 {
-    return disconnectImpl(std::any(), ::address(slot));
+    return disconnectImpl(Argument(), ::address(slot));
 }
 
 

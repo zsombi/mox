@@ -28,6 +28,8 @@ namespace mox
 class MOX_API MetaObject
 {
 public:
+    /// Constructor.
+    explicit MetaObject();
     /// Destructor.
     virtual ~MetaObject();
 
@@ -37,10 +39,6 @@ public:
 
     /// Returns the dynamic metaclass of the metaobject.
     virtual const MetaClass* getMetaClass() const;
-
-protected:
-    /// Constructor.
-    explicit MetaObject();
 };
 
 } // namespace mox
