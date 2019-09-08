@@ -202,7 +202,7 @@ int SignalHost::activate(int signal, Callable::Arguments &args)
     {
         // Activate all signals that can get activated with the given arguments.
         int activationCount = 0;
-        for (const Signal* sig : m_signals)
+        for (auto sig : m_signals)
         {
             if (sig && sig->metaSignal().activableWith(args.descriptors()))
             {
@@ -333,11 +333,7 @@ bool Signal::disconnect(const Signal& signal)
     for (it = m_connections.begin(); it != end; ++it)
     {
         SignalConnectionSharedPtr signalConnection = std::static_pointer_cast<SignalConnection>(*it);
-        if (!signalConnection)
-        {
-            continue;
-        }
-        if (signalConnection->signal() == &signal)
+        if (signalConnection && signalConnection->signal() == &signal)
         {
             *it = nullptr;
             signalConnection->reset();
@@ -356,11 +352,7 @@ bool Signal::disconnectImpl(Argument receiver, const void* callableAddress)
     for (it = m_connections.begin(); it != end; ++it)
     {
         ConnectionSharedPtr connection = *it;
-        if (!connection)
-        {
-            continue;
-        }
-        if (connection->compare(receiver, callableAddress))
+        if (connection && connection->compare(receiver, callableAddress))
         {
             *it = nullptr;
             connection->reset();
@@ -382,11 +374,11 @@ int Signal::activate(Callable::Arguments &args)
     FlagScope<true> lock(m_triggering);
     int count = 0;
 
-    for (ConnectionList::const_iterator it = m_connections.cbegin(), end = m_connections.cend(); it != end; ++it)
+    for (auto& connection : m_connections)
     {
-        if (*it)
+        if (connection)
         {
-            (*it)->activate(args);
+            connection->activate(args);
             count++;
         }
     }

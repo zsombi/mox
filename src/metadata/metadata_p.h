@@ -49,10 +49,12 @@ public:
     const MetaClass* getMetaClass(Metatype metaType);
 
     typedef std::vector<std::unique_ptr<MetatypeDescriptor>> MetaTypeContainer;
+    typedef std::vector<std::pair<const std::type_info*, Metatype>> SynonymContainer;
     typedef std::unordered_map<Metatype, const MetaClass*> MetaClassTypeRegister;
     typedef std::unordered_map<std::string, const MetaClass*> MetaClassContainer;
 
     MetaTypeContainer metaTypes;
+    SynonymContainer synonymTypes;
     MetaClassTypeRegister metaClassRegister;
     MetaClassContainer metaClasses;
     std::mutex sync;
@@ -60,6 +62,7 @@ public:
 
 MetaData& metadata();
 
+void registerAtomicTypes();
 void registerConverters();
 
 } // namespace mox

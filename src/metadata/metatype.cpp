@@ -205,5 +205,38 @@ bool MetatypeDescriptor::addConverter(MetatypeConverterPtr&& converter, Metatype
     return false;
 }
 
+#define ATOMIC_TYPE(name, Type, typeId) \
+{ \
+    const MetatypeDescriptor& metaType = md.addMetaType(name, typeid(Type), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>); \
+    ASSERT(metaType.id() == typeId, "wrong atomic type registration!"); \
+}
+
+void registerAtomicTypes()
+{
+    MetaData& md = metadata();
+    ATOMIC_TYPE("void", void, Metatype::Void)
+    ATOMIC_TYPE("bool", bool, Metatype::Bool)
+    ATOMIC_TYPE("char", char, Metatype::Char)
+    ATOMIC_TYPE("byte", byte, Metatype::Byte)
+    ATOMIC_TYPE("short", int16_t, Metatype::Short)
+    ATOMIC_TYPE("word", uint16_t, Metatype::Word)
+    ATOMIC_TYPE("int", int32_t, Metatype::Int32)
+    ATOMIC_TYPE("uint", uint32_t, Metatype::UInt32)
+    ATOMIC_TYPE("int64", int64_t, Metatype::Int64)
+    ATOMIC_TYPE("uint64", uint64_t, Metatype::UInt64)
+    ATOMIC_TYPE("float", float, Metatype::Float)
+    ATOMIC_TYPE("double", double, Metatype::Double)
+    ATOMIC_TYPE("std::string", std::string, Metatype::String)
+    ATOMIC_TYPE("literal", std::string_view, Metatype::Literal)
+    ATOMIC_TYPE("void*", void*, Metatype::VoidPtr)
+    ATOMIC_TYPE("byte*", byte*, Metatype::BytePtr)
+    ATOMIC_TYPE("MetaObject", MetaObject, Metatype::MetaObject)
+    ATOMIC_TYPE("MetaObject*", MetaObject*, Metatype::MetaObjectPtr)
+
+#ifdef LONG_SYNONIM_OF_UINT64
+    md.synonymTypes.push_back(std::make_pair(&typeid(long), Metatype::Int64));
+    md.synonymTypes.push_back(std::make_pair(&typeid(unsigned long), Metatype::UInt64));
+#endif
+}
 
 }// namespace mox

@@ -46,10 +46,8 @@ enum class Metatype : int
     Byte,
     Short,
     Word,
-    Int,
-    UInt,
-    Long,
-    ULong,
+    Int32,
+    UInt32,
     Int64,
     UInt64,
     Float,
@@ -61,7 +59,6 @@ enum class Metatype : int
     // Pointer types
     VoidPtr,
     BytePtr,
-    IntPtr,
     MetaObject,
     MetaObjectPtr,
     // All user types to be installed here
@@ -95,7 +92,7 @@ class MOX_API bad_conversion : std::exception
 {
 public:
     explicit bad_conversion(Metatype from, Metatype to);
-    virtual const char* what() const _NOEXCEPT override;
+    const char* what() const EXCEPTION_NOEXCEPT override;
 private:
     std::string m_message;
 };
@@ -106,11 +103,11 @@ namespace registrar
 {
 /// Finds a MetatypeDescriptor associated to the \a rtti.
 /// \return nullptr if the \e rtti does not have any associated MetatypeDescriptor registered.
-const MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti);
+MOX_API const MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti);
 
 /// Finds a Metatype associated to the \a rtti.
 /// \return The metatype identifier of the RTTI.
-Metatype findMetatype(const std::type_info& rtti);
+MOX_API Metatype findMetatype(const std::type_info& rtti);
 
 /// Registers a MetatypeDescriptor associated to the \a rtti.
 /// \param rtti The type info of the type to register.
@@ -119,20 +116,20 @@ Metatype findMetatype(const std::type_info& rtti);
 /// \param isPointer True if the type is a pointer.
 /// \param name Optional, the name of the metatype to override the default RTTI type name.
 /// \return the MetatypeDescriptor associated to the \e rtti.
-Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name);
+MOX_API Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name);
 
 template <typename T>
 const std::type_info& remove_cv();
 
 /// Registers a \a converter that converts a value from \a fromType to \a toType.
-bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType);
+MOX_API bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType);
 
 /// Look for the converter that converts a type between \a from and \a to.
 /// \param from The source type.
 /// \param to The destination type.
 /// \return The converter found that converts a value between \a from and to \a to types.
 /// nullptr is returned if there is no converter found to convert between the two metatypes.
-MetatypeConverter* findConverter(Metatype from, Metatype to);
+MOX_API MetatypeConverter* findConverter(Metatype from, Metatype to);
 
 } // namespace registrar
 
@@ -169,7 +166,7 @@ bool registerConverter(To (From::*function)() const);
 
 /// Defines the type of an argument. Callable holds the argument descriptors for the return type aswell
 /// as for the callable arguments.
-struct ArgumentDescriptor
+struct MOX_API ArgumentDescriptor
 {
     /// Tye metatype of the argument.
     const Metatype type = Metatype::Invalid;

@@ -47,7 +47,7 @@ public:
         explicit invalid_argument();
 
         /// String representation of the exception.
-        const char* what() const _NOEXCEPT override;
+        const char* what() const EXCEPTION_NOEXCEPT override;
     };
 
     /// Argument value container.
@@ -194,7 +194,7 @@ std::enable_if_t<std::is_class<Class>::value, Ret> invoke(const Callable& callab
 /// Returns \e true if the \a arguments are compatible with the \a parameters
 /// \return If the \a parameters size is at least the size of the \a arguments, and the descriptors
 /// at the positions are compatible, returns \e true. Otherwise returns \e false.
-bool isCallableWith(const Callable& callable, const ArgumentDescriptorContainer& parameters);
+MOX_API bool isCallableWith(const Callable& callable, const ArgumentDescriptorContainer& parameters);
 
 } // namespace mox
 

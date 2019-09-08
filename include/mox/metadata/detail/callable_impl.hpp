@@ -29,19 +29,20 @@ namespace
 {
 
 template <typename Function, std::size_t Offset>
-struct AnyToTuple
+struct ArgumentsToTuple
 {
     template <int Index>
     static auto convert(const Callable::Arguments& arguments)
     {
-        typedef typename function_traits<Function>::template argument<Index - 1>::type ArgType;
-        return std::tuple_cat(convert<Index - 1>(arguments), std::make_tuple(arguments.get<ArgType>(Index - 1 + Offset)));
-    }
-
-    template <>
-    static auto convert<0>(const Callable::Arguments& /*arguments*/)
-    {
-        return std::tuple<>();
+        if constexpr (Index == 0)
+        {
+            return std::tuple<>();
+        }
+        else
+        {
+            using ArgType = typename function_traits<Function>::template argument<Index - 1>::type;
+            return std::tuple_cat(convert<Index - 1>(arguments), std::make_tuple(arguments.get<ArgType>(Index - 1 + Offset)));
+        }
     }
 };
 
@@ -85,11 +86,11 @@ auto Callable::Arguments::toTuple() const
     if constexpr (function_traits<Function>::type == FunctionType::Method)
     {
         return std::tuple_cat(std::make_tuple(get<typename function_traits<Function>::object*>(0)),
-                              AnyToTuple<Function, 1>::template convert<N>(*this));
+                              ArgumentsToTuple<Function, 1>::template convert<N>(*this));
     }
     else
     {
-        return AnyToTuple<Function, 0>::template convert<N>(*this);
+        return ArgumentsToTuple<Function, 0>::template convert<N>(*this);
     }
 }
 
@@ -107,7 +108,7 @@ Callable::Callable(Function fn)
         m_classType = metaType<typename function_traits<Function>::object>();
     }
 
-    m_invoker = [function = std::forward<Function>(fn)](const Arguments& args) -> Argument
+    m_invoker = [function = std::forward<Function>(fn)](const Arguments& args)
     {
         auto args_tuple = args.toTuple<Function>();
 

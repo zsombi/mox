@@ -35,7 +35,7 @@ TEST(Argument, test_assign_value)
 
     v = 10;
     EXPECT_TRUE(v.isValid());
-    EXPECT_EQ(mox::Metatype::Int, v.metaType());
+    EXPECT_EQ(mox::Metatype::Int32, v.metaType());
     EXPECT_EQ(10, v);
 
     v = std::string_view("apple");
@@ -78,15 +78,9 @@ TEST(Argument, test_base_type_convert)
     unsigned int ui = v;
     EXPECT_EQ(10, ui);
 
-    long l = v;
-    EXPECT_EQ(10l, l);
-
-    unsigned long ul = v;
-    EXPECT_EQ(10u, ul);
-
     // change v type
-    v = 101l;
-    EXPECT_EQ(mox::Metatype::Long, v.metaType());
+    v = int64_t(101);
+    EXPECT_EQ(mox::Metatype::Int64, v.metaType());
 
     b = v;
     EXPECT_TRUE(b);
@@ -150,9 +144,6 @@ TEST(Argument, test_hex_string_to_number)
     mox::Argument v(std::string("0xFF"));
     int i = v;
     EXPECT_EQ(255, i);
-
-    double d = v;
-    EXPECT_EQ(255.0f, d);
 }
 
 TEST(Argument, test_hex_literal_to_number)
@@ -160,9 +151,6 @@ TEST(Argument, test_hex_literal_to_number)
     mox::Argument v(std::string_view("0xFF"));
     int i = v;
     EXPECT_EQ(255, i);
-
-    double d = v;
-    EXPECT_EQ(255.0f, d);
 }
 
 TEST(Argument, test_bad_string_to_number_throws)
@@ -170,6 +158,7 @@ TEST(Argument, test_bad_string_to_number_throws)
     mox::Argument v(std::string("fadabec"));
     int i = 0;
     EXPECT_THROW(i = v, mox::bad_conversion);
+    UNUSED(i);
 }
 
 TEST(Argument, test_bad_literal_to_number_throws)
@@ -177,6 +166,7 @@ TEST(Argument, test_bad_literal_to_number_throws)
     mox::Argument v(std::string_view("fadabec"));
     int i = 0;
     EXPECT_THROW(i = v, mox::bad_conversion);
+    UNUSED(i);
 }
 
 TEST(Argument, test_argument_descriptor_operators_lsv_rsv)

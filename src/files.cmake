@@ -17,6 +17,9 @@
 #
 
 set(HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/platform_config.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/pimpl.hpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/globals.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/locks.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/string.hpp

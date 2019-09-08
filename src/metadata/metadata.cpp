@@ -34,12 +34,6 @@ MetaData::~MetaData()
 {
 }
 
-#define ATOMIC_TYPE(name, Type, typeId) \
-{ \
-    const MetatypeDescriptor& metaType = addMetaType(name, typeid(Type), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>); \
-    ASSERT(metaType.id() == typeId, "wrong atomic type registration!"); \
-}
-
 void MetaData::initialize()
 {
     static bool initialized = false;
@@ -51,28 +45,7 @@ void MetaData::initialize()
     // Mark atomic type initialization completed.
     initialized = true;
 
-    ATOMIC_TYPE("void", void, Metatype::Void);
-    ATOMIC_TYPE("bool", bool, Metatype::Bool);
-    ATOMIC_TYPE("char", char, Metatype::Char);
-    ATOMIC_TYPE("byte", byte, Metatype::Byte);
-    ATOMIC_TYPE("short", Int16, Metatype::Short);
-    ATOMIC_TYPE("word", UInt16, Metatype::Word);
-    ATOMIC_TYPE("int", Int32, Metatype::Int);
-    ATOMIC_TYPE("uint", UInt32, Metatype::UInt);
-    ATOMIC_TYPE("long", long, Metatype::Long);
-    ATOMIC_TYPE("ulong", unsigned long, Metatype::ULong);
-    ATOMIC_TYPE("int64", Int64, Metatype::Int64);
-    ATOMIC_TYPE("uint64", UInt64, Metatype::UInt64);
-    ATOMIC_TYPE("float", float, Metatype::Float);
-    ATOMIC_TYPE("double", double, Metatype::Double);
-    ATOMIC_TYPE("std::string", std::string, Metatype::String);
-    ATOMIC_TYPE("literal", std::string_view, Metatype::Literal);
-    ATOMIC_TYPE("void*", void*, Metatype::VoidPtr);
-    ATOMIC_TYPE("byte*", byte*, Metatype::BytePtr);
-    ATOMIC_TYPE("int*", Int32*, Metatype::IntPtr);
-    ATOMIC_TYPE("MetaObject", MetaObject, Metatype::MetaObject);
-    ATOMIC_TYPE("MetaObject*", MetaObject*, Metatype::MetaObjectPtr);
-
+    registerAtomicTypes();
     registerMetaType<Signal::ConnectionSharedPtr>();
 
     // Register converters.
@@ -98,12 +71,19 @@ const MetatypeDescriptor* MetaData::findMetaType(const std::type_info& rtti)
 {
     ScopeLock locker(sync);
 
-    for (MetaTypeContainer::const_iterator it = metaTypes.cbegin(); it != metaTypes.cend(); ++it)
+    for (auto& type : metaTypes)
     {
-        const MetatypeDescriptor* type = it->get();
         if (type->rtti()->hash_code() == rtti.hash_code())
         {
-            return type;
+            return type.get();
+        }
+    }
+    // Find synonym types.
+    for (auto& synonym : synonymTypes)
+    {
+        if (synonym.first->hash_code() == rtti.hash_code())
+        {
+            return metaTypes[static_cast<size_t>(synonym.second)].get();
         }
     }
     return nullptr;

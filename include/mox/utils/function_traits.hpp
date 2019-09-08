@@ -55,7 +55,7 @@ enum FunctionType
 template <typename Function>
 struct function_traits : public function_traits<decltype(&Function::operator())>
 {
-    enum { type = FunctionType::Functor };
+    static constexpr int type = FunctionType::Functor;
 };
 
 /// Method traits.
@@ -67,8 +67,8 @@ struct function_traits<TRet(TObject::*)(Args...)>
     typedef TRet(TObject::*function_type)(Args...);
 
     static constexpr std::size_t arity = sizeof... (Args);
-    enum { is_const = false };
-    enum { type = FunctionType::Method };
+    static constexpr bool is_const = false;
+    static constexpr int type = FunctionType::Method;
 
     template <std::size_t N>
     struct argument
@@ -92,8 +92,8 @@ struct function_traits<TRet(TObject::*)(Args...) const>
     typedef TRet(TObject::*function_type)(Args...) const;
 
     static constexpr std::size_t arity = sizeof... (Args);
-    enum { is_const = true };
-    enum { type = FunctionType::Method };
+    static constexpr bool is_const = true;
+    static constexpr int type = FunctionType::Method;
 
     template <std::size_t N>
     struct argument
@@ -116,8 +116,8 @@ struct function_traits<TRet(*)(Args...)>
     typedef TRet(*function_type)(Args...);
 
     static constexpr std::size_t arity = sizeof... (Args);
-    enum { is_const = false };
-    enum { type = FunctionType::Function };
+    static constexpr bool is_const = false;
+    static constexpr int type = FunctionType::Function;
 
     template <std::size_t N>
     struct argument

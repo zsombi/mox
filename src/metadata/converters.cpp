@@ -16,6 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
+#include <mox/config/platform_config.hpp>
 #include <mox/metadata/metatype.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <string>
@@ -39,6 +40,7 @@ inline bool isNumericMetatype(Metatype type)
 template <typename From, typename To>
 To atomicConverter(From value)
 {
+    UNUSED(value);
     return static_cast<To>(value);
 }
 
@@ -78,7 +80,7 @@ To stringToNumber(String value)
     To result = To();
     if (!value.empty())
     {
-        std::istringstream istream(value.data());
+        std::stringstream istream(value.data());
         if (value.find("0x") != std::string::npos)
         {
             istream >> std::hex;
@@ -95,12 +97,6 @@ To stringToNumber(String value)
         }
     }
     return result;
-}
-
-std::ostringstream& operator <<(std::ostringstream& os, byte value)
-{
-    os << static_cast<unsigned char>(value);
-    return os;
 }
 
 template <typename From, typename String>
@@ -133,7 +129,8 @@ bad_conversion::bad_conversion(Metatype from, Metatype to)
        << MetatypeDescriptor::get(to).name();
     m_message = ss.str();
 }
-const char* bad_conversion::what() const _NOEXCEPT
+
+const char* bad_conversion::what() const EXCEPTION_NOEXCEPT
 {
     return m_message.data();
 }
@@ -146,89 +143,64 @@ void registerConverters()
     registerAtomicConverter<bool, byte>();
     registerAtomicConverter<bool, short>();
     registerAtomicConverter<bool, unsigned short>();
-    registerAtomicConverter<bool, Int32>();
-    registerAtomicConverter<bool, UInt32>();
-    registerAtomicConverter<bool, long>();
-    registerAtomicConverter<bool, unsigned long>();
-    registerAtomicConverter<bool, Int64>();
-    registerAtomicConverter<bool, UInt64>();
+    registerAtomicConverter<bool, int32_t>();
+    registerAtomicConverter<bool, uint32_t>();
+    registerAtomicConverter<bool, int64_t>();
+    registerAtomicConverter<bool, uint64_t>();
     registerAtomicConverter<bool, float>();
     registerAtomicConverter<bool, double>();
     // char
     registerAtomicConverter<char, byte>();
     registerAtomicConverter<char, short>();
     registerAtomicConverter<char, unsigned short>();
-    registerAtomicConverter<char, Int32>();
-    registerAtomicConverter<char, UInt32>();
-    registerAtomicConverter<char, long>();
-    registerAtomicConverter<char, unsigned long>();
-    registerAtomicConverter<char, Int64>();
-    registerAtomicConverter<char, UInt64>();
+    registerAtomicConverter<char, int32_t>();
+    registerAtomicConverter<char, uint32_t>();
+    registerAtomicConverter<char, int64_t>();
+    registerAtomicConverter<char, uint64_t>();
     registerAtomicConverter<char, float>();
     registerAtomicConverter<char, double>();
     // byte
     registerAtomicConverter<byte, short>();
     registerAtomicConverter<byte, unsigned short>();
-    registerAtomicConverter<byte, Int32>();
-    registerAtomicConverter<byte, UInt32>();
-    registerAtomicConverter<byte, long>();
-    registerAtomicConverter<byte, unsigned long>();
-    registerAtomicConverter<byte, Int64>();
-    registerAtomicConverter<byte, UInt64>();
+    registerAtomicConverter<byte, int32_t>();
+    registerAtomicConverter<byte, uint32_t>();
+    registerAtomicConverter<byte, int64_t>();
+    registerAtomicConverter<byte, uint64_t>();
     registerAtomicConverter<byte, float>();
     registerAtomicConverter<byte, double>();
     // short
     registerAtomicConverter<short, unsigned short>();
-    registerAtomicConverter<short, Int32>();
-    registerAtomicConverter<short, UInt32>();
-    registerAtomicConverter<short, long>();
-    registerAtomicConverter<short, unsigned long>();
-    registerAtomicConverter<short, Int64>();
-    registerAtomicConverter<short, UInt64>();
+    registerAtomicConverter<short, int32_t>();
+    registerAtomicConverter<short, uint32_t>();
+    registerAtomicConverter<short, int64_t>();
+    registerAtomicConverter<short, uint64_t>();
     registerAtomicConverter<short, float>();
     registerAtomicConverter<short, double>();
     // word
-    registerAtomicConverter<unsigned short, Int32>();
-    registerAtomicConverter<unsigned short, UInt32>();
-    registerAtomicConverter<unsigned short, long>();
-    registerAtomicConverter<unsigned short, unsigned long>();
-    registerAtomicConverter<unsigned short, Int64>();
-    registerAtomicConverter<unsigned short, UInt64>();
+    registerAtomicConverter<unsigned short, int32_t>();
+    registerAtomicConverter<unsigned short, uint32_t>();
+    registerAtomicConverter<unsigned short, int64_t>();
+    registerAtomicConverter<unsigned short, uint64_t>();
     registerAtomicConverter<unsigned short, float>();
     registerAtomicConverter<unsigned short, double>();
     // int
-    registerAtomicConverter<Int32, UInt32>();
-    registerAtomicConverter<Int32, long>();
-    registerAtomicConverter<Int32, unsigned long>();
-    registerAtomicConverter<Int32, Int64>();
-    registerAtomicConverter<Int32, UInt64>();
-    registerAtomicConverter<Int32, float>();
-    registerAtomicConverter<Int32, double>();
+    registerAtomicConverter<int32_t, uint32_t>();
+    registerAtomicConverter<int32_t, int64_t>();
+    registerAtomicConverter<int32_t, uint64_t>();
+    registerAtomicConverter<int32_t, float>();
+    registerAtomicConverter<int32_t, double>();
     // uint
-    registerAtomicConverter<UInt32, long>();
-    registerAtomicConverter<UInt32, unsigned long>();
-    registerAtomicConverter<UInt32, Int64>();
-    registerAtomicConverter<UInt32, UInt64>();
-    registerAtomicConverter<UInt32, float>();
-    registerAtomicConverter<UInt32, double>();
-    // long
-    registerAtomicConverter<long, unsigned long>();
-    registerAtomicConverter<long, Int64>();
-    registerAtomicConverter<long, UInt64>();
-    registerAtomicConverter<long, float>();
-    registerAtomicConverter<long, double>();
-    // ulong
-    registerAtomicConverter<unsigned long, Int64>();
-    registerAtomicConverter<unsigned long, UInt64>();
-    registerAtomicConverter<unsigned long, float>();
-    registerAtomicConverter<unsigned long, double>();
+    registerAtomicConverter<uint32_t, int64_t>();
+    registerAtomicConverter<uint32_t, uint64_t>();
+    registerAtomicConverter<uint32_t, float>();
+    registerAtomicConverter<uint32_t, double>();
     // int64
-    registerAtomicConverter<Int64, UInt64>();
-    registerAtomicConverter<Int64, float>();
-    registerAtomicConverter<Int64, double>();
+    registerAtomicConverter<int64_t, uint64_t>();
+    registerAtomicConverter<int64_t, float>();
+    registerAtomicConverter<int64_t, double>();
     // uint64
-    registerAtomicConverter<UInt64, float>();
-    registerAtomicConverter<UInt64, double>();
+    registerAtomicConverter<uint64_t, float>();
+    registerAtomicConverter<uint64_t, double>();
     // float and double
     registerAtomicConverter<float, double>();
     // string
@@ -238,12 +210,10 @@ void registerConverters()
     registerStringConverter<byte>();
     registerStringConverter<short>();
     registerStringConverter<unsigned short>();
-    registerStringConverter<Int32>();
-    registerStringConverter<UInt32>();
-    registerStringConverter<long>();
-    registerStringConverter<unsigned long>();
-    registerStringConverter<Int64>();
-    registerStringConverter<UInt64>();
+    registerStringConverter<int32_t>();
+    registerStringConverter<uint32_t>();
+    registerStringConverter<int64_t>();
+    registerStringConverter<uint64_t>();
     registerStringConverter<float>();
     registerStringConverter<double>();
     // literal to string

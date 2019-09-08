@@ -129,23 +129,25 @@ private:
         T get()
         {
             T* value = std::any_cast<T>(&m_value);
+            if (value)
+            {
+                return *value;
+            }
+
+            Metatype sourceType = m_typeDescriptor.type;
+            Metatype destinationType = mox::metaType<T>();
+            MetatypeConverter* converter = registrar::findConverter(sourceType, destinationType);
+            if (!converter)
+            {
+                throw bad_conversion(sourceType, destinationType);
+            }
+
+            void* sourceValue = m_getter();
+            ArgumentBase tmp = converter->convert(*converter, sourceValue);
+            value = std::any_cast<T>(&tmp);
             if (!value)
             {
-                Metatype sourceType = m_typeDescriptor.type;
-                Metatype destinationType = mox::metaType<T>();
-                MetatypeConverter* converter = registrar::findConverter(sourceType, destinationType);
-                if (!converter)
-                {
-                    throw bad_conversion(sourceType, destinationType);
-                }
-
-                void* sourceValue = m_getter();
-                ArgumentBase tmp = converter->convert(*converter, sourceValue);
-                value = std::any_cast<T>(&tmp);
-                if (!value)
-                {
-                    throw bad_conversion(sourceType, destinationType);
-                }
+                throw bad_conversion(sourceType, destinationType);
             }
 
             return *value;

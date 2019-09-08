@@ -37,7 +37,7 @@ public:
     {
     }
 
-    const char* what() const _NOEXCEPT override
+    const char* what() const EXCEPTION_NOEXCEPT override
     {
         std::string msg("metamethod not declared on class: ");
         msg += m_method;

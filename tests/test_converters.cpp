@@ -26,8 +26,8 @@ namespace converter_test
 
 struct UserType
 {
-    Int16 v1;
-    Int16 v2;
+    int16_t v1;
+    int16_t v2;
     explicit UserType()
         : v1(0), v2(0)
     {}
@@ -35,8 +35,8 @@ struct UserType
 
 struct SelfConvertible
 {
-    Int16 v1 = 0l;
-    Int16 v2 = 0l;
+    int16_t v1 = 0l;
+    int16_t v2 = 0l;
 
     UserType convert() const
     {
@@ -48,16 +48,16 @@ struct SelfConvertible
     }
 };
 
-UserType convert(Int32 v)
+UserType convert(int32_t v)
 {
     UserType ret;
     memcpy(&ret, &v, sizeof(ret));
     return ret;
 }
 
-Int32 convert2(UserType v)
+int32_t convert2(UserType v)
 {
-    Int32 ret;
+    int32_t ret;
     memcpy(&ret, &v, sizeof(ret));
     return ret;
 }
@@ -79,7 +79,7 @@ class Converters : public UnitTest
 protected:
     void SetUp() override
     {
-        static_assert (sizeof(Int32) == sizeof(converter_test::UserType), "revisit UserType declaration");
+        static_assert (sizeof(int32_t) == sizeof(converter_test::UserType), "revisit UserType declaration");
         static_assert (sizeof(converter_test::SelfConvertible) == sizeof(converter_test::UserType), "revisit SelfConvertible declaration");
         UnitTest::SetUp();
 
@@ -106,58 +106,58 @@ TEST_F(Converters, test_base_type_converters)
 
 TEST_F(Converters, test_register_converter_function)
 {
-    bool b = mox::registerConverter<Int32, converter_test::UserType>(converter_test::convert);
+    bool b = mox::registerConverter<int32_t, converter_test::UserType>(converter_test::convert);
     EXPECT_TRUE(b);
 
     // Convert long long to UserType.
-    mox::MetatypeConverter* converter = mox::registrar::findConverter(mox::Metatype::Int, mox::metaType<converter_test::UserType>());
+    mox::MetatypeConverter* converter = mox::registrar::findConverter(mox::Metatype::Int32, mox::metaType<converter_test::UserType>());
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType result;
-    Int32 v = 65537;
+    int32_t v = 65537;
     mox::ArgumentBase r = converter->convert(*converter, &v);
     EXPECT_NO_THROW(result = std::any_cast<converter_test::UserType>(r));
     EXPECT_EQ(1, result.v1);
     EXPECT_EQ(1, result.v2);
 
-    converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int);
+    converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NULL(converter);
 }
 
 TEST_F(Converters, test_register_converter_functor)
 {
-    auto userType2int32 = [](converter_test::UserType value) -> Int32
+    auto userType2int32 = [](converter_test::UserType value) -> int32_t
     {
-        Int32 l = 0;
+        int32_t l = 0;
         memcpy((byte*)&l, (byte*)&value, sizeof(l));
         return l;
     };
-    bool b = mox::registerConverter<converter_test::UserType, Int32>(userType2int32);
+    bool b = mox::registerConverter<converter_test::UserType, int32_t>(userType2int32);
     EXPECT_TRUE(b);
 
-    auto converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int);
+    auto converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType v;
     v.v1 = 1;
     v.v2 = 1;
-    Int32 result = 0;
+    int32_t result = 0;
     mox::ArgumentBase presult = converter->convert(*converter, &v);
-    EXPECT_NO_THROW(result = std::any_cast<Int32>(presult));
+    EXPECT_NO_THROW(result = std::any_cast<int32_t>(presult));
     EXPECT_EQ(65537, result);
 }
 
 TEST_F(Converters, test_registered_functor_converter)
 {
-    auto converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int);
+    auto converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType v;
     v.v1 = 1;
     v.v2 = 1;
-    Int32 result = 0;
+    int32_t result = 0;
     mox::ArgumentBase presult = converter->convert(*converter, &v);
-    EXPECT_NO_THROW(result = std::any_cast<Int32>(presult));
+    EXPECT_NO_THROW(result = std::any_cast<int32_t>(presult));
     EXPECT_EQ(65537, result);
 }
 

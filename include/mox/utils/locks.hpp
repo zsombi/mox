@@ -24,7 +24,7 @@
 namespace mox
 {
 
-typedef std::unique_lock<std::mutex> ScopeLock;
+typedef std::lock_guard<std::mutex> ScopeLock;
 
 template <bool Value>
 struct FlagScope

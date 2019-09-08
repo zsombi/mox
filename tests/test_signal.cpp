@@ -29,8 +29,8 @@ class SignalTestClass : public SignalHost
 {
 public:
     SIGNAL(sig1, void());
-    SIGNAL(sig2, void(int));
-    SIGNAL(sig3, void(int, std::string));
+    SIGNAL(sig2, void(int32_t));
+    SIGNAL(sig3, void(int32_t, std::string));
     SIGNAL(sigB, void());
 
     STATIC_METACLASS_BASE(SignalTestClass)
@@ -45,7 +45,7 @@ public:
 class DerivedEmitter : public SignalTestClass
 {
 public:
-    SIGNAL(sigV, void(std::vector<int>));
+    SIGNAL(sigV, void(std::vector<int32_t>));
 
     STATIC_METACLASS(DerivedEmitter, SignalTestClass)
     {
@@ -80,13 +80,13 @@ public:
         slot1Call++;
     }
 
-    void method2(int v)
+    void method2(int32_t v)
     {
         UNUSED(v);
         slot2Call++;
     }
 
-    void method3(int, std::string)
+    void method3(int32_t, std::string)
     {
         slot3Call++;
     }
@@ -121,7 +121,7 @@ public:
     {
         connection->disconnect();
     }
-    void autoDisconnect2(Signal::ConnectionSharedPtr connection, int v)
+    void autoDisconnect2(Signal::ConnectionSharedPtr connection, int32_t v)
     {
         if (v == 10)
         {
@@ -145,7 +145,7 @@ public:
     {
         derived1Call++;
     }
-    void derivedMethod2(int v)
+    void derivedMethod2(int32_t v)
     {
         derived2Call = v;
     }
@@ -164,7 +164,7 @@ void slotFunction1()
 {
 }
 
-void slotFunction2(int)
+void slotFunction2(int32_t)
 {
 }
 
@@ -174,7 +174,7 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerTestType<std::vector<int>>();
+        registerTestType<std::vector<int32_t>>();
         registerTestType<SignalTestClass>();
         registerTestType<SlotHolder>();
         registerTestType<DerivedHolder>();
@@ -274,11 +274,15 @@ TEST_F(SignalTest, test_disconnect_functor)
 {
     SignalTestClass sender;
 
-    std::function<void()> fn1 = []() {};
+    auto fn1 = [](){};
+    void* addr = ::address(fn1);
+    UNUSED(addr);
 
-    EXPECT_NOT_NULL(sender.sig1.connect(fn1));
+    Signal::ConnectionSharedPtr connection = sender.sig1.connect(fn1);
+    EXPECT_NOT_NULL(connection);
     EXPECT_EQ(1u, sender.sig1());
-    sender.sig1.disconnect(fn1);
+//    sender.sig1.disconnect(fn1);
+    connection->disconnect();
     EXPECT_EQ(0u, sender.sig1());
 }
 
@@ -450,7 +454,7 @@ TEST_F(SignalTest, test_disconnect_on_emit)
     EXPECT_EQ(0, sender.sig2(10));
 }
 
-void autoDisconnect(Signal::ConnectionSharedPtr connection, int v)
+void autoDisconnect(Signal::ConnectionSharedPtr connection, int32_t v)
 {
     if (v == 2)
     {
@@ -461,7 +465,7 @@ void autoDisconnect(Signal::ConnectionSharedPtr connection, int v)
 struct TestFunctor
 {
     SignalTestClass* sender;
-    void explicitDisconnect(int v)
+    void explicitDisconnect(int32_t v)
     {
         if (v == 3)
         {

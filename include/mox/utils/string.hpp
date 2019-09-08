@@ -20,6 +20,7 @@
 #define STRING_HPP
 
 #include <string>
+#include <algorithm>
 
 #ifdef ANDROID
 

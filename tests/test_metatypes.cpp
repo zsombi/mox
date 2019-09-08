@@ -61,8 +61,7 @@ TEST_F(Types, test_atomic_types)
     EXPECT_TRUE(!strcmp(type->name(), "byte"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
-    // in c++11 byte is an enum class!!
-    EXPECT_TRUE(type->isEnum());
+    EXPECT_FALSE(type->isEnum());
 
     type = &metatypeDescriptor<short>();
     EXPECT_EQ(Metatype::Short, type->id());
@@ -78,42 +77,28 @@ TEST_F(Types, test_atomic_types)
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &metatypeDescriptor<int>();
-    EXPECT_EQ(Metatype::Int, type->id());
+    type = &metatypeDescriptor<int32_t>();
+    EXPECT_EQ(Metatype::Int32, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "int"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &metatypeDescriptor<unsigned int>();
-    EXPECT_EQ(Metatype::UInt, type->id());
+    type = &metatypeDescriptor<uint32_t>();
+    EXPECT_EQ(Metatype::UInt32, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "uint"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &metatypeDescriptor<long>();
-    EXPECT_EQ(Metatype::Long, type->id());
-    EXPECT_TRUE(!strcmp(type->name(), "long"));
-    EXPECT_TRUE(type->isValid());
-    EXPECT_FALSE(type->isVoid());
-    EXPECT_FALSE(type->isEnum());
-
-    type = &metatypeDescriptor<unsigned long>();
-    EXPECT_EQ(Metatype::ULong, type->id());
-    EXPECT_TRUE(!strcmp(type->name(), "ulong"));
-    EXPECT_TRUE(type->isValid());
-    EXPECT_FALSE(type->isVoid());
-    EXPECT_FALSE(type->isEnum());
-
-    type = &metatypeDescriptor<long long>();
+    type = &metatypeDescriptor<int64_t>();
     EXPECT_EQ(Metatype::Int64, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "int64"));
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
 
-    type = &metatypeDescriptor<unsigned long long>();
+    type = &metatypeDescriptor<uint64_t>();
     EXPECT_EQ(Metatype::UInt64, type->id());
     EXPECT_TRUE(!strcmp(type->name(), "uint64"));
     EXPECT_TRUE(type->isValid());
@@ -147,40 +132,33 @@ TEST_F(Types, test_atomic_types)
     EXPECT_TRUE(type->isValid());
     EXPECT_FALSE(type->isVoid());
     EXPECT_FALSE(type->isEnum());
+
+    type = &metatypeDescriptor<std::string_view>();
+    EXPECT_EQ(Metatype::Literal, type->id());
+    EXPECT_TRUE(!strcmp(type->name(), "literal"));
+    EXPECT_TRUE(type->isValid());
+    EXPECT_FALSE(type->isVoid());
+    EXPECT_FALSE(type->isEnum());
 }
 
 TEST_F(Types, test_synonim_types)
 {
     const MetatypeDescriptor* type;
 
-    type = &metatypeDescriptor<int32_t>();
-    EXPECT_EQ(Metatype::Int, type->id());
-
-    type = &metatypeDescriptor<int16_t>();
+    type = &metatypeDescriptor<short>();
     EXPECT_EQ(Metatype::Short, type->id());
 
-    type = &metatypeDescriptor<intptr_t>();
-    EXPECT_EQ(Metatype::Long, type->id());
+    type = &metatypeDescriptor<int>();
+    EXPECT_EQ(Metatype::Int32, type->id());
 
-    type = &metatypeDescriptor<size_t>();
-    EXPECT_EQ(Metatype::ULong, type->id());
+    type = &metatypeDescriptor<long>();
+    EXPECT_EQ(Metatype::Int64, type->id());
 }
 
 TEST_F(Types, test_composit_types)
 {
-    const MetatypeDescriptor* type;
-
-    type = &metatypeDescriptor<int*>();
-    EXPECT_EQ(Metatype::IntPtr, type->id());
-
-    type = &metatypeDescriptor<int&>();
-    EXPECT_EQ(Metatype::Int, type->id());
-
-    type = &metatypeDescriptor<int* const>();
-    EXPECT_EQ(Metatype::IntPtr, type->id());
-
-    type = &metatypeDescriptor<const int&>();
-    EXPECT_EQ(Metatype::Int, type->id());
+    const MetatypeDescriptor* type = &metatypeDescriptor<int32_t&>();
+    EXPECT_EQ(Metatype::Int32, type->id());
 }
 
 TEST_F(Types, test_user_types)

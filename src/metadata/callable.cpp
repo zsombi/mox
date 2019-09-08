@@ -48,7 +48,7 @@ Callable::Arguments& Callable::Arguments::operator+=(const Arguments &other)
 }
 
 /// String representation of the exception.
-const char* Callable::invalid_argument::what() const _NOEXCEPT
+const char* Callable::invalid_argument::what() const EXCEPTION_NOEXCEPT
 {
     return "invalid argument type applied";
 }

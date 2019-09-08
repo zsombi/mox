@@ -83,7 +83,7 @@ TEST_F(Callables, test_callable_return_types)
     EXPECT_EQ(Metatype::Void, testFuncCallable.returnType().type);
 
     Callable testRetFuncCallable(testRetFunc);
-    EXPECT_EQ(Metatype::Int, testRetFuncCallable.returnType().type);
+    EXPECT_EQ(Metatype::Int32, testRetFuncCallable.returnType().type);
 
     Callable ptrFuncCallable(ptrFunc);
     EXPECT_EQ(Metatype::VoidPtr, ptrFuncCallable.returnType().type);
@@ -96,16 +96,16 @@ TEST_F(Callables, test_callable_arguments)
 
     Callable testFunc2Callable(testFunc2);
     EXPECT_EQ(1u, testFunc2Callable.argumentCount());
-    EXPECT_EQ(Metatype::Int, testFunc2Callable.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int32, testFunc2Callable.argumentType(0u).type);
     EXPECT_FALSE(testFunc2Callable.argumentType(0u).isConst);
     EXPECT_FALSE(testFunc2Callable.argumentType(0u).isReference);
 
     Callable summCallable(sum);
     EXPECT_EQ(2u, summCallable.argumentCount());
-    EXPECT_EQ(Metatype::Int, summCallable.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int32, summCallable.argumentType(0u).type);
     EXPECT_FALSE(summCallable.argumentType(0u).isConst);
     EXPECT_FALSE(summCallable.argumentType(0u).isReference);
-    EXPECT_EQ(Metatype::Int, summCallable.argumentType(1u).type);
+    EXPECT_EQ(Metatype::Int32, summCallable.argumentType(1u).type);
     EXPECT_FALSE(summCallable.argumentType(1u).isConst);
     EXPECT_FALSE(summCallable.argumentType(1u).isReference);
 }
@@ -259,7 +259,7 @@ TEST_F(Callables, test_method_ret_and_argument_types)
     EXPECT_EQ(FunctionType::Method, callable.type());
     EXPECT_EQ(Metatype::Void, callable.returnType().type);
     EXPECT_EQ(1u, callable.argumentCount());
-    EXPECT_EQ(Metatype::Int, callable.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int32, callable.argumentType(0u).type);
     EXPECT_EQ(functorMetaType, callable.classType());
 }
 
@@ -412,12 +412,12 @@ TEST_F(Callables, test_lambda_with_convertible_args)
 
 TEST_F(Callables, test_lambda_with_ret)
 {
-    auto lambda = [](size_t v, std::string s) -> size_t
+    auto lambda = [](uint64_t v, std::string s) -> uint64_t
     {
         return v * s.length();
     };
     Callable callable(lambda);
-    auto result = invoke<size_t>(callable, 10ul, std::string("alma"));
+    auto result = invoke<uint64_t>(callable, 10, std::string("alma"));
     EXPECT_EQ(40u, result);
 }
 
@@ -454,16 +454,16 @@ TEST_F(Callables, test_lambda_callables)
     Callable c2([](int) {});
     EXPECT_EQ(Metatype::Void, c2.returnType().type);
     EXPECT_EQ(1u, c2.argumentCount());
-    EXPECT_EQ(Metatype::Int, c2.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int32, c2.argumentType(0u).type);
 
     Callable c3([](int, std::string) {});
     EXPECT_EQ(Metatype::Void, c3.returnType().type);
     EXPECT_EQ(2u, c3.argumentCount());
-    EXPECT_EQ(Metatype::Int, c3.argumentType(0u).type);
+    EXPECT_EQ(Metatype::Int32, c3.argumentType(0u).type);
     EXPECT_EQ(Metatype::String, c3.argumentType(1u).type);
 
     Callable c4([]() -> int { return -1; });
-    EXPECT_EQ(Metatype::Int, c4.returnType().type);
+    EXPECT_EQ(Metatype::Int32, c4.returnType().type);
     EXPECT_EQ(0u, c4.argumentCount());
 
     Callable c5([](void*) -> void* { return nullptr; });

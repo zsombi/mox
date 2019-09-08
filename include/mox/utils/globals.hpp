@@ -22,85 +22,20 @@
 #include <mutex>
 #include <iostream>
 #include <memory>
-#include <bitset>
-#include <cstddef>  // std::byte
 
 // Standard integer types
 #include <inttypes.h>
 
-typedef int8_t Int8;
-typedef uint8_t UInt8;
-typedef int16_t Int16;
-typedef uint16_t UInt16;
-typedef int32_t Int32;
-typedef uint32_t UInt32;
-typedef int64_t Int64;
-typedef uint64_t UInt64;
+#include <mox/config/platform_config.hpp>
 
-// OSX and Linux use the same declaration mode for inport and export
-#define DECL_EXPORT         __attribute__((visibility("default")))
-#define DECL_IMPORT         __attribute__((visibility("default")))
+using byte = int8_t;
+using long_t = long int;
+using ulong_t = unsigned long int;
 
-#ifdef MOX_LIBRARY
-#   define MOX_API     DECL_EXPORT
-#else
-#   define MOX_API     DECL_IMPORT
-#endif
-
-// Compiler checks
-#ifdef _MSVC_LANG
-// TODO: dig MSVC version that supports c++17
-#elif (__cplusplus < 201703L)
-
-#error "c++17 is required"
-
-#endif
-
-#if defined(__clang__)
-#   if defined(__apple_build_version__)
-#       /* http://en.wikipedia.org/wiki/Xcode#Toolchain_Versions */
-#       if __apple_build_version__ >= 7000053
-#           define CC_CLANG 306
-#       elif __apple_build_version__ >= 6000051
-#           define CC_CLANG 305
-#       elif __apple_build_version__ >= 5030038
-#           define CC_CLANG 304
-#       elif __apple_build_version__ >= 5000275
-#           define CC_CLANG 303
-#       elif __apple_build_version__ >= 4250024
-#           define CC_CLANG 302
-#       elif __apple_build_version__ >= 3180045
-#           define CC_CLANG 301
-#       elif __apple_build_version__ >= 2111001
-#           define CC_CLANG 300
-#       else
-#           error "Unknown Apple Clang version"
-#       endif
-#   else
-#       define CC_CLANG ((__clang_major__ * 100) + __clang_minor__)
-#   endif
-#   define DECLARE_NOEXCEPT
-#   define DECLARE_NOEXCEPTX(x)
-#else
-#   define DECLARE_NOEXCEPT            noexcept
-#   define DECLARE_NOEXCEPTX(x)        noexcept(x)
-#endif
-
-#ifdef _U_LONG
-
-typedef u_long ulong;
-
-#endif
 
 #ifdef ANDROID
 
-typedef unsigned long ulong;
 typedef long intptr_t_;
-
-#else
-
-typedef intptr_t intptr_t_;
-using std::byte;
 
 #endif
 
@@ -124,62 +59,12 @@ using std::byte;
 #define DISABLE_MOVE(Class) \
     Class(Class&&) = delete; \
     Class& operator=(Class&&) = delete;
-//
-// Private class implementation support
-//
-
-#define DECLARE_PRIVATE(Class) \
-    inline Class##Private* d_func() { return reinterpret_cast<Class##Private *>(d_ptr.get()); } \
-    inline const Class##Private* d_func() const { return reinterpret_cast<const Class##Private *>(d_ptr.get()); } \
-    friend class Class##Private;
-
-#define DECLARE_PRIVATE_D(Dptr, Class) \
-    inline Class##Private* d_func() { return reinterpret_cast<Class##Private *>(Dptr); } \
-    inline const Class##Private* d_func() const { return reinterpret_cast<const Class##Private *>(Dptr); } \
-    friend class Class##Private;
-
-#define DECLARE_PUBLIC(Class)                                    \
-    public: \
-    static Class##Private* get(Class& object) { return object.d_func(); } \
-    static const Class##Private* cget(const Class& object) { return object.d_func(); } \
-    static Class##Private* get(const Class& object) { return const_cast<Class*>(&object)->d_func(); } \
-    static Class##Private* get(std::shared_ptr<Class> object) { return object->d_func(); } \
-    static const Class##Private* get(std::shared_ptr<const Class> object) { return object->d_func(); } \
-    inline Class* q_func() { return static_cast<Class *>(q_ptr); } \
-    inline const Class* q_func() const { return static_cast<const Class *>(q_ptr); } \
-    friend class Class;
-
-#define D_PTR(Class) \
-    Class##Private * const d = d_func()
-
-#define Q_PTR(Class) \
-    Class * const q = q_func()
-
-namespace mox
-{
-
-/// Flags. An extension to std::bitset to test multiple bits
-template <size_t bitcount>
-class Flags : public std::bitset<bitcount>
-{
-public:
-    bool test_all(std::initializer_list<size_t> bits)
-    {
-        bool result = false;
-        for (auto bit : bits)
-        {
-            result |= this->test(bit);
-        }
-        return result;
-    }
-};
-
-} // namespace mox
 
 /// Creates a polymorphic shared pointer.
 template <typename BaseType, typename Type, typename... Args>
 std::shared_ptr<Type> make_polymorphic_shared(Args&&... args)
 {
+    static_assert(std::is_base_of_v<BaseType, Type>, "BaseType is not a superclass of Type.");
     Type *p = new Type(std::forward<Args>(args)...);
     std::shared_ptr<BaseType> baseShared(static_cast<BaseType*>(p));
     return std::static_pointer_cast<Type>(baseShared);
@@ -206,7 +91,7 @@ void* address(Ret(*func)(Args...))
 }
 
 template <typename Functor>
-void* address(Functor fn)
+void* address(const Functor& fn)
 {
     return (void*&)fn;
 }

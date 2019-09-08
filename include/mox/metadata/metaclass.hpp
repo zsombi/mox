@@ -197,7 +197,8 @@ public:
     /// Checks whether the \a metaObject is derived from this interface.
     bool isClassOf(const MetaObject& metaObject) const override
     {
-        return dynamic_cast<const BaseClass*>(&metaObject) != nullptr;
+        const BaseClass* casted = dynamic_cast<const BaseClass*>(&metaObject);
+        return casted != nullptr;
     }
 };
 
