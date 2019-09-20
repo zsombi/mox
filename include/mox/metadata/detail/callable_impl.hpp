@@ -29,10 +29,10 @@ namespace
 {
 
 template <typename Function, std::size_t Offset>
-struct ArgumentsToTuple
+struct MetaValueToTuple
 {
     template <int Index>
-    static auto convert(const Callable::Arguments& arguments)
+    static auto convert(const Callable::ArgumentPack& arguments)
     {
         if constexpr (Index == 0)
         {
@@ -49,28 +49,28 @@ struct ArgumentsToTuple
 } // noname
 
 template <typename... Args>
-Callable::Arguments::Arguments(Args... arguments)
+Callable::ArgumentPack::ArgumentPack(Args... arguments)
 {
-    std::array<Argument, sizeof... (Args)> aa = {{Argument(arguments)...}};
+    std::array<Variant, sizeof... (Args)> aa = {{Variant(arguments)...}};
     insert(begin(), aa.begin(), aa.end());
 }
 
 template <typename Type>
-Callable::Arguments& Callable::Arguments::add(const Type& value)
+Callable::ArgumentPack& Callable::ArgumentPack::add(const Type& value)
 {
-    emplace_back(Argument(value));
+    emplace_back(Variant(value));
     return *this;
 }
 
 template <typename Type>
-Callable::Arguments& Callable::Arguments::setInstance(Type value)
+Callable::ArgumentPack& Callable::ArgumentPack::setInstance(Type value)
 {
-    insert(begin(), Argument(value));
+    insert(begin(), Variant(value));
     return *this;
 }
 
 template <typename Type>
-Type Callable::Arguments::get(size_t index) const
+Type Callable::ArgumentPack::get(size_t index) const
 {
     if (index >= size())
     {
@@ -80,24 +80,24 @@ Type Callable::Arguments::get(size_t index) const
 }
 
 template <typename Function>
-auto Callable::Arguments::toTuple() const
+auto Callable::ArgumentPack::toTuple() const
 {
     constexpr std::size_t N = function_traits<Function>::arity;
     if constexpr (function_traits<Function>::type == FunctionType::Method)
     {
         return std::tuple_cat(std::make_tuple(get<typename function_traits<Function>::object*>(0)),
-                              ArgumentsToTuple<Function, 1>::template convert<N>(*this));
+                              MetaValueToTuple<Function, 1>::template convert<N>(*this));
     }
     else
     {
-        return ArgumentsToTuple<Function, 0>::template convert<N>(*this);
+        return MetaValueToTuple<Function, 0>::template convert<N>(*this);
     }
 }
 
 
 template <typename Function>
 Callable::Callable(Function fn)
-    : m_ret(ArgumentDescriptor::get<typename function_traits<Function>::return_type>())
+    : m_ret(VariantDescriptor::get<typename function_traits<Function>::return_type>())
     , m_args(function_traits<Function>::argument_descriptors())
     , m_address(::address(fn))
     , m_type(static_cast<FunctionType>(function_traits<Function>::type))
@@ -108,19 +108,19 @@ Callable::Callable(Function fn)
         m_classType = metaType<typename function_traits<Function>::object>();
     }
 
-    m_invoker = [function = std::forward<Function>(fn)](const Arguments& args)
+    m_invoker = [function = std::forward<Function>(fn)](const ArgumentPack& args)
     {
         auto args_tuple = args.toTuple<Function>();
 
         if constexpr (std::is_void_v<typename function_traits<Function>::return_type>)
         {
             std::apply(function, args_tuple);
-            return Argument();
+            return Variant();
         }
         else
         {
             auto ret = std::apply(function, args_tuple);
-            return Argument(ret);
+            return Variant(ret);
         }
     };
 }
@@ -130,27 +130,36 @@ Callable::Callable(Function fn)
  * invokes
  */
 
-template <class Ret, typename... Arguments>
-Ret invoke(const Callable& callable, Arguments... arguments)
+template <typename... ArgumentPack>
+InvokeReturnValue invoke(const Callable& callable, ArgumentPack... arguments)
 {
-    Callable::Arguments vargs(arguments...);
-    Argument ret = callable.apply(vargs);
-    if constexpr (!std::is_void_v<Ret>)
+    try
     {
-        return ret;
+        Callable::ArgumentPack vargs(arguments...);
+        Variant ret = callable.apply(vargs);
+        return std::make_optional(ret);
+    }
+    catch (...)
+    {
+        return std::nullopt;
     }
 }
 
-template <class Ret, class Class, typename... Arguments>
-std::enable_if_t<std::is_class<Class>::value, Ret> invoke(const Callable& callable, Class& instance, Arguments... arguments)
+template <class Class, typename... ArgumentPack>
+std::enable_if_t<std::is_class<Class>::value, InvokeReturnValue> invoke(const Callable& callable, Class& instance, ArgumentPack... arguments)
 {
-    Callable::Arguments vargs(arguments...);
-    Argument ret = callable.apply(instance, vargs);
-    if constexpr (!std::is_void_v<Ret>)
+    try
     {
-        return ret;
+        Callable::ArgumentPack vargs(arguments...);
+        Variant ret = callable.apply(instance, vargs);
+        return std::make_optional(ret);
+    }
+    catch (...)
+    {
+        return std::nullopt;
     }
 }
+
 } // namespace mox
 
 #endif // CALLABLE_IMPL_HPP

@@ -23,6 +23,7 @@
 #include <cxxabi.h>
 
 #include <mox/utils/function_traits.hpp>
+#include <mox/signal/signal.hpp>
 
 #include <sstream>
 
@@ -34,24 +35,21 @@ namespace registrar
 
 const MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti)
 {
-    return metadata().findMetaType(rtti);
+    return MetaData::findMetaType(rtti);
 }
 
 Metatype findMetatype(const std::type_info& rtti)
 {
     const MetatypeDescriptor* descriptor = findMetatypeDescriptor(rtti);
-    ASSERT(descriptor, std::string("unregistered metatype: ") + rtti.name());
-    return descriptor->id();
+    return descriptor ? descriptor->id() : Metatype::Invalid;
 }
 
 Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name)
 {
     const MetatypeDescriptor* type = findMetatypeDescriptor(rtti);
-    ASSERT(!type, std::string("Metatype already registered: ") + rtti.name());
     if (!type)
     {
-        const MetatypeDescriptor& newType = metadata().addMetaType(name.data(), rtti, isEnum, isClass, isPointer);
-        ASSERT(newType.id() >= Metatype::UserType, "Type not registered in the user space.");
+        const MetatypeDescriptor& newType = MetaData::addMetaType(name.data(), rtti, isEnum, isClass, isPointer);
         type = &newType;
     }
     return type->id();
@@ -59,24 +57,17 @@ Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isCla
 
 bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType)
 {
-    MetatypeDescriptor& descriptor = metadata().getMetaType(fromType);
+    MetatypeDescriptor& descriptor = MetaData::getMetaType(fromType);
     return descriptor.addConverter(std::forward<MetatypeConverterPtr>(converter), toType);
 }
 
 MetatypeConverter* findConverter(Metatype from, Metatype to)
 {
-    MetatypeDescriptor& descriptor = metadata().getMetaType(from);
+    MetatypeDescriptor& descriptor = MetaData::getMetaType(from);
     return descriptor.findConverterTo(to);
 }
 
 } // registrar
-
-bool ArgumentDescriptor::invocableWith(const ArgumentDescriptor& other) const
-{
-    return ((other.type == type) || registrar::findConverter(other.type, type)) &&
-            other.isReference == isReference &&
-            other.isConst == isConst;
-}
 
 
 
@@ -98,7 +89,9 @@ MetatypeDescriptor::MetatypeDescriptor(std::string_view name, int id, const std:
         int status = 0;
         m_name = abi::__cxa_demangle(rtti.name(), nullptr, nullptr, &status);
     }
-    ASSERT(m_name, "Null name type!");
+    FATAL(m_name, "Null name type!");
+
+    TRACE("New metatype: " << m_name);
 }
 
 MetatypeDescriptor::~MetatypeDescriptor()
@@ -113,7 +106,7 @@ bool MetatypeDescriptor::isCustomType()
 
 const MetatypeDescriptor& MetatypeDescriptor::get(Metatype typeId)
 {
-    return metadata().getMetaType(typeId);
+    return MetaData::getMetaType(typeId);
 }
 
 bool MetatypeDescriptor::isSupertypeOf(const MetatypeDescriptor& type) const
@@ -123,11 +116,11 @@ bool MetatypeDescriptor::isSupertypeOf(const MetatypeDescriptor& type) const
         return false;
     }
 
-    const MetaClass* thisClass = metadata().getMetaClass(m_id);
-    ASSERT(thisClass, "No MetaClass for the class type.");
+    const MetaClass* thisClass = MetaData::getMetaClass(m_id);
+    FATAL(thisClass, "No MetaClass for the class type.");
 
-    const MetaClass* typeClass = metadata().getMetaClass(type.id());
-    ASSERT(typeClass, "No MetaClass for the class type.");
+    const MetaClass* typeClass = MetaData::getMetaClass(type.id());
+    FATAL(typeClass, "No MetaClass for the class type.");
     return thisClass->isSuperClassOf(*typeClass);
 }
 
@@ -138,11 +131,11 @@ bool MetatypeDescriptor::derivesFrom(const MetatypeDescriptor& type) const
         return false;
     }
 
-    const MetaClass* thisClass = metadata().getMetaClass(m_id);
-    ASSERT(thisClass, "No MetaClass for the class type.");
+    const MetaClass* thisClass = MetaData::getMetaClass(m_id);
+    FATAL(thisClass, "No MetaClass for the class type.");
 
-    const MetaClass* typeClass = metadata().getMetaClass(type.id());
-    ASSERT(typeClass, "No MetaClass for the class type.");
+    const MetaClass* typeClass = MetaData::getMetaClass(type.id());
+    FATAL(typeClass, "No MetaClass for the class type.");
     return thisClass->derivesFrom(*typeClass);
 }
 
@@ -207,13 +200,12 @@ bool MetatypeDescriptor::addConverter(MetatypeConverterPtr&& converter, Metatype
 
 #define ATOMIC_TYPE(name, Type, typeId) \
 { \
-    const MetatypeDescriptor& metaType = md.addMetaType(name, typeid(Type), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>); \
-    ASSERT(metaType.id() == typeId, "wrong atomic type registration!"); \
+    const MetatypeDescriptor& metaType = metaData.addMetaType(name, typeid(Type), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>); \
+    FATAL(metaType.id() == typeId, "wrong atomic type registration!"); \
 }
 
-void registerAtomicTypes()
+void registerAtomicTypes(MetaData& metaData)
 {
-    MetaData& md = metadata();
     ATOMIC_TYPE("void", void, Metatype::Void)
     ATOMIC_TYPE("bool", bool, Metatype::Bool)
     ATOMIC_TYPE("char", char, Metatype::Char)
@@ -230,13 +222,18 @@ void registerAtomicTypes()
     ATOMIC_TYPE("literal", std::string_view, Metatype::Literal)
     ATOMIC_TYPE("void*", void*, Metatype::VoidPtr)
     ATOMIC_TYPE("byte*", byte*, Metatype::BytePtr)
-    ATOMIC_TYPE("MetaObject", MetaObject, Metatype::MetaObject)
-    ATOMIC_TYPE("MetaObject*", MetaObject*, Metatype::MetaObjectPtr)
 
 #ifdef LONG_SYNONIM_OF_UINT64
-    md.synonymTypes.push_back(std::make_pair(&typeid(long), Metatype::Int64));
-    md.synonymTypes.push_back(std::make_pair(&typeid(unsigned long), Metatype::UInt64));
+    metaData.synonymTypes.push_back(std::make_pair(&typeid(long), Metatype::Int64));
+    metaData.synonymTypes.push_back(std::make_pair(&typeid(unsigned long), Metatype::UInt64));
 #endif
+    // register MetaObject
+    metaData.addMetaType("MetaObject", typeid(MetaObject), false, true, false);
+    metaData.addMetaType("MetaObject*", typeid(MetaObject*), false, true, true);
+    MetaObject::StaticMetaClass::get();
+
+    metaData.addMetaType("Connection", registrar::remove_cv<Signal::ConnectionSharedPtr>(), false, false, true);
+    metaData.addMetaType("vector<int32>", registrar::remove_cv<std::vector<int32_t>>(), false, false, false);
 }
 
 }// namespace mox

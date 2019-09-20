@@ -26,22 +26,12 @@ Callable::invalid_argument::invalid_argument()
 {
 }
 
-size_t Callable::Arguments::count() const
+size_t Callable::ArgumentPack::count() const
 {
     return size();
 }
 
-const ArgumentDescriptorContainer Callable::Arguments::descriptors() const
-{
-    ArgumentDescriptorContainer container;
-    for (auto& arg : *this)
-    {
-        container.push_back(arg.descriptor());
-    }
-    return container;
-}
-
-Callable::Arguments& Callable::Arguments::operator+=(const Arguments &other)
+Callable::ArgumentPack& Callable::ArgumentPack::operator+=(const ArgumentPack &other)
 {
     insert(end(), other.begin(), other.end());
     return *this;
@@ -63,7 +53,7 @@ bool Callable::isConst() const
     return m_isConst;
 }
 
-const ArgumentDescriptor& Callable::returnType() const
+const VariantDescriptor& Callable::returnType() const
 {
     return m_ret;
 }
@@ -78,7 +68,7 @@ size_t Callable::argumentCount() const
     return m_args.size();
 }
 
-const ArgumentDescriptor& Callable::argumentType(size_t index) const
+const VariantDescriptor& Callable::argumentType(size_t index) const
 {
     size_t count = argumentCount();
     if (index >= count)
@@ -88,12 +78,17 @@ const ArgumentDescriptor& Callable::argumentType(size_t index) const
     return m_args[index];
 }
 
-const ArgumentDescriptorContainer& Callable::descriptors() const
+const VariantDescriptorContainer& Callable::descriptors() const
 {
     return m_args;
 }
 
-Argument Callable::apply(const Arguments& args) const
+bool Callable::isInvocableWith(const VariantDescriptorContainer& arguments) const
+{
+    return m_args.isInvocableWith(arguments);
+}
+
+Variant Callable::apply(const ArgumentPack& args) const
 {
     return m_invoker(args);
 }

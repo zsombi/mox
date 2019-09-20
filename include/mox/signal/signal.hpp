@@ -27,87 +27,94 @@
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/callable.hpp>
 #include <mox/metadata/metaclass.hpp>
-#include <mox/metadata/metamethod.hpp>
 
 #include <mox/utils/function_traits.hpp>
-
-/// Metasignal declarator macro
-#define META_SIGNAL(name)           mox::meta::MetaSignal<decltype(name)> meta_##name{*this, #name}
-
-/// Declares a signal with \a name and \a signature. The signal must have a metasignal
-/// declared with the same name.
-#define SIGNAL(name, signature)     decl::Signal<signature> name{*this, #name}
 
 namespace mox
 {
 
 class Signal;
-class SignalHost;
 
-/// MetaSignal holds the metadata of a signal.
-class MOX_API MetaSignal
+/// Abstract signal descriptor is the base descriptor class of mox signal types. The signal
+/// descriptor holds the argument signatures (descriptors) of a signal, and a unique identifier
+/// associated to the signal type.
+///
+/// You can have mox signals in your class if:
+/// - you declare a signal descriptor for the signal as static inline const member,
+/// - you derive your class from SignalHost or from a class that derives from SignalHost.
+struct MOX_API AbstractSignalDescriptor
 {
-public:
-    /// Returns the name of the signal.
-    std::string name() const
-    {
-        return m_name;
-    }
+    typedef int64_t TUuid;
 
-    /// Returns the ID of the signal.
-    size_t id() const
-    {
-        return m_id;
-    }
-
-    /// Returns an array with the argument descriptors of the signal.
-    const ArgumentDescriptorContainer& descriptors() const
-    {
-        return m_arguments;
-    }
-
-    /// Tests whether the signal is activable with the \a args.
-    /// \param args The argument descriptors to test against.
-    /// \return If the signal is activable with the arguments passed, returns \e true.
-    /// Otherwise returns \e false.
-    bool activableWith(const ArgumentDescriptorContainer& args) const;
+    /// Holds the signal argument descriptors.
+    const VariantDescriptorContainer arguments;
+    /// Holds the unique identifier of the signal.
+    const TUuid uuid = 0u;
 
 protected:
-    /// Creates a metasignal.
-    explicit MetaSignal(MetaClass& metaClass, std::string_view name, const ArgumentDescriptorContainer& args);
-    virtual ~MetaSignal() =  default;
-
-    MetaClass& m_ownerClass;
-    ArgumentDescriptorContainer m_arguments;
-    std::string m_name;
-    size_t m_id;
-};
-
-namespace meta
-{
-
-/// MetaSignal declarator.
-template <class SignalType>
-class MetaSignal : public mox::MetaSignal
-{
-public:
-    explicit MetaSignal(MetaClass& metaClass, std::string_view name)
-        : mox::MetaSignal(metaClass, name, function_traits<typename SignalType::Signature>::argument_descriptors())
+    /// Construct the signal descriptor with the argument container passed.
+    AbstractSignalDescriptor(const VariantDescriptorContainer& arguments)
+        : arguments(arguments)
+        , uuid(nextUuid())
     {
+    }
+
+private:
+    /// Get the next unique identifier for the signal.
+    TUuid nextUuid()
+    {
+        static TUuid uuidPool = 0u;
+        return ++uuidPool;
     }
 };
 
-} // namespace meta
+/// The class is the counterpart of the Mox signals, it holds all the signals declared on a class.
+/// Each class that declares signals must be derived from SignalHost class.
+class MOX_API SignalHost
+{
+public:
+    /// Destructor.
+    virtual ~SignalHost();
 
-/// Signal is the base class of the Mox signals. You can declare signals using the decl::Signal template class.
-/// You can connect a signal to a method, a metamethod, a function, a functor or a lambda using one of the connect()
-/// functions. The functions connected to a signal are called slots. These slots must have at maximum the same
-/// amount and type of arguments as the signal they are connected to has. A slot that has different argument type
-/// at a given argument index, or has more arguments than the signal signature has will fail to connect.
+    /// Activates the signal identified by the \a descriptor, passing the arguments packed in
+    /// \a args.
+    /// \return The number of activation times, or -1 if no signal was identified on the signal host.
+    int activate(const AbstractSignalDescriptor& descriptor, Callable::ArgumentPack& args);
+
+protected:
+    /// Constructor.
+    explicit SignalHost() = default;
+
+    /// Signal host lock, guards the signal register.
+    std::mutex m_lock;
+    /// The signal register holding all declared signals on a signal host.
+    std::vector<const Signal*> m_signals;
+
+    /// Registers the \a signal to the signal host.
+    /// \param signal The signal to register.
+    /// \return The signal ID of the registered signal.
+    size_t registerSignal(Signal& signal);
+
+    /// Removes a signal from the signal host register.
+    /// \param signal The signal to remove from the register.
+    void removeSignal(Signal& signal);
+
+    friend class Signal;
+};
+
+/// Signal is the concept of the Mox signals.
 ///
-/// Optionally, a slot can have the first argument a Signal::ConnectionSharedPtr argument. When that is the case,
-/// during the signal activation the connection that connects the slot with the signal is passed to the slot.
-/// The slot can use this connection object to disconnect the slot from the signal.
+/// You can connect a signal to a method, a metamethod, a function, a functor or a lambda using the specialized
+/// connect() functions. The functions connected to a signal are called slots. The slots must have arguments no
+/// more than the signal has, and must be of the same type or at least convertible to the slot arguments. If the
+/// conditions are not met, the connection fails.
+///
+/// Optionally, a slot can have the first argument of type Signal::ConnectionSharedPtr. When so, the connection
+/// object is passed to the slot when the signal is activated. The slot can use the connection object to disconnect
+/// the slot from the signal.
+///
+/// Every mox signal is registered to a host. When the host is destroyed, all the signal connections are also
+/// disconnected and deferred.
 class MOX_API Signal
 {
 public:
@@ -135,7 +142,7 @@ public:
         /// \param funcAddress The function address to test the connection against.
         /// \return If the connection holds the receiver and the function address passed as argument,
         /// returns \e true. Otherwise \e false.
-        virtual bool compare(Argument receiver, const void* funcAddress) const;
+        virtual bool compare(Variant receiver, const void* funcAddress) const;
 
     protected:
         /// Constructs a connection attached to the \a signal.
@@ -143,7 +150,7 @@ public:
 
         /// Activates the connection by calling the slot of the connection.
         /// \param args The arguments to pass to the slot.
-        virtual void activate(Callable::Arguments& args) = 0;
+        virtual void activate(Callable::ArgumentPack& args) = 0;
 
         /// Resets the connection.
         virtual void reset() = 0;
@@ -158,10 +165,6 @@ public:
 
     /// The connection type.
     typedef std::shared_ptr<Connection> ConnectionSharedPtr;
-
-    /// Returns the metasignal assiciated to the signal.
-    /// \return The metasignal of the signal.
-    const MetaSignal& metaSignal() const;
 
     /// Returns the signal host instance.
     /// \return The signal host instance.
@@ -181,10 +184,15 @@ public:
     /// in the same activation cicle.
     /// \param arguments The arguments to pass to the slots, being the arguments passed to the signal.
     /// \return The number of connections activated.
-    int activate(Callable::Arguments& arguments);
+    int activate(Callable::ArgumentPack& arguments);
 
+    /// Returns the signal descriptor.
+    const AbstractSignalDescriptor& descriptor() const
+    {
+        return m_descriptor;
+    }
 
-    /// Signal emitter. Packs the \a arguments into a Callable::Arguments pack and activates
+    /// Signal emitter. Packs the \a arguments into a Callable::ArgumentPack pack and activates
     /// the signal connections.
     /// \param arguments... The variadic arguments passed.
     /// \return The number of connections activated.
@@ -195,7 +203,7 @@ public:
     /// \param receiver The receiver hosting the metamethod.
     /// \param metaMethod The metamethod to connect to.
     /// \return The connection shared object.
-    ConnectionSharedPtr connect(Argument receiver, const MetaMethod& metaMethod);
+    ConnectionSharedPtr connect(Variant receiver, const MetaClass::Method& metaMethod);
 
     /// Creates a connection between this signal and a receiver \a signal.
     /// \param signal The receiver signal connected to this signal.
@@ -260,15 +268,20 @@ public:
     /// Otherwise returns \e false.
     bool disconnect(const Signal& signal);
 
+    template <class SignalOwner>
+    explicit Signal(SignalOwner& owner, const AbstractSignalDescriptor& des)
+        : m_host(owner)
+        , m_descriptor(des)
+        , m_id(m_host.registerSignal(*this))
+    {
+    }
+    /// Destructor.
+    virtual ~Signal();
+
 protected:
     Signal() = delete;
     Signal(const Signal&) = delete;
     Signal& operator=(const Signal&) = delete;
-
-    /// Constructs a signal with \a metaSignal, and registers it to the \a host passed as argument.
-    explicit Signal(SignalHost& host, const MetaSignal& metaSignal);
-    /// Destructor.
-    virtual ~Signal();
 
     /// Adds a \a connection to the signal.
     void addConnection(ConnectionSharedPtr connection);
@@ -278,101 +291,37 @@ protected:
     /// Creates a connection to a \a lambda. The connection owns the callable.
     ConnectionSharedPtr connect(Callable&& lambda);
     /// Creates a connection to a \a receiver and a \a slot. The connection owns the callable.
-    ConnectionSharedPtr connect(Argument receiver, Callable&& slot);
+    ConnectionSharedPtr connect(Variant receiver, Callable&& slot);
 
     /// Disconnects a connection that holds a \a receiver and \a callableAddress.
-    bool disconnectImpl(Argument receiver, const void* callableAddress);
+    bool disconnectImpl(Variant receiver, const void* callableAddress);
 
     /// Connection container type.
     typedef std::vector<ConnectionSharedPtr> ConnectionList;
 
     /// The signal host address.
     SignalHost& m_host;
+    /// The signal descriptor.
+    const AbstractSignalDescriptor& m_descriptor;
     /// The metasignal of the signal.
-    const MetaSignal& m_metaSignal;
+    size_t m_id = std::numeric_limits<size_t>::max();
     /// The collection of active connections.
     ConnectionList m_connections;
     /// Triggering flag. Locks the signal from recursive triggering.
-    bool m_triggering;
+    bool m_triggering = false;
 };
 
-/// The class is the counterpart of the Mox signals, it holds all the signals declared on a class.
-/// Each class that declares signals must be derived from SignalHost class.
-class MOX_API SignalHost
+template <typename... ArgumentPack>
+struct SignalDescriptor : AbstractSignalDescriptor
 {
-public:
-    /// Destructor.
-    virtual ~SignalHost();
-
-    int activate(int signal, Callable::Arguments& args);
-
-protected:
-    /// Constructor.
-    explicit SignalHost() = default;
-
-    /// Signal host lock, guards the signal register.
-    std::mutex m_lock;
-    /// The signal register holding all declared signals on a signal host.
-    std::vector<const Signal*> m_signals;
-
-    /// Registers the \a signal to the signal host.
-    /// \param signal The signal to register.
-    void registerSignal(Signal& signal);
-
-    /// Removes a signal from the signal host register.
-    /// \param signal The signal to remove from the register.
-    void removeSignal(Signal& signal);
-
-    friend class Signal;
-    friend class MetaSignal;
+    SignalDescriptor()
+        : AbstractSignalDescriptor(VariantDescriptorContainer::get<ArgumentPack...>())
+    {
+    }
 };
-
-namespace decl
-{
-
-/// Signal template specialization for a generic signature.
-template <typename Signature>
-class Signal;
-
-/// Signal template, specialization with a signature of void function with arbitrary arguments.
-/// The arguments must be registered as metatypes. You can connect methods, metamethods, functions,
-/// functors or lambdas to a signal using the relevant connect() methods. You can disconnect the
-/// connections either calling disconnect() on the signal, or by calling Signal::Connection::disconnect().
-/// \note You can connect signals to slots that have the same arguments or less arguments than
-/// the signal has. When connecting to slots with less arguments than the signal signature, only
-/// slots that have the same argument types at the specific argument index are considered connectable.
-/// This is also valid when connecting two signals.
-template <typename... Args>
-class Signal<void(Args...)> : public mox::Signal
-{
-    template <class SignalOwner>
-    static const MetaSignal& getMetaSignal(std::string_view name);
-
-public:
-    /// The signature of the signal.
-    typedef void(*Signature)(Args...);
-
-    /// Constructs the signal attaching it to the \a owner.
-    /// \param owner The SignalHost owning the signal.
-    /// \param name The name of the signal.
-    template <class SignalOwner>
-    explicit Signal(SignalOwner& owner, std::string_view name);
-};
-
-} // namespace impl
-
-/// Emits a \a signal on \a sender with the optional \a arguments. If the signal exists on the sender
-/// and is invocable with the given arguments, returns the number of activations of that signal.
-/// \param signal The signal name to emit.
-/// \param sender The sender object that has the signal.
-/// \param arguments The optional arguments to pass to the signal.
-/// \return If the signal is not found on the sender, returns -1. If the signal is found, returns the
-/// number of activations.
-template <class Sender, typename... Args>
-auto emit(std::string_view signal, Sender& sender, Args... arguments);
 
 } // mox
 
-#include <mox/metadata/detail/signal_impl.hpp>
+#include <mox/signal/detail/signal_impl.hpp>
 
 #endif // SIGNAL_HPP

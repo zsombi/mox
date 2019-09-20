@@ -31,17 +31,6 @@ protected:
     void TearDown() override;
 };
 
-template <typename Type>
-mox::Metatype registerTestType()
-{
-    const mox::MetatypeDescriptor* descriptor = mox::registrar::findMetatypeDescriptor(mox::registrar::remove_cv<Type>());
-    if (!descriptor)
-    {
-        return mox::registerMetaType<Type>();
-    }
-    return descriptor->id();
-}
-
 #define SLEEP(msec) std::this_thread::sleep_for(std::chrono::milliseconds(msec))
 #define EXPECT_NULL(ptr)        EXPECT_EQ(nullptr, ptr)
 #define EXPECT_NOT_NULL(ptr)    EXPECT_NE(nullptr, ptr)

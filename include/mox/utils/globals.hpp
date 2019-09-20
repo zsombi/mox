@@ -42,13 +42,19 @@ typedef long intptr_t_;
 // unused parameters
 #define UNUSED(x)       (void)x
 
-// assert
-#define ASSERT(test, message) \
+#define FATAL(test, message) \
     if (!(test)) \
     { \
-        std::cout << "ASSERT: " << __FILE__ << ":" << __LINE__ << " - " << message << std::endl; \
+        std::cout << "FATAL: " << __FILE__ << ":" << __LINE__ << " - " << message << std::endl; \
         abort(); \
     }
+
+
+#ifdef DEBUG
+#   define TRACE(x)     std::cout << x << std::endl;
+#else
+#   define TRACE(x)
+#endif
 
 //
 // disable copy construction and operator

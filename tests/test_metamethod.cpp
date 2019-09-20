@@ -18,7 +18,6 @@
 
 #include "test_framework.h"
 #include <mox/metadata/metaclass.hpp>
-#include <mox/metadata/metamethod.hpp>
 #include <mox/metadata/metaobject.hpp>
 #include <mox/metadata/callable.hpp>
 
@@ -31,12 +30,12 @@ public:
 
     virtual ~TestMixin() = default;
 
-    STATIC_METACLASS_BASE(TestMixin)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, TestMixin>
     {
-        META_METHOD(TestMixin, testFunc1);
-        META_METHOD(TestMixin, testFunc2);
-        META_METHOD(TestMixin, staticFunc);
-        MetaMethod lambda{*this, [](TestMixin* instance) { instance->invoked = true; }, "lambda"};
+        Method testFunc1{*this, &BaseType::testFunc1, "testFunc1"};
+        Method testFunc2{*this, &BaseType::testFunc2, "testFunc2"};
+        Method staticFunc{*this, &BaseType::staticFunc, "staticFunc"};
+        Method lambda{*this, [](TestMixin* instance) { instance->invoked = true; }, "lambda"};
     };
 
     void testFunc1()
@@ -61,9 +60,9 @@ public:
 
     virtual ~TestSecond() = default;
 
-    STATIC_METACLASS_BASE(TestSecond)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, TestSecond>
     {
-        META_METHOD(TestSecond, testFunc1);
+        Method testFunc1{*this, &BaseType::testFunc1, "testFunc1"};
     };
 
     int testFunc1()
@@ -76,7 +75,7 @@ class Mixin : public TestMixin, public TestSecond
 {
 public:
 
-    STATIC_METACLASS(Mixin, TestMixin, TestSecond)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, Mixin, TestMixin, TestSecond>
     {
     };
 
@@ -91,23 +90,23 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerTestType<TestMixin>();
-        registerTestType<TestSecond>();
-        registerTestType<Mixin>();
+        registerMetaClass<TestMixin>();
+        registerMetaClass<TestSecond>();
+        registerMetaClass<Mixin>();
     }
 };
 
 TEST_F(MetaMethods, test_mixin_methods)
 {
     const MetaClass* mc = TestMixin::StaticMetaClass::get();
-    auto visitor = [](const MetaMethod* method) -> bool
+    auto visitor = [](const MetaClass::Method* method) -> bool
     {
         return method->name() == "testFunc1";
     };
-    const MetaMethod* method = mc->visitMethods(visitor);
+    const MetaClass::Method* method = mc->visitMethods(visitor);
     EXPECT_TRUE(method != nullptr);
 
-    method = mc->visitMethods([](const MetaMethod* method) -> bool { return method->name() == "whatever"; });
+    method = mc->visitMethods([](const MetaClass::Method* method) -> bool { return method->name() == "whatever"; });
     EXPECT_TRUE(method == nullptr);
 }
 
@@ -115,9 +114,10 @@ TEST_F(MetaMethods, test_invoke_undeclared_method)
 {
     TestMixin mixin;
 
-    EXPECT_THROW(invokeMethod<void>(mixin, "whatever"), mox::metamethod_not_found);
+    EXPECT_FALSE(metaInvoke(mixin, "whatever"));
     // Force the return type of a void function to int.
-    EXPECT_THROW(invokeMethod<int>(mixin, "testFunc1"), mox::metamethod_not_found);
+    int ret = -1;
+    EXPECT_FALSE(metaInvoke(mixin, ret, "testFunc1"));
 }
 
 TEST_F(MetaMethods, test_mixin_method_invoke_directly)
@@ -126,55 +126,66 @@ TEST_F(MetaMethods, test_mixin_method_invoke_directly)
     const TestMixin::StaticMetaClass* metaClass = dynamic_cast<const TestMixin::StaticMetaClass*>(TestMixin::StaticMetaClass::get());
     EXPECT_NOT_NULL(metaClass);
 
-    invoke<void>(metaClass->testFunc1, ptrMixin);
+    invoke(metaClass->testFunc1, ptrMixin);
 }
 
 TEST_F(MetaMethods, test_mixin_method_invoke_by_method_name)
 {
     TestMixin mixin;
 
-    invokeMethod<void>(mixin, "testFunc1");
+    metaInvoke(mixin, "testFunc1");
     EXPECT_TRUE(mixin.invoked);
 
-    EXPECT_EQ(1234321, invokeMethod<int>(mixin, "testFunc2"));
+    int ret = -1;
+    EXPECT_TRUE(metaInvoke(mixin, ret, "testFunc2"));
+    EXPECT_EQ(1234321, ret);
 }
 
 TEST_F(MetaMethods, test_mixin_static_method_invoke)
 {
     TestMixin mixin;
 
-    EXPECT_EQ(11, invokeMethod<int>(mixin, "staticFunc", 11));
+    int ret = -1;
+    EXPECT_TRUE(metaInvoke(mixin, ret, "staticFunc", 11));
+    EXPECT_EQ(11, ret);
 }
 
 TEST_F(MetaMethods, test_mixin_invoke_lambda)
 {
     TestMixin mixin;
-    invokeMethod<void>(mixin, "lambda", &mixin);
+    metaInvoke(mixin, "lambda", &mixin);
     EXPECT_TRUE(mixin.invoked);
 }
 
 TEST_F(MetaMethods, test_mixin_metamethod)
 {
     Mixin mixin;
-    invokeMethod<void>(mixin, "lambda", static_cast<TestMixin*>(&mixin));
+    metaInvoke(mixin, "lambda", static_cast<TestMixin*>(&mixin));
     EXPECT_TRUE(mixin.invoked);
 }
 
 TEST_F(MetaMethods, test_mixin_method_defined_in_superclass)
 {
     Mixin mixin;
-    EXPECT_EQ(1234321, invokeMethod<int>(mixin, "testFunc2"));
+    int ret = -1;
+    EXPECT_TRUE(metaInvoke(mixin, ret, "testFunc2"));
+    EXPECT_EQ(1234321, ret);
 }
 
 TEST_F(MetaMethods, test_mixin_same_name_methods)
 {
     Mixin mixin;
-    EXPECT_EQ(987, invokeMethod<int>(mixin, "testFunc1"));
+    int ret = -1;
+    EXPECT_TRUE(metaInvoke(mixin, ret, "testFunc1"));
+    EXPECT_EQ(987, ret);
 }
 
 TEST_F(MetaMethods, test_invoked_with_convertible_arguments)
 {
     Mixin mixin;
-    EXPECT_EQ(987, invokeMethod<int>(mixin, "staticFunc", std::string("987")));
-    EXPECT_EQ(123, invokeMethod<int>(mixin, "staticFunc", 123.2f));
+    int ret = -1;
+    EXPECT_TRUE(metaInvoke(mixin, ret, "staticFunc", std::string("987")));
+    EXPECT_EQ(987, ret);
+    EXPECT_TRUE(metaInvoke(mixin, ret, "staticFunc", 123.2f));
+    EXPECT_EQ(123, ret);
 }

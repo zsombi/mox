@@ -30,15 +30,18 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype_descriptor.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metatype_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/argument.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/variant_descriptor.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/variant.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/variant_impl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metaclass.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metaobject.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/callable.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/callable_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metamethod.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metamethod_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/signal.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/signal_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metaclass_impl.hpp
+
+    # Signal handling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/detail/signal_impl.hpp
     )
 
 set(SOURCES
@@ -48,8 +51,9 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/converters.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaclass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaobject.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/argument.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/variant.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/callable.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/signal_p.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/signal.cpp
+    # Signal
+    ${CMAKE_CURRENT_SOURCE_DIR}/signal/signal_p.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/signal/signal.cpp
     )

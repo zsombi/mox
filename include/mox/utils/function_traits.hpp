@@ -26,18 +26,10 @@
 
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metatype.hpp>
+#include <mox/metadata/variant_descriptor.hpp>
 
 namespace mox
 {
-
-typedef std::vector<ArgumentDescriptor> ArgumentDescriptorContainer;
-
-template <typename... Args>
-ArgumentDescriptorContainer argument_descriptors()
-{
-    const std::array<ArgumentDescriptor, sizeof... (Args)> aa = {{ ArgumentDescriptor::get<Args>()... }};
-    return ArgumentDescriptorContainer(aa.begin(), aa.end());
-}
 
 enum FunctionType
 {
@@ -77,9 +69,9 @@ struct function_traits<TRet(TObject::*)(Args...)>
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
     };
 
-    static std::vector<ArgumentDescriptor> argument_descriptors()
+    static VariantDescriptorContainer argument_descriptors()
     {
-        return mox::argument_descriptors<Args...>();
+        return VariantDescriptorContainer::get<Args...>();
     }
 };
 
@@ -102,9 +94,9 @@ struct function_traits<TRet(TObject::*)(Args...) const>
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
     };
 
-    static std::vector<ArgumentDescriptor> argument_descriptors()
+    static VariantDescriptorContainer argument_descriptors()
     {
-        return mox::argument_descriptors<Args...>();
+        return VariantDescriptorContainer::get<Args...>();
     }
 };
 
@@ -126,9 +118,9 @@ struct function_traits<TRet(*)(Args...)>
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
     };
 
-    static std::vector<ArgumentDescriptor> argument_descriptors()
+    static VariantDescriptorContainer argument_descriptors()
     {
-        return mox::argument_descriptors<Args...>();
+        return VariantDescriptorContainer::get<Args...>();
     }
 };
 

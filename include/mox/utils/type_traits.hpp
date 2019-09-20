@@ -75,22 +75,6 @@ struct has_static_metaclass
 template <typename T>
 inline constexpr bool has_static_metaclass_v = has_static_metaclass<T>::value;
 
-/// Tests whether the T class has dynamic metaclass getter.
-template <typename T>
-struct has_dynamic_metaclass
-{
-private:
-    typedef char yes_type;
-    typedef long no_type;
-    template <typename U> static yes_type test(decltype(&U::getMetaClass));
-    template <typename U> static no_type  test(...);
-public:
-    static constexpr bool value = sizeof(test<T>(0)) == sizeof(yes_type);
-};
-
-template <typename T>
-inline constexpr bool has_dynamic_metaclass_v = has_dynamic_metaclass<T>::value;
-
 /// Tests whether the T class has a Converter declared.
 template <class T>
 struct has_converter

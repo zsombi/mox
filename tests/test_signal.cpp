@@ -18,38 +18,44 @@
 
 #include "test_framework.h"
 #include <mox/metadata/metaclass.hpp>
-#include <mox/metadata/metamethod.hpp>
 #include <mox/metadata/metaobject.hpp>
 #include <mox/metadata/callable.hpp>
-#include <mox/metadata/signal.hpp>
+#include <mox/signal/signal.hpp>
 
 using namespace mox;
 
 class SignalTestClass : public SignalHost
 {
 public:
-    SIGNAL(sig1, void());
-    SIGNAL(sig2, void(int32_t));
-    SIGNAL(sig3, void(int32_t, std::string));
-    SIGNAL(sigB, void());
 
-    STATIC_METACLASS_BASE(SignalTestClass)
+    static inline SignalDescriptor<> const Sign1Des;
+    static inline SignalDescriptor<> const SignBDes;
+    static inline SignalDescriptor<int32_t> const Sign2Des;
+    static inline SignalDescriptor<int32_t, std::string> const Sign3Des;
+
+    Signal sig1{*this, Sign1Des};
+    Signal sig2{*this, Sign2Des};
+    Signal sig3{*this, Sign3Des};
+    Signal sigB{*this, SignBDes};
+
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SignalTestClass>
     {
-        META_SIGNAL(sig1);
-        META_SIGNAL(sigB);
-        META_SIGNAL(sig2);
-        META_SIGNAL(sig3);
+        Signal sig1{*this, Sign1Des, "sig1"};
+        Signal sigB{*this, SignBDes, "sigB"};
+        Signal sig2{*this, Sign2Des, "sig2"};
+        Signal sig3{*this, Sign3Des, "sig3"};
     };
 };
 
 class DerivedEmitter : public SignalTestClass
 {
 public:
-    SIGNAL(sigV, void(std::vector<int32_t>));
+    static inline SignalDescriptor<std::vector<int32_t>> const SignVDes;
+    Signal sigV{*this, SignVDes};
 
-    STATIC_METACLASS(DerivedEmitter, SignalTestClass)
+    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, DerivedEmitter, SignalTestClass>
     {
-        META_SIGNAL(sigV);
+        Signal sigV{*this, SignVDes, "sigV"};
     };
 };
 
@@ -61,17 +67,18 @@ class  SlotHolder : public SignalHost
     int slot4Call = 0;
 
 public:
-    SIGNAL(sig, void(int));
+    static inline SignalDescriptor<int> const SigDes;
+    Signal sig{*this, SigDes};
 
-    STATIC_METACLASS_BASE(SlotHolder)
+    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SlotHolder>
     {
-        META_METHOD(SlotHolder, method1);
-        META_METHOD(SlotHolder, method2);
-        META_METHOD(SlotHolder, method3);
-        META_METHOD(SlotHolder, method4);
-        META_METHOD(SlotHolder, autoDisconnect1);
-        META_METHOD(SlotHolder, autoDisconnect2);
-        META_SIGNAL(sig);
+        Method method1{*this, &BaseType::method1, "method1"};
+        Method method2{*this, &BaseType::method2, "method2"};
+        Method method3{*this, &BaseType::method3, "method3"};
+        Method method4{*this, &BaseType::method4, "method4"};
+        Method autoDisconnect1{*this, &BaseType::autoDisconnect1, "autoDisconnect1"};
+        Method autoDisconnect2{*this, &BaseType::autoDisconnect2, "autoDisconnect2"};
+        Signal sig{*this, SigDes, "sig"};
     };
 
 
@@ -135,10 +142,10 @@ class DerivedHolder : public SlotHolder
     int derived1Call = 0;
     int derived2Call = 0;
 public:
-    STATIC_METACLASS(DerivedHolder, SlotHolder)
+    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, DerivedHolder, SlotHolder>
     {
-        META_METHOD(DerivedHolder, derivedMethod1);
-        META_METHOD(DerivedHolder, derivedMethod2);
+        Method derivedMethod1{*this, &BaseType::derivedMethod1, "derivedMethod1"};
+        Method derivedMethod2{*this, &BaseType::derivedMethod2, "derivedMethod2"};
     };
 
     void derivedMethod1()
@@ -174,13 +181,18 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerTestType<std::vector<int32_t>>();
-        registerTestType<SignalTestClass>();
-        registerTestType<SlotHolder>();
-        registerTestType<DerivedHolder>();
-        registerTestType<DerivedEmitter>();
+        registerMetaType<std::vector<int32_t>>();
+        registerMetaClass<SignalTestClass>();
+        registerMetaClass<SlotHolder>();
+        registerMetaClass<DerivedHolder>();
+        registerMetaClass<DerivedEmitter>();
     }
 };
+
+TEST_F(SignalTest, test_signal_api)
+{
+    SignalTestClass test;
+}
 
 TEST_F(SignalTest, test_connect_method)
 {
@@ -257,6 +269,9 @@ TEST_F(SignalTest, test_connect_signal)
     EXPECT_NULL(emitter.sig1.connect(receiver.sig));
     EXPECT_NOT_NULL(emitter.sig2.connect(receiver.sig));
     EXPECT_NOT_NULL(emitter.sig3.connect(receiver.sig));
+    EXPECT_NOT_NULL(emitter.sig3.connect(emitter.sig2));
+
+    EXPECT_EQ(2, emitter.sig3(10, std::string("apple")));
 }
 
 TEST_F(SignalTest, test_disconnect)
@@ -507,35 +522,14 @@ TEST_F(SignalTest, test_disconnect_on_emit_from_lambda)
     EXPECT_EQ(0, sender.sig2(1));
 }
 
-TEST_F(SignalTest, test_metasignal_emit)
-{
-    SignalTestClass sender;
-    SlotHolder receiver;
-
-    sender.sig1.connect(receiver, &SlotHolder::method1);
-    EXPECT_EQ(1, emit("sig1", sender));
-    EXPECT_EQ(-1, emit("whatever", sender));
-}
-
-TEST_F(SignalTest, test_emit)
-{
-    SignalTestClass sender;
-
-    EXPECT_EQ(0, emit("sig1", sender));
-    EXPECT_EQ(0, emit("sig1", sender, 10, std::string("bla")));
-    EXPECT_EQ(-1, emit("sig2", sender));
-    EXPECT_EQ(0, emit("sig2", sender, 10));
-    EXPECT_EQ(0, emit("sig2", sender, 10, std::string("bla")));
-}
-
 TEST_F(SignalTest, test_proper_signal_ids)
 {
     DerivedEmitter sender;
 
     EXPECT_EQ(0, sender.sig1.id());
-    EXPECT_EQ(1, sender.sigB.id());
-    EXPECT_EQ(2, sender.sig2.id());
-    EXPECT_EQ(3, sender.sig3.id());
+    EXPECT_EQ(1, sender.sig2.id());
+    EXPECT_EQ(2, sender.sig3.id());
+    EXPECT_EQ(3, sender.sigB.id());
     EXPECT_EQ(4, sender.sigV.id());
 }
 
@@ -568,4 +562,38 @@ TEST_F(SignalTest, test_disconnect_next_connection_in_activation)
 
     // There should be only 1 activation, as lambda disconnects the other connection.
     EXPECT_EQ(1, sender.sigV());
+}
+
+TEST_F(SignalTest, test_emit_metasignals)
+{
+    SignalTestClass sender;
+
+    EXPECT_EQ(0, metaEmit(sender, "sig1"));
+
+    // Invoke with convertible args.
+    EXPECT_EQ(0, metaEmit(sender, "sig2", std::string_view("10")));
+
+    // Invoke with not enough args.
+    EXPECT_EQ(-1, metaEmit(sender, "sig3", 10));
+    EXPECT_EQ(0, metaEmit(sender, "sig3", 10, std::string_view("123")));
+
+    // Invoke a non-existent signal.
+    EXPECT_EQ(-1, metaEmit(sender, "sigV"));
+}
+
+TEST_F(SignalTest, test_metaclass_invoke_metasignals)
+{
+    SignalTestClass sender;
+    const SignalTestClass::StaticMetaClass* mc = SignalTestClass::StaticMetaClass::get();
+
+    EXPECT_EQ(0, mc->emit(sender, mc->sig1));
+
+    // Invoke with convertible arguments.
+    EXPECT_EQ(0, mc->emit(sender, mc->sig2, std::string_view("10")));
+
+    // Invoke with not enough arguments.
+    EXPECT_EQ(-1, mc->emit(sender, mc->sig2));
+
+    // Invoke non-existent arguments.
+    EXPECT_EQ(-1, mc->emit(sender, DerivedEmitter::StaticMetaClass::get()->sigV));
 }

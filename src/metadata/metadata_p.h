@@ -25,28 +25,26 @@
 #include <functional>
 #include <mox/metadata/metatype.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
-#include <mox/metadata/argument.hpp>
+#include <mox/metadata/variant.hpp>
 #include <mox/metadata/metaclass.hpp>
 #include <mox/metadata/metaobject.hpp>
 
 namespace mox
 {
 
-class MetaData
+struct MetaData
 {
-public:
     explicit MetaData();
     ~MetaData();
-    void initialize();
 
-    const MetatypeDescriptor& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer);
-    const MetatypeDescriptor* findMetaType(const std::type_info& rtti);
-    MetatypeDescriptor& getMetaType(Metatype type);
+    static const MetatypeDescriptor& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer);
+    static MetatypeDescriptor* findMetaType(const std::type_info& rtti);
+    static MetatypeDescriptor& getMetaType(Metatype type);
 
-    void addMetaClass(const MetaClass& metaClass);
-    void removeMetaClass(const MetaClass& metaClass);
-    const MetaClass* findMetaClass(std::string_view name);
-    const MetaClass* getMetaClass(Metatype metaType);
+    static void addMetaClass(const MetaClass& metaClass);
+    static void removeMetaClass(const MetaClass& metaClass);
+    static const MetaClass* findMetaClass(std::string_view name);
+    static const MetaClass* getMetaClass(Metatype metaType);
 
     typedef std::vector<std::unique_ptr<MetatypeDescriptor>> MetaTypeContainer;
     typedef std::vector<std::pair<const std::type_info*, Metatype>> SynonymContainer;
@@ -58,12 +56,14 @@ public:
     MetaClassTypeRegister metaClassRegister;
     MetaClassContainer metaClasses;
     std::mutex sync;
+    bool initialized = false;
+
+    static MetaData globalMetaData;
+    static MetaData* globalMetaDataPtr;
 };
 
-MetaData& metadata();
-
-void registerAtomicTypes();
-void registerConverters();
+void registerAtomicTypes(MetaData& metaData);
+void registerConverters(MetaData& metaData);
 
 } // namespace mox
 

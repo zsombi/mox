@@ -35,8 +35,8 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerTestType<UserStruct>();
-        registerTestType<UserClass>();
+        registerMetaType<UserStruct>();
+        registerMetaType<UserClass>();
     }
 };
 
@@ -171,6 +171,4 @@ TEST_F(Types, test_user_types)
 
     type = &metatypeDescriptor<UserClass>();
     EXPECT_GE(type->id(), Metatype::UserType);
-
-    EXPECT_NOT_EQ(metaType<UserClass>(), metaType<UserClass*>());
 }

@@ -59,22 +59,20 @@ enum class Metatype : int
     // Pointer types
     VoidPtr,
     BytePtr,
-    MetaObject,
-    MetaObjectPtr,
     // All user types to be installed here
     UserType
 };
 ENABLE_ENUM_OPERATORS(Metatype)
 
-/// Base type of all Mox arguments.
-typedef std::any ArgumentBase;
+/// Base type of all Mox metavalues.
+typedef std::any MetaValue;
 
 /// Metatype converters
 /// \{
 /// Base converter.
 struct MOX_API MetatypeConverter
 {
-    typedef ArgumentBase (*ConverterFunction)(const MetatypeConverter& /*converter*/, const void*/*value*/);
+    typedef MetaValue (*ConverterFunction)(const MetatypeConverter& /*converter*/, const void*/*value*/);
 
     /// Constructs a converter with a converter function.
     explicit MetatypeConverter(ConverterFunction function)
@@ -163,58 +161,6 @@ bool registerConverter(Function function);
 /// A converter registration fails if Mox already has a converter for the desired types.
 template <typename From, typename To>
 bool registerConverter(To (From::*function)() const);
-
-/// Defines the type of an argument. Callable holds the argument descriptors for the return type aswell
-/// as for the callable arguments.
-struct MOX_API ArgumentDescriptor
-{
-    /// Tye metatype of the argument.
-    const Metatype type = Metatype::Invalid;
-    /// \e true if the argument is a reference, \e false if not.
-    const bool isReference = false;
-    /// \e true if the argument is a const, \e false if not.
-    const bool isConst = false;
-
-    /// Constructor.
-    ArgumentDescriptor() = default;
-    ArgumentDescriptor(Metatype type, bool ref, bool c)
-        : type(type)
-        , isReference(ref)
-        , isConst(c)
-    {
-    }
-
-    template <typename Type>
-    ArgumentDescriptor(Type)
-        : type(metaType<Type>())
-        , isReference(std::is_reference<Type>())
-        , isConst(std::is_const<Type>())
-    {
-    }
-
-    /// Returns the argument descriptor for the \e Type.
-    /// \return The argument descriptor for the \e Type.
-    template <typename Type>
-    static ArgumentDescriptor&& get()
-    {
-        return std::move(ArgumentDescriptor{
-                             metaType<Type>(),
-                             std::is_reference<Type>(),
-                             std::is_const<Type>()
-                         });
-    }
-
-    /// Tests whether an \a other argument descriptor is compatible with this.
-    bool invocableWith(const ArgumentDescriptor& other) const;
-
-    /// Comparison operator, compares an \a other argument descriptor with this.
-    bool operator==(const ArgumentDescriptor& other) const
-    {
-        return (other.type == type) &&
-                other.isReference == isReference &&
-                other.isConst == isConst;
-    }
-};
 
 } // mox
 

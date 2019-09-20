@@ -30,9 +30,25 @@ MetaObject::~MetaObject()
 {
 }
 
-const MetaClass* MetaObject::getMetaClass() const
+MetaObject::StaticMetaClass::StaticMetaClass()
+    : MetaClass(*MetaData::globalMetaData.findMetaType(typeid(MetaObject)))
 {
-    return StaticMetaClass::get();
+}
+
+const MetaObject::StaticMetaClass* MetaObject::StaticMetaClass::get()
+{
+    static MetaObject::StaticMetaClass staticMetaClass;
+    return &staticMetaClass;
+}
+
+bool MetaObject::StaticMetaClass::isAbstract() const
+{
+    return false;
+}
+
+bool MetaObject::StaticMetaClass::isClassOf(const MetaObject &) const
+{
+    return true;
 }
 
 } // namespace mox

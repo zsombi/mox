@@ -18,19 +18,19 @@
 
 #include "test_framework.h"
 
-#include <mox/metadata/argument.hpp>
+#include <mox/metadata/variant.hpp>
 #include <mox/utils/function_traits.hpp>
 
-TEST(Argument, test_argument_init)
+TEST(Variant, test_argument_init)
 {
-    mox::Argument i(10);
+    mox::Variant i(10);
     int v = i;
     EXPECT_EQ(10, v);
 }
 
-TEST(Argument, test_assign_value)
+TEST(Variant, test_assign_value)
 {
-    mox::Argument v;
+    mox::Variant v;
     EXPECT_FALSE(v.isValid());
 
     v = 10;
@@ -54,9 +54,9 @@ TEST(Argument, test_assign_value)
     EXPECT_EQ(123.45f, v);
 }
 
-TEST(Argument, test_base_type_convert)
+TEST(Variant, test_base_type_convert)
 {
-    mox::Argument v(10);
+    mox::Variant v(10);
     bool b = v;
     EXPECT_TRUE(b);
 
@@ -92,9 +92,9 @@ TEST(Argument, test_base_type_convert)
     EXPECT_EQ('e', cc);
 }
 
-TEST(Argument, test_string_casts)
+TEST(Variant, test_string_casts)
 {
-    mox::Argument v(true);
+    mox::Variant v(true);
 
     std::string ss = v;
     EXPECT_EQ("true", ss);
@@ -119,18 +119,18 @@ TEST(Argument, test_string_casts)
     EXPECT_EQ(15, i);
 }
 
-TEST(Argument, test_cstring_to_number)
+TEST(Variant, test_cstring_to_number)
 {
-    mox::Argument v;
+    mox::Variant v;
     v = std::string_view("101");
 
     int i = v;
     EXPECT_EQ(i, 101);
 }
 
-TEST(Argument, test_string_literal)
+TEST(Variant, test_string_literal)
 {
-    mox::Argument v;
+    mox::Variant v;
     v = std::string_view("true");
     bool b = v;
     EXPECT_TRUE(b);
@@ -139,40 +139,40 @@ TEST(Argument, test_string_literal)
     EXPECT_EQ(s, std::string("true"));
 }
 
-TEST(Argument, test_hex_string_to_number)
+TEST(Variant, test_hex_string_to_number)
 {
-    mox::Argument v(std::string("0xFF"));
+    mox::Variant v(std::string("0xFF"));
     int i = v;
     EXPECT_EQ(255, i);
 }
 
-TEST(Argument, test_hex_literal_to_number)
+TEST(Variant, test_hex_literal_to_number)
 {
-    mox::Argument v(std::string_view("0xFF"));
+    mox::Variant v(std::string_view("0xFF"));
     int i = v;
     EXPECT_EQ(255, i);
 }
 
-TEST(Argument, test_bad_string_to_number_throws)
+TEST(Variant, test_bad_string_to_number_throws)
 {
-    mox::Argument v(std::string("fadabec"));
+    mox::Variant v(std::string("fadabec"));
     int i = 0;
     EXPECT_THROW(i = v, mox::bad_conversion);
     UNUSED(i);
 }
 
-TEST(Argument, test_bad_literal_to_number_throws)
+TEST(Variant, test_bad_literal_to_number_throws)
 {
-    mox::Argument v(std::string_view("fadabec"));
+    mox::Variant v(std::string_view("fadabec"));
     int i = 0;
     EXPECT_THROW(i = v, mox::bad_conversion);
     UNUSED(i);
 }
 
-TEST(Argument, test_argument_descriptor_operators_lsv_rsv)
+TEST(Variant, test_argument_descriptor_operators_lsv_rsv)
 {
-    mox::ArgumentDescriptor a1(mox::Metatype::String, false, false);
-    mox::ArgumentDescriptor a2(mox::Metatype::Literal, false, false);
+    mox::VariantDescriptor a1(mox::Metatype::String, false, false);
+    mox::VariantDescriptor a2(mox::Metatype::Literal, false, false);
 
     EXPECT_FALSE(a2.invocableWith(a1));
     EXPECT_TRUE(a1.invocableWith(a2));

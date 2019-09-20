@@ -25,7 +25,7 @@ using namespace mox;
 class TBaseClass// : public MetaClassHelper<TBaseClass>
 {
 public:
-    STATIC_METACLASS_BASE(TBaseClass)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, TBaseClass>
     {
     };
 
@@ -38,7 +38,7 @@ public:
 class BaseObject : public MetaObject, public TBaseClass
 {
 public:
-    METACLASS(BaseObject, MetaObject, TBaseClass)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, BaseObject, MetaObject, TBaseClass>
     {
     };
 };
@@ -46,7 +46,7 @@ public:
 class OtherBaseClass
 {
 public:
-    STATIC_METACLASS_BASE(OtherBaseClass)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, OtherBaseClass>
     {
     };
 
@@ -63,7 +63,7 @@ public:
     {
     }
 
-    STATIC_METACLASS(DerivedClass, TBaseClass, OtherBaseClass)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, DerivedClass, TBaseClass, OtherBaseClass>
     {
     };
 };
@@ -71,7 +71,7 @@ public:
 class ObjectDerivedClass : public MetaObject, public DerivedClass
 {
 public:
-    METACLASS(ObjectDerivedClass, MetaObject, DerivedClass)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, ObjectDerivedClass, MetaObject, DerivedClass>
     {
     };
 };
@@ -85,7 +85,7 @@ public:
 
     virtual void noop() = 0;
 
-    STATIC_METACLASS(SecondLevelDerived, DerivedClass)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SecondLevelDerived, DerivedClass>
     {
     };
 };
@@ -93,7 +93,7 @@ public:
 class SecondObject : public MetaObject, public SecondLevelDerived
 {
 public:
-    METACLASS(SecondObject, MetaObject, SecondLevelDerived)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SecondObject, MetaObject, SecondLevelDerived>
     {
     };
     void noop() override
@@ -107,13 +107,13 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerTestType<TBaseClass>();
-        registerTestType<BaseObject>();
-        registerTestType<OtherBaseClass>();
-        registerTestType<DerivedClass>();
-        registerTestType<ObjectDerivedClass>();
-        registerTestType<SecondLevelDerived>();
-        registerTestType<SecondObject>();
+        registerMetaClass<TBaseClass>();
+        registerMetaClass<BaseObject>();
+        registerMetaClass<OtherBaseClass>();
+        registerMetaClass<DerivedClass>();
+        registerMetaClass<ObjectDerivedClass>();
+        registerMetaClass<SecondLevelDerived>();
+        registerMetaClass<SecondObject>();
     }
 };
 

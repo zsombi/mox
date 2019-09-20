@@ -103,7 +103,7 @@ private:
     bool m_isClass:1;
     bool m_isPointer:1;
 
-    friend class MetaData;
+    friend struct MetaData;
     friend const MetatypeDescriptor* tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass);
 
     DISABLE_COPY(MetatypeDescriptor)

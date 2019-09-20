@@ -18,7 +18,7 @@
 
 #include "test_framework.h"
 
-#include <mox/metadata/argument.hpp>
+#include <mox/metadata/variant.hpp>
 #include <mox/metadata/metaobject.hpp>
 
 namespace converter_test
@@ -67,7 +67,7 @@ class Derived : public mox::MetaObject
 public:
     explicit Derived() = default;
 
-    METACLASS(Derived, mox::MetaObject)
+    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, Derived, mox::MetaObject>
     {
     };
 };
@@ -83,9 +83,10 @@ protected:
         static_assert (sizeof(converter_test::SelfConvertible) == sizeof(converter_test::UserType), "revisit SelfConvertible declaration");
         UnitTest::SetUp();
 
-        registerTestType<converter_test::UserType>();
-        registerTestType<converter_test::SelfConvertible>();
-        registerTestType<converter_test::Derived>();
+        mox::registerMetaType<converter_test::UserType>();
+        mox::registerMetaType<converter_test::UserType*>();
+        mox::registerMetaType<converter_test::SelfConvertible>();
+        mox::registerMetaClass<converter_test::Derived>();
     }
 };
 
@@ -115,7 +116,7 @@ TEST_F(Converters, test_register_converter_function)
 
     converter_test::UserType result;
     int32_t v = 65537;
-    mox::ArgumentBase r = converter->convert(*converter, &v);
+    mox::MetaValue r = converter->convert(*converter, &v);
     EXPECT_NO_THROW(result = std::any_cast<converter_test::UserType>(r));
     EXPECT_EQ(1, result.v1);
     EXPECT_EQ(1, result.v2);
@@ -142,7 +143,7 @@ TEST_F(Converters, test_register_converter_functor)
     v.v1 = 1;
     v.v2 = 1;
     int32_t result = 0;
-    mox::ArgumentBase presult = converter->convert(*converter, &v);
+    mox::MetaValue presult = converter->convert(*converter, &v);
     EXPECT_NO_THROW(result = std::any_cast<int32_t>(presult));
     EXPECT_EQ(65537, result);
 }
@@ -156,7 +157,7 @@ TEST_F(Converters, test_registered_functor_converter)
     v.v1 = 1;
     v.v2 = 1;
     int32_t result = 0;
-    mox::ArgumentBase presult = converter->convert(*converter, &v);
+    mox::MetaValue presult = converter->convert(*converter, &v);
     EXPECT_NO_THROW(result = std::any_cast<int32_t>(presult));
     EXPECT_EQ(65537, result);
 }
@@ -176,7 +177,7 @@ TEST_F(Converters, test_register_converter_method)
     src.v2 = 20;
 
     converter_test::UserType dst;
-    mox::ArgumentBase anyresult = converter->convert(*converter, &src);
+    mox::MetaValue anyresult = converter->convert(*converter, &src);
     EXPECT_NO_THROW(dst = std::any_cast<converter_test::UserType>(anyresult));
     EXPECT_EQ(10, dst.v1);
     EXPECT_EQ(20, dst.v2);
@@ -193,7 +194,7 @@ TEST_F(Converters, test_register_converter_method)
 
 TEST_F(Converters, test_metaobject_conversion)
 {
-    mox::Argument arg;
+    mox::Variant arg;
     converter_test::Derived obj;
     arg = &obj;
 

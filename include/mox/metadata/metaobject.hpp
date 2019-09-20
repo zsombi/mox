@@ -33,12 +33,15 @@ public:
     /// Destructor.
     virtual ~MetaObject();
 
-    STATIC_METACLASS_BASE(MetaObject)
+    struct MOX_API StaticMetaClass : mox::MetaClass
     {
-    };
+        StaticMetaClass();
 
-    /// Returns the dynamic metaclass of the metaobject.
-    virtual const MetaClass* getMetaClass() const;
+        static const StaticMetaClass* get();
+
+        bool isAbstract() const override;
+        bool isClassOf(const MetaObject &) const override;
+    };
 };
 
 } // namespace mox

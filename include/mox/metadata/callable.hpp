@@ -23,7 +23,7 @@
 #include <tuple>
 #include <type_traits>
 
-#include <mox/metadata/argument.hpp>
+#include <mox/metadata/variant.hpp>
 #include <mox/utils/function_traits.hpp>
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metatype.hpp>
@@ -50,31 +50,30 @@ public:
         const char* what() const EXCEPTION_NOEXCEPT override;
     };
 
-    /// Argument value container.
-    struct MOX_API Arguments : protected std::vector<Argument>
+    /// ArgumentPack is a container that holds the argument value and its descriptor packed.
+    /// The packed arguments are trasported across threads keeping the lifetime of the values.
+    struct MOX_API ArgumentPack : protected std::vector<Variant>
     {
         /// Argument base type.
-        typedef std::vector<Argument> ArgumentsBase;
+        typedef std::vector<Variant> ArgumentsBase;
 
-        Arguments() = default;
-        Arguments(const Arguments&) = default;
-        Arguments(Arguments&&) = default;
+        ArgumentPack() = default;
 
         /// Packs the \a arguments passed.
         template <typename... Args>
-        Arguments(Args... arguments);
+        ArgumentPack(Args... arguments);
 
         /// Adds an argument \a value of a \e Type.
         /// \param value The argument value to pass.
         /// \return This argument object.
         template <typename Type>
-        Arguments& add(const Type& value);
+        ArgumentPack& add(const Type& value);
 
         /// Sets the instance\a value to the argument pack.
         /// \param value The instance value to set to the argument pack.
         /// \return This argument object.
         template <typename Type>
-        Arguments& setInstance(Type value);
+        ArgumentPack& setInstance(Type value);
 
         /// Returns the argument from a given \a index that is less than the count().
         /// \param index The index of the argument requested.
@@ -92,14 +91,11 @@ public:
         template <typename Function>
         auto toTuple() const;
 
-        /// Returns the argument descriptors defining the arguments.
-        const ArgumentDescriptorContainer descriptors() const;
-
-        Arguments& operator +=(const Arguments& other);
+        ArgumentPack& operator +=(const ArgumentPack& other);
     };
 
     /// Invoker function type.
-    typedef std::function<Argument(Arguments const&)> InvokerFunction;
+    typedef std::function<Variant(ArgumentPack const&)> InvokerFunction;
 
     /// Creates a callable for a function, method or functor.
     template <typename Function>
@@ -117,7 +113,7 @@ public:
 
     /// Returns the argument descriptor for the return type of the callable.
     /// \return The argument descriptor for the return type.
-    const ArgumentDescriptor& returnType() const;
+    const VariantDescriptor& returnType() const;
 
     /// Returns the metatype of the class that owns the callable method.
     /// \return The metatype of the class, Invalid if the callable is not holding a method.
@@ -130,26 +126,31 @@ public:
     /// Returns the argument descriptor for the argument at \a index.
     /// \return the argument descriptor for the argument at \a index.
     /// \throws Callable::invalid_argument if the \a index is out of arguments bounds.
-    const ArgumentDescriptor& argumentType(size_t index) const;
+    const VariantDescriptor& argumentType(size_t index) const;
 
     /// Returns the container with the argument descriptors.
     /// \return The argument descriptor container of the callable.
-    const ArgumentDescriptorContainer& descriptors() const;
+    const VariantDescriptorContainer& descriptors() const;
+
+    /// Tests whether the callable is invocable with the passed \a arguments.
+    /// \return If the callable is invocable with the arguments, returns \e true,
+    /// otherwise \e false
+    bool isInvocableWith(const VariantDescriptorContainer& arguments) const;
 
     /// Applies the arguments on a callable.
     /// \param args The arguments to apply. The collection must have at least as many arguments as many
     /// formal parameters are defined for the callable. When the callable is a method, the first argument
     /// must be the instance of the class the method belongs to.
-    /// \return The return value of the callable, or an invalid \l Argument if the callable is a void type.
+    /// \return The return value of the callable, or an invalid \l Variant if the callable is a void type.
     /// \throws Callable::invalid_argument if the argument count is less than the defined argument count
     /// for the callable.
     /// \throws bad_conversion if the arguments mismatch.
-    Argument apply(const Arguments& args) const;
+    Variant apply(const ArgumentPack& args) const;
 
     template <class Class>
-    Argument apply(Class& instance, const Arguments& args) const
+    Variant apply(Class& instance, const ArgumentPack& args) const
     {
-        Arguments thisArgs(args);
+        ArgumentPack thisArgs(args);
         thisArgs.setInstance(&instance);
         return apply(thisArgs);
     }
@@ -163,13 +164,15 @@ public:
 
 private:
     InvokerFunction m_invoker;
-    ArgumentDescriptor m_ret;
-    ArgumentDescriptorContainer m_args;
+    VariantDescriptor m_ret;
+    VariantDescriptorContainer m_args;
     void* m_address = nullptr;
     Metatype m_classType = Metatype::Invalid;
     FunctionType m_type = FunctionType::Invalid;
     bool m_isConst = false;
 };
+
+using InvokeReturnValue = std::optional<Variant>;
 
 /// Invokes a \a callable with \a arguments. If the callable has a return value, returns that.
 /// Packs the \a arguments and applies those on the \a callable.
@@ -179,8 +182,8 @@ private:
 /// \param callable The callable to invoke.
 /// \param arguments The arguments to pass to the callable.
 /// \return The return value of the callable, undefined if the callable has no return value.
-template <class Ret, typename... Arguments>
-Ret invoke(const Callable& callable, Arguments... arguments);
+template <typename... ArgumentPack>
+InvokeReturnValue invoke(const Callable& callable, ArgumentPack... arguments);
 
 /// Template function specialized on callables when the first argument is a class. Pass the
 /// instance as reference to use the template.
@@ -188,13 +191,8 @@ Ret invoke(const Callable& callable, Arguments... arguments);
 /// \param instance The instance of the class invoked.
 /// \param arguments The arguments to pass to the callable.
 /// \return The return value of the callable, undefined if the callable has no return value.
-template <class Ret, class Class, typename... Arguments>
-std::enable_if_t<std::is_class<Class>::value, Ret> invoke(const Callable& callable, Class& instance, Arguments... arguments);
-
-/// Returns \e true if the \a arguments are compatible with the \a parameters
-/// \return If the \a parameters size is at least the size of the \a arguments, and the descriptors
-/// at the positions are compatible, returns \e true. Otherwise returns \e false.
-MOX_API bool isCallableWith(const Callable& callable, const ArgumentDescriptorContainer& parameters);
+template <class Class, typename... ArgumentPack>
+std::enable_if_t<std::is_class<Class>::value, InvokeReturnValue> invoke(const Callable& callable, Class& instance, ArgumentPack... arguments);
 
 } // namespace mox
 

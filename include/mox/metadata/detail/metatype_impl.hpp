@@ -51,7 +51,7 @@ struct ConverterFunctor : MetatypeConverter
 private:
     Function m_function;
 
-    static ArgumentBase convert(const MetatypeConverter& converter, const void* value)
+    static MetaValue convert(const MetatypeConverter& converter, const void* value)
     {
         const From* in = reinterpret_cast<const From*>(value);
         const ConverterFunctor& that = static_cast<const ConverterFunctor&>(converter);
@@ -76,7 +76,7 @@ struct ConverterMethod : MetatypeConverter
     {
     }
 
-    static ArgumentBase converter(const MetatypeConverter& converter, const void* value)
+    static MetaValue converter(const MetatypeConverter& converter, const void* value)
     {
         const From* source = static_cast<const From*>(value);
         const ConverterMethod& _this = static_cast<const ConverterMethod&>(converter);
@@ -94,7 +94,7 @@ struct EmbeddedConverter : MetatypeConverter
     {
     }
 
-    static ArgumentBase converter(const MetatypeConverter& converter, const void* value)
+    static MetaValue converter(const MetatypeConverter& converter, const void* value)
     {
         const EmbeddedConverter& _this = reinterpret_cast<const EmbeddedConverter&>(converter);
         return _this.host.convert(static_cast<const From*>(value));
@@ -118,36 +118,30 @@ const std::type_info& remove_cv()
 template <typename Type>
 Metatype metaType()
 {
-    static_assert (!is_cstring<Type>::value, "Use std::string_view in metacalls instead of cstrings");
-    return registrar::findMetatype(registrar::remove_cv<Type>());
+    static_assert (!is_cstring<Type>::value, "Use std::string_view in reflections instead of cstrings");
+    Metatype type = registrar::findMetatype(registrar::remove_cv<Type>());
+    FATAL(type != Metatype::Invalid, std::string("Type is not reflectable: ").append(registrar::remove_cv<Type>().name()));
+    return type;
 }
 
 template <typename Type>
 const MetatypeDescriptor& metatypeDescriptor()
 {
     const MetatypeDescriptor* descriptor = registrar::findMetatypeDescriptor(registrar::remove_cv<Type>());
-    ASSERT(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + registrar::remove_cv<Type>().name());
+    FATAL(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + registrar::remove_cv<Type>().name());
     return *descriptor;
 }
 
 template <typename Type>
 Metatype registerMetaType(std::string_view name)
 {
-    Metatype newType = registrar::tryRegisterMetatype(registrar::remove_cv<Type>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
-    if constexpr (!std::is_pointer_v<Type>)
+    Metatype newType = registrar::findMetatype(registrar::remove_cv<Type>());
+    if (newType != Metatype::Invalid)
     {
-        typedef std::add_pointer_t<Type> PointerType;
-        std::string pname(name);
-        if (!pname.empty())
-        {
-            pname += "*";
-        }
-        registrar::tryRegisterMetatype(registrar::remove_cv<PointerType>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, pname);
+        return newType;
     }
-    if constexpr (has_static_metaclass<Type>::value)
-    {
-        Type::StaticMetaClass::get();
-    }
+
+    newType = registrar::tryRegisterMetatype(registrar::remove_cv<Type>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
 
     return newType;
 }

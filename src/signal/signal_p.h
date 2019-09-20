@@ -19,7 +19,7 @@
 #ifndef SIGNAL_P_H
 #define SIGNAL_P_H
 
-#include <mox/metadata/signal.hpp>
+#include <mox/signal/signal.hpp>
 
 namespace mox
 {
@@ -34,47 +34,47 @@ protected:
 public:
     FunctionConnection(Signal& signal, Callable&& callable);
 
-    bool compare(Argument receiver, const void* funcAddress) const override;
+    bool compare(Variant receiver, const void* funcAddress) const override;
     bool isConnected() const override
     {
         return m_slot.type() != FunctionType::Invalid;
     }
 
-    void activate(Callable::Arguments& args) override;
+    void activate(Callable::ArgumentPack& args) override;
     void reset() override;
 };
 
 class MethodConnection : public FunctionConnection
 {
-    Argument m_receiver;
+    Variant m_receiver;
 
 public:
-    MethodConnection(Signal& signal, Argument receiver, Callable&& callable);
+    MethodConnection(Signal& signal, Variant receiver, Callable&& callable);
 
-    bool compare(Argument receiver, const void* funcAddress) const override;
-    void activate(Callable::Arguments& args) override;
+    bool compare(Variant receiver, const void* funcAddress) const override;
+    void activate(Callable::ArgumentPack& args) override;
     void reset() override;
 };
 
 class MetaMethodConnection : public Signal::Connection
 {
-    Argument m_receiver;
-    const MetaMethod* m_slot;
+    Variant m_receiver;
+    const MetaClass::Method* m_slot;
 
 public:
-    const MetaMethod* method() const
+    const MetaClass::Method* method() const
     {
         return m_slot;
     }
 
-    MetaMethodConnection(Signal& signal, Argument receiver, const MetaMethod& slot);
+    MetaMethodConnection(Signal& signal, Variant receiver, const MetaClass::Method& slot);
 
     bool isConnected() const override
     {
         return m_slot && (m_slot->type() != FunctionType::Invalid);
     }
-    bool compare(Argument receiver, const void* funcAddress) const override;
-    void activate(Callable::Arguments& args) override;
+    bool compare(Variant receiver, const void* funcAddress) const override;
+    void activate(Callable::ArgumentPack& args) override;
     void reset() override;
 };
 typedef std::shared_ptr<MetaMethodConnection> MetaMethodConnectionSharedPtr;
@@ -96,7 +96,7 @@ public:
     {
         return m_receiverSignal && m_receiverSignal->isValid();
     }
-    void activate(Callable::Arguments& args) override;
+    void activate(Callable::ArgumentPack& args) override;
     void reset() override;
 };
 typedef std::shared_ptr<SignalConnection> SignalConnectionSharedPtr;
