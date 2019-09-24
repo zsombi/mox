@@ -23,7 +23,7 @@
 #include <unordered_map>
 #include <string>
 #include <functional>
-#include <mox/metadata/metatype.hpp>
+#include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/metadata/variant.hpp>
 #include <mox/metadata/metaclass.hpp>
@@ -32,13 +32,12 @@
 namespace mox
 {
 
-struct MetaData
+struct MetaData : public ObjectLock
 {
     explicit MetaData();
     ~MetaData();
 
     static const MetatypeDescriptor& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer);
-    static MetatypeDescriptor* findMetaType(const std::type_info& rtti);
     static MetatypeDescriptor& getMetaType(Metatype type);
 
     static void addMetaClass(const MetaClass& metaClass);
@@ -55,7 +54,6 @@ struct MetaData
     SynonymContainer synonymTypes;
     MetaClassTypeRegister metaClassRegister;
     MetaClassContainer metaClasses;
-    std::mutex sync;
     bool initialized = false;
 
     static MetaData globalMetaData;

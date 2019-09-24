@@ -21,10 +21,11 @@
 #include <mox/metadata/metaobject.hpp>
 #include <mox/metadata/callable.hpp>
 #include <mox/signal/signal.hpp>
+#include <mox/signal/signal_host.hpp>
 
 using namespace mox;
 
-class SignalTestClass : public SignalHost
+class SignalTestClass : public MetaObject, public SignalHost<SignalTestClass>
 {
 public:
 
@@ -38,7 +39,7 @@ public:
     Signal sig3{*this, Sign3Des};
     Signal sigB{*this, SignBDes};
 
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SignalTestClass>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SignalTestClass, MetaObject>
     {
         Signal sig1{*this, Sign1Des, "sig1"};
         Signal sigB{*this, SignBDes, "sigB"};
@@ -53,13 +54,13 @@ public:
     static inline SignalDescriptor<std::vector<int32_t>> const SignVDes;
     Signal sigV{*this, SignVDes};
 
-    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, DerivedEmitter, SignalTestClass>
+    struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, DerivedEmitter, SignalTestClass>
     {
         Signal sigV{*this, SignVDes, "sigV"};
     };
 };
 
-class  SlotHolder : public SignalHost
+class  SlotHolder : public SignalHost<SlotHolder>
 {
     int slot1Call = 0;
     int slot2Call = 0;
@@ -70,7 +71,7 @@ public:
     static inline SignalDescriptor<int> const SigDes;
     Signal sig{*this, SigDes};
 
-    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SlotHolder>
+    struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SlotHolder>
     {
         Method method1{*this, &BaseType::method1, "method1"};
         Method method2{*this, &BaseType::method2, "method2"};
@@ -142,7 +143,7 @@ class DerivedHolder : public SlotHolder
     int derived1Call = 0;
     int derived2Call = 0;
 public:
-    struct MOX_API StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, DerivedHolder, SlotHolder>
+    struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, DerivedHolder, SlotHolder>
     {
         Method derivedMethod1{*this, &BaseType::derivedMethod1, "derivedMethod1"};
         Method derivedMethod2{*this, &BaseType::derivedMethod2, "derivedMethod2"};
@@ -568,17 +569,17 @@ TEST_F(SignalTest, test_emit_metasignals)
 {
     SignalTestClass sender;
 
-    EXPECT_EQ(0, metaEmit(sender, "sig1"));
+    EXPECT_EQ(0, emit(sender, "sig1"));
 
     // Invoke with convertible args.
-    EXPECT_EQ(0, metaEmit(sender, "sig2", std::string_view("10")));
+    EXPECT_EQ(0, emit(sender, "sig2", std::string_view("10")));
 
     // Invoke with not enough args.
-    EXPECT_EQ(-1, metaEmit(sender, "sig3", 10));
-    EXPECT_EQ(0, metaEmit(sender, "sig3", 10, std::string_view("123")));
+    EXPECT_EQ(-1, emit(sender, "sig3", 10));
+    EXPECT_EQ(0, emit(sender, "sig3", 10, std::string_view("123")));
 
     // Invoke a non-existent signal.
-    EXPECT_EQ(-1, metaEmit(sender, "sigV"));
+    EXPECT_EQ(-1, emit(sender, "sigV"));
 }
 
 TEST_F(SignalTest, test_metaclass_invoke_metasignals)

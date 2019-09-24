@@ -126,40 +126,6 @@ Callable::Callable(Function fn)
 }
 
 
-/******************************************************************************
- * invokes
- */
-
-template <typename... ArgumentPack>
-InvokeReturnValue invoke(const Callable& callable, ArgumentPack... arguments)
-{
-    try
-    {
-        Callable::ArgumentPack vargs(arguments...);
-        Variant ret = callable.apply(vargs);
-        return std::make_optional(ret);
-    }
-    catch (...)
-    {
-        return std::nullopt;
-    }
-}
-
-template <class Class, typename... ArgumentPack>
-std::enable_if_t<std::is_class<Class>::value, InvokeReturnValue> invoke(const Callable& callable, Class& instance, ArgumentPack... arguments)
-{
-    try
-    {
-        Callable::ArgumentPack vargs(arguments...);
-        Variant ret = callable.apply(instance, vargs);
-        return std::make_optional(ret);
-    }
-    catch (...)
-    {
-        return std::nullopt;
-    }
-}
-
 } // namespace mox
 
 #endif // CALLABLE_IMPL_HPP

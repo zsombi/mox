@@ -172,28 +172,6 @@ private:
     bool m_isConst = false;
 };
 
-using InvokeReturnValue = std::optional<Variant>;
-
-/// Invokes a \a callable with \a arguments. If the callable has a return value, returns that.
-/// Packs the \a arguments and applies those on the \a callable.
-/// If the callable is a method of a class, pass the pointer to the instance of the class as
-/// first argument. When you do that, make sure the instance is casted to the class that hosts
-/// the method managed by the callable.
-/// \param callable The callable to invoke.
-/// \param arguments The arguments to pass to the callable.
-/// \return The return value of the callable, undefined if the callable has no return value.
-template <typename... ArgumentPack>
-InvokeReturnValue invoke(const Callable& callable, ArgumentPack... arguments);
-
-/// Template function specialized on callables when the first argument is a class. Pass the
-/// instance as reference to use the template.
-/// \param callable The callable to invoke.
-/// \param instance The instance of the class invoked.
-/// \param arguments The arguments to pass to the callable.
-/// \return The return value of the callable, undefined if the callable has no return value.
-template <class Class, typename... ArgumentPack>
-std::enable_if_t<std::is_class<Class>::value, InvokeReturnValue> invoke(const Callable& callable, Class& instance, ArgumentPack... arguments);
-
 } // namespace mox
 
 #include <mox/metadata/detail/callable_impl.hpp>

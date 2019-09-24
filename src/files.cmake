@@ -29,7 +29,6 @@ set(HEADERS
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype_descriptor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metatype_impl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/variant_descriptor.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/variant.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/variant_impl.hpp
@@ -38,10 +37,13 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/callable.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/callable_impl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metaclass_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metadata.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metadata_impl.hpp
 
     # Signal handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/detail/signal_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal_host.hpp
     )
 
 set(SOURCES

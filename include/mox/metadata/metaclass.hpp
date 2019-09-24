@@ -92,12 +92,15 @@ public:
         Signal(Signal&&) = delete;
     };
 
-    /// Invokes a metamethod on an \a instance with the given \a arguments
+    /// Invokes a metamethod on an \a instance with the given \a arguments.
+    /// \param instance The instance that possibly owns the method.
+    /// \param method The metamethod to invoke.
+    /// \param arguments The variadic arguments to pass as argument to the metamethod.
+    /// \returns If the metamethod is invokable with the passed arguments, returns the return value as
+    /// a variant, or an invalid variant object. If the metamethod is not invokable with the arguments,
+    /// or the method does not belong to the metaclass of the instance, returns \e nullopt.
     template <class Class, typename... Arguments>
-    bool invoke(Class& instance, const Method& method, Arguments... arguments) const;
-
-    template <typename Ret, class Class, typename... Arguments>
-    bool invoke(Class& instance, Ret& retVal, const Method& method, Arguments... arguments) const;
+    std::optional<Variant> invoke(Class& instance, const Method& method, Arguments... arguments) const;
 
     /// Invokes a metasignal on an \a instance with the given \a arguments
     template <typename Class, typename... Arguments>
@@ -170,17 +173,6 @@ protected:
     typedef std::vector<const Method*> MethodContainer;
     typedef std::vector<const Signal*> SignalContainer;
 
-    struct MetaclassConverter : MetatypeConverter
-    {
-        const Metatype m_from;
-        const Metatype m_to;
-
-        explicit MetaclassConverter(Metatype from, Metatype to, ConverterFunction function)
-            : MetatypeConverter(function), m_from(from), m_to(to)
-        {
-        }
-    };
-
     void addMethod(const Method& method);
     void addSignal(const Signal& signal);
 
@@ -193,43 +185,12 @@ protected:
 };
 
 
-namespace decl
-{
-
+/// Template for static metaclasses. Use this to define your metaclass for your classes.
 template <class MetaClassDecl, class BaseClass, class... SuperClasses>
-struct MetaClass : mox::MetaClass
+struct StaticMetaClass : mox::MetaClass
 {
 protected:
-    VisitorResultType visitSuperClasses(const MetaClassVisitor& visitor) const override
-    {
-        std::array<const mox::MetaClass*, sizeof... (SuperClasses)> supers = {{SuperClasses::StaticMetaClass::get()...}};
-        for (auto metaClass : supers)
-        {
-            VisitorResultType result = metaClass->visit(visitor);
-            if (std::get<0>(result) == Abort)
-            {
-                return result;
-            }
-        }
-
-        return std::make_tuple(Continue, MetaValue());
-    }
-
-    template <typename From, typename To>
-    struct Caster : MetaclassConverter
-    {
-        static MetaValue convert(const MetatypeConverter&, const void* value)
-        {
-            auto src = const_cast<From*>(reinterpret_cast<const From*>(value));
-            auto dst = dynamic_cast<To*>(src);
-            return dst;
-        }
-
-        explicit Caster()
-            : MetaclassConverter(mox::metaType<From*>(), mox::metaType<To*>(), convert)
-        {
-        }
-    };
+    VisitorResultType visitSuperClasses(const MetaClassVisitor& visitor) const override;
 
 public:
     using BaseType = BaseClass;
@@ -240,34 +201,14 @@ public:
         return &metaClass;
     }
 
-    explicit MetaClass()
-        : mox::MetaClass(metatypeDescriptor<BaseClass>())
-    {
-        std::array<MetaclassConverter*, 2 * sizeof...(SuperClasses)> casters =
-        {{
-            new Caster<SuperClasses, BaseClass>()...,
-            new Caster<BaseClass, SuperClasses>()...
-        }};
-        for (auto& caster : casters)
-        {
-            registrar::registerConverter(std::unique_ptr<MetaclassConverter>(caster), caster->m_from, caster->m_to);
-        }
-    }
+    explicit StaticMetaClass();
 
-    bool isAbstract() const override
-    {
-        return std::is_abstract_v<BaseClass>;
-    }
+    /// Override of MetaClass::isAbstract().
+    bool isAbstract() const override;
 
     /// Checks whether the \a metaObject is derived from this interface.
-    bool isClassOf(const MetaObject& metaObject) const override
-    {
-        const BaseClass* casted = dynamic_cast<const BaseClass*>(&metaObject);
-        return casted != nullptr;
-    }
+    bool isClassOf(const MetaObject& metaObject) const override;
 };
-
-} // decl
 
 template <class ClassType>
 Metatype registerMetaClass(std::string_view name = "");
@@ -279,17 +220,7 @@ Metatype registerMetaClass(std::string_view name = "");
 /// \param arguments The arguments to pass. If the invokable has no arguments, pass nothing.
 /// \returns If the metamethod is found on the instance, returns \e true, otherwise \e false.
 template <class Class, typename... Arguments>
-bool metaInvoke(Class& instance, std::string_view methodName, Arguments... arguments);
-
-/// Invokes a method on an \a instance, passing the given \a arguments. The return value is
-/// stored in the \a retVal argument. The instance must have a metaclass defined.
-/// \param instance The instance of the class.
-/// \param retVal The address of the variable to store the return value.
-/// \param methodName The name of the metamethod to invoke.
-/// \param arguments The arguments to pass. If the invokable has no arguments, pass nothing.
-/// \returns If the metamethod is found on the instance, returns \e true, otherwise \e false.
-template <typename Ret, class Class, typename... Arguments>
-bool metaInvoke(Class& instance, Ret& retVal, std::string_view methodName, Arguments... arguments);
+std::optional<Variant> invoke(Class& instance, std::string_view methodName, Arguments... arguments);
 
 /// Invokes a signal on an \a instance identified by \a signalName, passing the given \a arguments.
 /// The instance must have a metaclass defined. Returns the number of times the signal connections
@@ -299,7 +230,7 @@ bool metaInvoke(Class& instance, Ret& retVal, std::string_view methodName, Argum
 /// \param args The arguments to pass. If the signal has no arguments, pass nothing.
 /// \returns Returns emit count, or -1 if the signal is not defined on the instance.
 template <class Class, typename... Arguments>
-int metaEmit(Class& instance, std::string_view signalName, Arguments... arguments);
+int emit(Class& instance, std::string_view signalName, Arguments... arguments);
 
 } // namespace mox
 

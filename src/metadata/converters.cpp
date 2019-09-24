@@ -47,8 +47,9 @@ To atomicConverter(From value)
 template <typename From, typename To, typename Function>
 void internal_registerConverter(MetaData& metaData, Function converter)
 {
-    MetatypeDescriptor* fromType = metaData.findMetaType(registrar::remove_cv<From>());
-    Metatype to = metaData.findMetaType(registrar::remove_cv<To>())->id();
+    UNUSED(metaData);
+    MetatypeDescriptor* fromType = metadata::findMetatypeDescriptor(metadata::remove_cv<From>());
+    Metatype to = metadata::findMetatypeDescriptor(metadata::remove_cv<To>())->id();
     fromType->addConverter(std::make_unique<ConverterFunctor<From, To, Function>>(converter), to);
 }
 

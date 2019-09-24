@@ -21,19 +21,21 @@
 
 #include <list>
 #include <memory>
-#include <mutex>
 #include <type_traits>
 #include <vector>
 #include <mox/utils/globals.hpp>
+#include <mox/utils/locks.hpp>
 #include <mox/metadata/callable.hpp>
 #include <mox/metadata/metaclass.hpp>
 
+#include <mox/signal/signal_host.hpp>
 #include <mox/utils/function_traits.hpp>
 
 namespace mox
 {
 
 class Signal;
+class SignalHostNotion;
 
 /// Abstract signal descriptor is the base descriptor class of mox signal types. The signal
 /// descriptor holds the argument signatures (descriptors) of a signal, and a unique identifier
@@ -41,7 +43,7 @@ class Signal;
 ///
 /// You can have mox signals in your class if:
 /// - you declare a signal descriptor for the signal as static inline const member,
-/// - you derive your class from SignalHost or from a class that derives from SignalHost.
+/// - you derive your class from SignalHostNotion or from a class that derives from SignalHostNotion.
 struct MOX_API AbstractSignalDescriptor
 {
     typedef int64_t TUuid;
@@ -51,55 +53,12 @@ struct MOX_API AbstractSignalDescriptor
     /// Holds the unique identifier of the signal.
     const TUuid uuid = 0u;
 
+    // Comparison operator.
+    bool operator==(const AbstractSignalDescriptor& other) const;
+
 protected:
     /// Construct the signal descriptor with the argument container passed.
-    AbstractSignalDescriptor(const VariantDescriptorContainer& arguments)
-        : arguments(arguments)
-        , uuid(nextUuid())
-    {
-    }
-
-private:
-    /// Get the next unique identifier for the signal.
-    TUuid nextUuid()
-    {
-        static TUuid uuidPool = 0u;
-        return ++uuidPool;
-    }
-};
-
-/// The class is the counterpart of the Mox signals, it holds all the signals declared on a class.
-/// Each class that declares signals must be derived from SignalHost class.
-class MOX_API SignalHost
-{
-public:
-    /// Destructor.
-    virtual ~SignalHost();
-
-    /// Activates the signal identified by the \a descriptor, passing the arguments packed in
-    /// \a args.
-    /// \return The number of activation times, or -1 if no signal was identified on the signal host.
-    int activate(const AbstractSignalDescriptor& descriptor, Callable::ArgumentPack& args);
-
-protected:
-    /// Constructor.
-    explicit SignalHost() = default;
-
-    /// Signal host lock, guards the signal register.
-    std::mutex m_lock;
-    /// The signal register holding all declared signals on a signal host.
-    std::vector<const Signal*> m_signals;
-
-    /// Registers the \a signal to the signal host.
-    /// \param signal The signal to register.
-    /// \return The signal ID of the registered signal.
-    size_t registerSignal(Signal& signal);
-
-    /// Removes a signal from the signal host register.
-    /// \param signal The signal to remove from the register.
-    void removeSignal(Signal& signal);
-
-    friend class Signal;
+    AbstractSignalDescriptor(const VariantDescriptorContainer& arguments);
 };
 
 /// Signal is the concept of the Mox signals.
@@ -115,7 +74,7 @@ protected:
 ///
 /// Every mox signal is registered to a host. When the host is destroyed, all the signal connections are also
 /// disconnected and deferred.
-class MOX_API Signal
+class MOX_API Signal : public ObjectLock
 {
 public:
     /// The class represents a connection to a signal. The connection is a token which holds the
@@ -168,7 +127,7 @@ public:
 
     /// Returns the signal host instance.
     /// \return The signal host instance.
-    SignalHost& host() const;
+    SignalHostNotion& host() const;
 
     /// Returns the signal identifier within a signal host.
     /// \return The signal identifier.
@@ -300,7 +259,7 @@ protected:
     typedef std::vector<ConnectionSharedPtr> ConnectionList;
 
     /// The signal host address.
-    SignalHost& m_host;
+    SignalHostNotion& m_host;
     /// The signal descriptor.
     const AbstractSignalDescriptor& m_descriptor;
     /// The metasignal of the signal.

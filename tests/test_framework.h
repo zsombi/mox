@@ -21,7 +21,7 @@
 
 #include <gtest/gtest.h>
 #include <unordered_map>
-#include <mox/metadata/metatype.hpp>
+#include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 
 class UnitTest : public ::testing::Test

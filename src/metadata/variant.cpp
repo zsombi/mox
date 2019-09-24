@@ -62,7 +62,7 @@ VariantDescriptor::VariantDescriptor(Metatype type, bool ref, bool c)
 bool VariantDescriptor::invocableWith(const VariantDescriptor& other) const
 {
 //    const bool typeIsSame = (other.type == type);
-//    const bool typeIsConvertible = typeIsSame || registrar::findConverter(other.type, type);
+//    const bool typeIsConvertible = typeIsSame || metadata::findConverter(other.type, type);
 
 //    if (isReference && other.isReference)
 //    {
@@ -105,7 +105,7 @@ bool VariantDescriptor::invocableWith(const VariantDescriptor& other) const
 //        // Neither is ref type. Call is doable if the type is convertible. Const is ignored.
 //        return typeIsConvertible;
 //    }
-    return ((other.type == type) || registrar::findConverter(other.type, type)) &&
+    return ((other.type == type) || metadata::findConverter(other.type, type)) &&
             other.isReference == isReference &&
             other.isConst == isConst;
 }

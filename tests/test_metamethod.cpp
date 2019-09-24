@@ -30,7 +30,7 @@ public:
 
     virtual ~TestMixin() = default;
 
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, TestMixin>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestMixin>
     {
         Method testFunc1{*this, &BaseType::testFunc1, "testFunc1"};
         Method testFunc2{*this, &BaseType::testFunc2, "testFunc2"};
@@ -60,7 +60,7 @@ public:
 
     virtual ~TestSecond() = default;
 
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, TestSecond>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestSecond>
     {
         Method testFunc1{*this, &BaseType::testFunc1, "testFunc1"};
     };
@@ -75,7 +75,7 @@ class Mixin : public TestMixin, public TestSecond
 {
 public:
 
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, Mixin, TestMixin, TestSecond>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Mixin, TestMixin, TestSecond>
     {
     };
 
@@ -114,78 +114,83 @@ TEST_F(MetaMethods, test_invoke_undeclared_method)
 {
     TestMixin mixin;
 
-    EXPECT_FALSE(metaInvoke(mixin, "whatever"));
-    // Force the return type of a void function to int.
-    int ret = -1;
-    EXPECT_FALSE(metaInvoke(mixin, ret, "testFunc1"));
+    EXPECT_FALSE(invoke(mixin, "whatever"));
 }
 
 TEST_F(MetaMethods, test_mixin_method_invoke_directly)
 {
-    TestMixin mixin, *ptrMixin = &mixin;
+    TestMixin mixin;
     const TestMixin::StaticMetaClass* metaClass = dynamic_cast<const TestMixin::StaticMetaClass*>(TestMixin::StaticMetaClass::get());
     EXPECT_NOT_NULL(metaClass);
 
-    invoke(metaClass->testFunc1, ptrMixin);
+    metaClass->invoke(mixin, metaClass->testFunc1);
 }
 
 TEST_F(MetaMethods, test_mixin_method_invoke_by_method_name)
 {
     TestMixin mixin;
 
-    metaInvoke(mixin, "testFunc1");
+    invoke(mixin, "testFunc1");
     EXPECT_TRUE(mixin.invoked);
 
-    int ret = -1;
-    EXPECT_TRUE(metaInvoke(mixin, ret, "testFunc2"));
-    EXPECT_EQ(1234321, ret);
+    auto ret = invoke(mixin, "testFunc2");
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(1234321, *ret);
 }
 
 TEST_F(MetaMethods, test_mixin_static_method_invoke)
 {
     TestMixin mixin;
 
-    int ret = -1;
-    EXPECT_TRUE(metaInvoke(mixin, ret, "staticFunc", 11));
-    EXPECT_EQ(11, ret);
+    auto ret = invoke(mixin, "staticFunc", 11);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(11, *ret);
 }
 
 TEST_F(MetaMethods, test_mixin_invoke_lambda)
 {
     TestMixin mixin;
-    metaInvoke(mixin, "lambda", &mixin);
+    invoke(mixin, "lambda", &mixin);
     EXPECT_TRUE(mixin.invoked);
 }
 
 TEST_F(MetaMethods, test_mixin_metamethod)
 {
     Mixin mixin;
-    metaInvoke(mixin, "lambda", static_cast<TestMixin*>(&mixin));
+    invoke(mixin, "lambda", static_cast<TestMixin*>(&mixin));
     EXPECT_TRUE(mixin.invoked);
 }
 
 TEST_F(MetaMethods, test_mixin_method_defined_in_superclass)
 {
     Mixin mixin;
-    int ret = -1;
-    EXPECT_TRUE(metaInvoke(mixin, ret, "testFunc2"));
-    EXPECT_EQ(1234321, ret);
+    auto ret = invoke(mixin, "testFunc2");
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(1234321, *ret);
 }
 
 TEST_F(MetaMethods, test_mixin_same_name_methods)
 {
     Mixin mixin;
-    int ret = -1;
-    EXPECT_TRUE(metaInvoke(mixin, ret, "testFunc1"));
-    EXPECT_EQ(987, ret);
+    auto ret = invoke(mixin, "testFunc1");
+    EXPECT_TRUE(ret);
+    // The method lookup uses firt hit, and returns the method that is having no return type,
+    // from TestMixin.
+    EXPECT_FALSE(ret->isValid());
+    // To make sure we call the method defined in TestSecond, we must force the instance type
+    ret = invoke(static_cast<TestSecond&>(mixin), "testFunc1");
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(Metatype::Int32, ret->metaType());
+    EXPECT_EQ(987, *ret);
 }
 
 TEST_F(MetaMethods, test_invoked_with_convertible_arguments)
 {
     Mixin mixin;
-    int ret = -1;
-    EXPECT_TRUE(metaInvoke(mixin, ret, "staticFunc", std::string("987")));
-    EXPECT_EQ(987, ret);
-    EXPECT_TRUE(metaInvoke(mixin, ret, "staticFunc", 123.2f));
-    EXPECT_EQ(123, ret);
+    auto ret = invoke(mixin, "staticFunc", std::string("987"));
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(987, *ret);
+    ret = invoke(mixin, "staticFunc", 123.2f);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(123, *ret);
 }

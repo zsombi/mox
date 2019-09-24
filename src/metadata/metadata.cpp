@@ -50,22 +50,25 @@ MetaData::~MetaData()
 const MetatypeDescriptor& MetaData::addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer)
 {
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    ScopeLock locker(globalMetaData.sync);
+    ScopeLock locker(globalMetaData);
 
     globalMetaData.metaTypes.emplace_back(new MetatypeDescriptor(name, int(globalMetaData.metaTypes.size()), rtti, isEnum, isClass, isPointer));
     return *globalMetaData.metaTypes.back().get();
 }
 
-MetatypeDescriptor* MetaData::findMetaType(const std::type_info& rtti)
+namespace metadata
 {
-    if (!globalMetaDataPtr)
+
+MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti)
+{
+    if (!MetaData::globalMetaDataPtr)
     {
         std::cerr << "Warning: metatype lookup attempt after mox backend went down.\n";
         return nullptr;
     }
-    ScopeLock locker(globalMetaData.sync);
+    ScopeLock locker(MetaData::globalMetaData);
 
-    for (auto& type : globalMetaData.metaTypes)
+    for (auto& type : MetaData::globalMetaData.metaTypes)
     {
         if (type->rtti()->hash_code() == rtti.hash_code())
         {
@@ -73,20 +76,51 @@ MetatypeDescriptor* MetaData::findMetaType(const std::type_info& rtti)
         }
     }
     // Find synonym types.
-    for (auto& synonym : globalMetaData.synonymTypes)
+    for (auto& synonym : MetaData::globalMetaData.synonymTypes)
     {
         if (synonym.first->hash_code() == rtti.hash_code())
         {
-            return globalMetaData.metaTypes[static_cast<size_t>(synonym.second)].get();
+            return MetaData::globalMetaData.metaTypes[static_cast<size_t>(synonym.second)].get();
         }
     }
     return nullptr;
 }
 
+Metatype findMetatype(const std::type_info& rtti)
+{
+    const MetatypeDescriptor* descriptor = findMetatypeDescriptor(rtti);
+    return descriptor ? descriptor->id() : Metatype::Invalid;
+}
+
+Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name)
+{
+    const MetatypeDescriptor* type = findMetatypeDescriptor(rtti);
+    if (!type)
+    {
+        const MetatypeDescriptor& newType = MetaData::addMetaType(name.data(), rtti, isEnum, isClass, isPointer);
+        type = &newType;
+    }
+    return type->id();
+}
+
+bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType)
+{
+    MetatypeDescriptor& descriptor = MetaData::getMetaType(fromType);
+    return descriptor.addConverter(std::forward<MetatypeConverterPtr>(converter), toType);
+}
+
+MetatypeConverter* findConverter(Metatype from, Metatype to)
+{
+    MetatypeDescriptor& descriptor = MetaData::getMetaType(from);
+    return descriptor.findConverterTo(to);
+}
+
+} // namespace metadata
+
 MetatypeDescriptor& MetaData::getMetaType(Metatype type)
 {
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    ScopeLock locker(globalMetaData.sync);
+    ScopeLock locker(globalMetaData);
     FATAL(static_cast<size_t>(type) < globalMetaData.metaTypes.size(), "Type not registered to be reflectable.");
     return *globalMetaData.metaTypes[static_cast<size_t>(type)].get();
 }
@@ -96,7 +130,7 @@ void MetaData::addMetaClass(const MetaClass& metaClass)
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
     std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
 
-    ScopeLock locker(globalMetaData.sync);
+    ScopeLock locker(globalMetaData);
     MetaClassContainer::const_iterator it = globalMetaData.metaClasses.find(name);
     FATAL(it == globalMetaData.metaClasses.cend(), name + " MetaClass already registered!");
 
@@ -115,7 +149,7 @@ void MetaData::removeMetaClass(const MetaClass& metaClass)
     }
     std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
 
-    ScopeLock locker(globalMetaData.sync);
+    ScopeLock locker(globalMetaData);
     MetaClassContainer::const_iterator it = globalMetaData.metaClasses.find(name);
     if (it != globalMetaData.metaClasses.cend())
     {
@@ -133,7 +167,7 @@ void MetaData::removeMetaClass(const MetaClass& metaClass)
 const MetaClass* MetaData::findMetaClass(std::string_view name)
 {
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    ScopeLock locker(globalMetaData.sync);
+    ScopeLock locker(globalMetaData);
     MetaClassContainer::const_iterator it = globalMetaData.metaClasses.find(std::string(name));
     return it != globalMetaData.metaClasses.cend() ? it->second : nullptr;
 }
@@ -141,7 +175,7 @@ const MetaClass* MetaData::findMetaClass(std::string_view name)
 const MetaClass* MetaData::getMetaClass(Metatype metaType)
 {
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    ScopeLock locker(globalMetaData.sync);
+    ScopeLock locker(globalMetaData);
     MetaClassTypeRegister::const_iterator it = globalMetaData.metaClassRegister.find(metaType);
     return it != globalMetaData.metaClassRegister.cend() ? it->second : nullptr;
 }

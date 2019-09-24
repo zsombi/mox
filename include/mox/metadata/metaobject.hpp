@@ -20,12 +20,13 @@
 #define METAOBJECT_HPP
 
 #include <mox/metadata/metaclass.hpp>
+#include <mox/utils/locks.hpp>
 
 namespace mox
 {
 
 /// Base class for the classes that provide standalone type reflection.
-class MOX_API MetaObject
+class MOX_API MetaObject : public ObjectLock
 {
 public:
     /// Constructor.

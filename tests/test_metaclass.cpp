@@ -25,7 +25,7 @@ using namespace mox;
 class TBaseClass// : public MetaClassHelper<TBaseClass>
 {
 public:
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, TBaseClass>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TBaseClass>
     {
     };
 
@@ -38,7 +38,7 @@ public:
 class BaseObject : public MetaObject, public TBaseClass
 {
 public:
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, BaseObject, MetaObject, TBaseClass>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, BaseObject, MetaObject, TBaseClass>
     {
     };
 };
@@ -46,7 +46,7 @@ public:
 class OtherBaseClass
 {
 public:
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, OtherBaseClass>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, OtherBaseClass>
     {
     };
 
@@ -63,7 +63,7 @@ public:
     {
     }
 
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, DerivedClass, TBaseClass, OtherBaseClass>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, DerivedClass, TBaseClass, OtherBaseClass>
     {
     };
 };
@@ -71,7 +71,7 @@ public:
 class ObjectDerivedClass : public MetaObject, public DerivedClass
 {
 public:
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, ObjectDerivedClass, MetaObject, DerivedClass>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, ObjectDerivedClass, MetaObject, DerivedClass>
     {
     };
 };
@@ -85,7 +85,7 @@ public:
 
     virtual void noop() = 0;
 
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SecondLevelDerived, DerivedClass>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SecondLevelDerived, DerivedClass>
     {
     };
 };
@@ -93,7 +93,7 @@ public:
 class SecondObject : public MetaObject, public SecondLevelDerived
 {
 public:
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, SecondObject, MetaObject, SecondLevelDerived>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SecondObject, MetaObject, SecondLevelDerived>
     {
     };
     void noop() override

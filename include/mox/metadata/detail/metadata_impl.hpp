@@ -103,7 +103,7 @@ struct EmbeddedConverter : MetatypeConverter
 
 } // noname
 
-namespace registrar
+namespace metadata
 {
 
 template <typename T>
@@ -113,35 +113,38 @@ const std::type_info& remove_cv()
     return typeid(NakedType);
 }
 
-} // namespace registrar
+} // namespace metadata
 
 template <typename Type>
 Metatype metaType()
 {
     static_assert (!is_cstring<Type>::value, "Use std::string_view in reflections instead of cstrings");
-    Metatype type = registrar::findMetatype(registrar::remove_cv<Type>());
-    FATAL(type != Metatype::Invalid, std::string("Type is not reflectable: ").append(registrar::remove_cv<Type>().name()));
+    Metatype type = metadata::findMetatype(metadata::remove_cv<Type>());
+    if (type == Metatype::Invalid)
+    {
+        throw type_not_registered(metadata::remove_cv<Type>());
+    }
     return type;
 }
 
 template <typename Type>
 const MetatypeDescriptor& metatypeDescriptor()
 {
-    const MetatypeDescriptor* descriptor = registrar::findMetatypeDescriptor(registrar::remove_cv<Type>());
-    FATAL(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + registrar::remove_cv<Type>().name());
+    const MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(metadata::remove_cv<Type>());
+    FATAL(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + metadata::remove_cv<Type>().name());
     return *descriptor;
 }
 
 template <typename Type>
 Metatype registerMetaType(std::string_view name)
 {
-    Metatype newType = registrar::findMetatype(registrar::remove_cv<Type>());
+    Metatype newType = metadata::findMetatype(metadata::remove_cv<Type>());
     if (newType != Metatype::Invalid)
     {
         return newType;
     }
 
-    newType = registrar::tryRegisterMetatype(registrar::remove_cv<Type>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
+    newType = metadata::tryRegisterMetatype(metadata::remove_cv<Type>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
 
     return newType;
 }
@@ -151,7 +154,7 @@ bool registerConverter(Function function)
 {
     const Metatype fromType = metaType<From>();
     const Metatype toType = metaType<To>();
-    return registrar::registerConverter(std::make_unique<ConverterFunctor<From, To, Function>>(function), fromType, toType);
+    return metadata::registerConverter(std::make_unique<ConverterFunctor<From, To, Function>>(function), fromType, toType);
 }
 
 template <typename From, typename To>
@@ -159,7 +162,7 @@ bool registerConverter(To (From::*function)() const)
 {
     const Metatype fromType = metaType<From>();
     const Metatype toType = metaType<To>();
-    return registrar::registerConverter(std::make_unique<ConverterMethod<From, To>>(function), fromType, toType);
+    return metadata::registerConverter(std::make_unique<ConverterMethod<From, To>>(function), fromType, toType);
 }
 
 } // namespace mox

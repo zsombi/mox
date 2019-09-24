@@ -67,7 +67,7 @@ class Derived : public mox::MetaObject
 public:
     explicit Derived() = default;
 
-    struct StaticMetaClass : mox::decl::MetaClass<StaticMetaClass, Derived, mox::MetaObject>
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Derived, mox::MetaObject>
     {
     };
 };
@@ -98,7 +98,7 @@ TEST_F(Converters, test_base_type_converters)
         {
             if (from != to)
             {
-                mox::MetatypeConverter* converter = mox::registrar::findConverter(from, to);
+                mox::MetatypeConverter* converter = mox::metadata::findConverter(from, to);
                 EXPECT_NOT_NULL(converter);
             }
         }
@@ -111,7 +111,7 @@ TEST_F(Converters, test_register_converter_function)
     EXPECT_TRUE(b);
 
     // Convert long long to UserType.
-    mox::MetatypeConverter* converter = mox::registrar::findConverter(mox::Metatype::Int32, mox::metaType<converter_test::UserType>());
+    mox::MetatypeConverter* converter = mox::metadata::findConverter(mox::Metatype::Int32, mox::metaType<converter_test::UserType>());
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType result;
@@ -121,7 +121,7 @@ TEST_F(Converters, test_register_converter_function)
     EXPECT_EQ(1, result.v1);
     EXPECT_EQ(1, result.v2);
 
-    converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
+    converter = mox::metadata::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NULL(converter);
 }
 
@@ -136,7 +136,7 @@ TEST_F(Converters, test_register_converter_functor)
     bool b = mox::registerConverter<converter_test::UserType, int32_t>(userType2int32);
     EXPECT_TRUE(b);
 
-    auto converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
+    auto converter = mox::metadata::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType v;
@@ -150,7 +150,7 @@ TEST_F(Converters, test_register_converter_functor)
 
 TEST_F(Converters, test_registered_functor_converter)
 {
-    auto converter = mox::registrar::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
+    auto converter = mox::metadata::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType v;
@@ -169,7 +169,7 @@ TEST_F(Converters, test_register_converter_method)
     b = mox::registerConverter<converter_test::SelfConvertible, converter_test::UserType*>(&converter_test::SelfConvertible::ptr_convert);
     EXPECT_TRUE(b);
 
-    mox::MetatypeConverter* converter = mox::registrar::findConverter(mox::metaType<converter_test::SelfConvertible>(), mox::metaType<converter_test::UserType>());
+    mox::MetatypeConverter* converter = mox::metadata::findConverter(mox::metaType<converter_test::SelfConvertible>(), mox::metaType<converter_test::UserType>());
     EXPECT_NOT_NULL(converter);
 
     converter_test::SelfConvertible src;
@@ -182,7 +182,7 @@ TEST_F(Converters, test_register_converter_method)
     EXPECT_EQ(10, dst.v1);
     EXPECT_EQ(20, dst.v2);
 
-    converter = mox::registrar::findConverter(mox::metaType<converter_test::SelfConvertible>(), mox::metaType<converter_test::UserType*>());
+    converter = mox::metadata::findConverter(mox::metaType<converter_test::SelfConvertible>(), mox::metaType<converter_test::UserType*>());
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType* pdst = nullptr;

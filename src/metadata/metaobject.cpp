@@ -30,8 +30,18 @@ MetaObject::~MetaObject()
 {
 }
 
+const MetatypeDescriptor& get(const std::type_info& rtti)
+{
+    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(rtti);
+    if (!descriptor)
+    {
+        throw type_not_registered(rtti);
+    }
+    return *descriptor;
+}
+
 MetaObject::StaticMetaClass::StaticMetaClass()
-    : MetaClass(*MetaData::globalMetaData.findMetaType(typeid(MetaObject)))
+    : MetaClass(mox::get(typeid(MetaObject)))
 {
 }
 

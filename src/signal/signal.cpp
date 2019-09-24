@@ -22,6 +22,26 @@
 namespace mox
 {
 
+static AbstractSignalDescriptor::TUuid nextUuid()
+{
+    static AbstractSignalDescriptor::TUuid uuidPool = 0u;
+    return ++uuidPool;
+}
+
+AbstractSignalDescriptor::AbstractSignalDescriptor(const VariantDescriptorContainer& arguments)
+    : arguments(arguments)
+    , uuid(nextUuid())
+{
+}
+
+bool AbstractSignalDescriptor::operator==(const AbstractSignalDescriptor& other) const
+{
+    return uuid == other.uuid;
+}
+
+/******************************************************************************
+ *
+ */
 Signal::Connection::Connection(Signal& signal)
     : m_signal(signal)
     , m_passConnectionObject(false)
@@ -51,7 +71,9 @@ bool Signal::Connection::compare(Variant receiver, const void* funcAddress) cons
     return false;
 }
 
-
+/******************************************************************************
+ *
+ */
 FunctionConnection::FunctionConnection(Signal& signal, Callable&& callable)
     : Signal::Connection(signal)
     , m_slot(callable)
@@ -80,7 +102,9 @@ void FunctionConnection::reset()
     m_slot.reset();
 }
 
-
+/******************************************************************************
+ *
+ */
 MethodConnection::MethodConnection(Signal& signal, Variant receiver, Callable&& callable)
     : FunctionConnection(signal, std::forward<Callable>(callable))
     , m_receiver(receiver)
@@ -111,7 +135,9 @@ void MethodConnection::reset()
     FunctionConnection::reset();
 }
 
-
+/******************************************************************************
+ *
+ */
 MetaMethodConnection::MetaMethodConnection(Signal& signal, Variant receiver, const MetaClass::Method& slot)
     : Signal::Connection(signal)
     , m_receiver(receiver)
@@ -143,7 +169,9 @@ void MetaMethodConnection::reset()
     m_slot = nullptr;
 }
 
-
+/******************************************************************************
+ *
+ */
 SignalConnection::SignalConnection(Signal& sender, const Signal& other)
     : Signal::Connection(sender)
     , m_receiverSignal(const_cast<Signal*>(&other))
@@ -166,11 +194,11 @@ void SignalConnection::reset()
 /******************************************************************************
  *
  */
-SignalHost::~SignalHost()
+SignalHostNotion::~SignalHostNotion()
 {
 }
 
-int SignalHost::activate(const AbstractSignalDescriptor& descriptor, Callable::ArgumentPack& args)
+int SignalHostNotion::activate(const AbstractSignalDescriptor& descriptor, Callable::ArgumentPack& args)
 {
     ScopeLock lock(m_lock);
 
@@ -185,20 +213,23 @@ int SignalHost::activate(const AbstractSignalDescriptor& descriptor, Callable::A
     return -1;
 }
 
-size_t SignalHost::registerSignal(Signal& signal)
+size_t SignalHostNotion::registerSignal(Signal& signal)
 {
     ScopeLock lock(m_lock);
     m_signals.push_back(&signal);
     return m_signals.size() - 1;
 }
 
-void SignalHost::removeSignal(Signal& signal)
+void SignalHostNotion::removeSignal(Signal& signal)
 {
     ScopeLock lock(m_lock);
     FATAL(signal.isValid(), "Signal already removed")
     m_signals[signal.id()] = nullptr;
 }
 
+/******************************************************************************
+ *
+ */
 Signal::~Signal()
 {
     m_host.removeSignal(*this);
@@ -206,13 +237,13 @@ Signal::~Signal()
 
 void Signal::addConnection(ConnectionSharedPtr connection)
 {
-    ScopeLock lock(m_host.m_lock);
+    ScopeLock lock(*this);
     m_connections.push_back(connection);
 }
 
 void Signal::removeConnection(ConnectionSharedPtr connection)
 {
-    ScopeLock lock(m_host.m_lock);
+    ScopeLock lock(*this);
     ConnectionList::iterator it, end = m_connections.end();
     for (it = m_connections.begin(); it != end; ++it)
     {
@@ -226,7 +257,7 @@ void Signal::removeConnection(ConnectionSharedPtr connection)
     }
 }
 
-SignalHost& Signal::host() const
+SignalHostNotion& Signal::host() const
 {
     return m_host;
 }
@@ -277,7 +308,7 @@ Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 
 bool Signal::disconnect(const Signal& signal)
 {
-    ScopeLock lock(m_host.m_lock);
+    ScopeLock lock(*this);
     ConnectionList::iterator it, end = m_connections.end();
 
     for (it = m_connections.begin(); it != end; ++it)
@@ -296,7 +327,7 @@ bool Signal::disconnect(const Signal& signal)
 
 bool Signal::disconnectImpl(Variant receiver, const void* callableAddress)
 {
-    ScopeLock lock(m_host.m_lock);
+    ScopeLock lock(*this);
     ConnectionList::iterator it, end = m_connections.end();
 
     for (it = m_connections.begin(); it != end; ++it)
@@ -313,7 +344,6 @@ bool Signal::disconnectImpl(Variant receiver, const void* callableAddress)
     return false;
 }
 
-
 int Signal::activate(Callable::ArgumentPack &args)
 {
     if (m_triggering)
@@ -321,13 +351,16 @@ int Signal::activate(Callable::ArgumentPack &args)
         return 0;
     }
 
-    FlagScope<true> lock(m_triggering);
+    ScopeLock lock(*this);
+
+    FlagScope<true> triggerLock(m_triggering);
     int count = 0;
 
     for (auto& connection : m_connections)
     {
         if (connection)
         {
+            ScopeRelock relock(*this);
             connection->activate(args);
             count++;
         }

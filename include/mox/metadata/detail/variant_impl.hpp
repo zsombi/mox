@@ -30,7 +30,7 @@ Variant::Variant(const T value)
 template <typename T>
 bool Variant::canConvert()
 {
-    return isValid() && registrar::findConverter(metaType(), mox::metaType<T>()) != nullptr;
+    return isValid() && metadata::findConverter(metaType(), mox::metaType<T>()) != nullptr;
 }
 
 template <typename T>
@@ -91,7 +91,7 @@ T Variant::Data::get()
 
     Metatype sourceType = m_typeDescriptor.type;
     Metatype destinationType = mox::metaType<T>();
-    MetatypeConverter* converter = registrar::findConverter(sourceType, destinationType);
+    MetatypeConverter* converter = metadata::findConverter(sourceType, destinationType);
     if (!converter)
     {
         throw bad_conversion(sourceType, destinationType);

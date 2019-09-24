@@ -30,45 +30,18 @@
 namespace mox
 {
 
-namespace registrar
-{
 
-const MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti)
+type_not_registered::type_not_registered(const std::type_info& rtti)
 {
-    return MetaData::findMetaType(rtti);
+    int status = 0;
+    char* abiName = abi::__cxa_demangle(rtti.name(), nullptr, nullptr, &status);
+    m_message = "Type '" + std::string(abiName) + "' not registered as metatype.";
+    free(abiName);
 }
-
-Metatype findMetatype(const std::type_info& rtti)
+const char* type_not_registered::what() const EXCEPTION_NOEXCEPT
 {
-    const MetatypeDescriptor* descriptor = findMetatypeDescriptor(rtti);
-    return descriptor ? descriptor->id() : Metatype::Invalid;
+    return m_message.c_str();
 }
-
-Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name)
-{
-    const MetatypeDescriptor* type = findMetatypeDescriptor(rtti);
-    if (!type)
-    {
-        const MetatypeDescriptor& newType = MetaData::addMetaType(name.data(), rtti, isEnum, isClass, isPointer);
-        type = &newType;
-    }
-    return type->id();
-}
-
-bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType)
-{
-    MetatypeDescriptor& descriptor = MetaData::getMetaType(fromType);
-    return descriptor.addConverter(std::forward<MetatypeConverterPtr>(converter), toType);
-}
-
-MetatypeConverter* findConverter(Metatype from, Metatype to)
-{
-    MetatypeDescriptor& descriptor = MetaData::getMetaType(from);
-    return descriptor.findConverterTo(to);
-}
-
-} // registrar
-
 
 
 MetatypeDescriptor::MetatypeDescriptor(std::string_view name, int id, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer)
@@ -232,8 +205,8 @@ void registerAtomicTypes(MetaData& metaData)
     metaData.addMetaType("MetaObject*", typeid(MetaObject*), false, true, true);
     MetaObject::StaticMetaClass::get();
 
-    metaData.addMetaType("Connection", registrar::remove_cv<Signal::ConnectionSharedPtr>(), false, false, true);
-    metaData.addMetaType("vector<int32>", registrar::remove_cv<std::vector<int32_t>>(), false, false, false);
+    metaData.addMetaType("Connection", metadata::remove_cv<Signal::ConnectionSharedPtr>(), false, false, true);
+    metaData.addMetaType("vector<int32>", metadata::remove_cv<std::vector<int32_t>>(), false, false, false);
 }
 
 }// namespace mox

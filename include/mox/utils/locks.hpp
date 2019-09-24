@@ -19,12 +19,77 @@
 #ifndef LOCKS_HPP
 #define LOCKS_HPP
 
+#if !defined(MOX_SINGLE_THREADED)
 #include <mutex>
+#endif
 
 namespace mox
 {
 
-typedef std::lock_guard<std::mutex> ScopeLock;
+#if defined(MOX_SINGLE_THREADED)
+
+class ObjectLock
+{
+public:
+    virtual ~ObjectLock() = default;
+
+    virtual void lock()
+    {
+    }
+
+    virtual void unlock()
+    {
+    }
+};
+
+template<typename LockType>
+class ScopeLock
+{
+public:
+    explicit ScopeLock(LockType& lock)
+        : m_lock(lock)
+    {
+        m_lock.lock();
+    }
+    ~ScopeLock()
+    {
+        m_lock.unlock();
+    }
+
+    ScopeLock(const ScopeLock&) = delete;
+    ScopeLock& operator=(const ScopeLock&) = delete;
+
+private:
+    LockType&  m_lock;
+};
+
+#else
+
+using ObjectLock = std::mutex;
+typedef std::lock_guard<ObjectLock> ScopeLock;
+
+#endif // MOX_SINGLE_THREADED
+
+template<typename LockType>
+class ScopeRelock
+{
+public:
+    explicit ScopeRelock(LockType& lock)
+        : m_lock(lock)
+    {
+        m_lock.lock();
+    }
+    ~ScopeRelock()
+    {
+        m_lock.unlock();
+    }
+
+    ScopeRelock(const ScopeRelock&) = delete;
+    ScopeRelock& operator=(const ScopeRelock&) = delete;
+
+private:
+    LockType&  m_lock;
+};
 
 template <bool Value>
 struct FlagScope
