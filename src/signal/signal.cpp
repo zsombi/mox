@@ -200,7 +200,7 @@ SignalHostNotion::~SignalHostNotion()
 
 int SignalHostNotion::activate(const AbstractSignalDescriptor& descriptor, Callable::ArgumentPack& args)
 {
-    ScopeLock lock(m_lock);
+    lock_guard lock(m_lock);
 
     for (auto& signal : m_signals)
     {
@@ -215,14 +215,14 @@ int SignalHostNotion::activate(const AbstractSignalDescriptor& descriptor, Calla
 
 size_t SignalHostNotion::registerSignal(Signal& signal)
 {
-    ScopeLock lock(m_lock);
+    lock_guard lock(m_lock);
     m_signals.push_back(&signal);
     return m_signals.size() - 1;
 }
 
 void SignalHostNotion::removeSignal(Signal& signal)
 {
-    ScopeLock lock(m_lock);
+    lock_guard lock(m_lock);
     FATAL(signal.isValid(), "Signal already removed")
     m_signals[signal.id()] = nullptr;
 }
@@ -233,17 +233,18 @@ void SignalHostNotion::removeSignal(Signal& signal)
 Signal::~Signal()
 {
     m_host.removeSignal(*this);
+    m_id = INVALID_SIGNAL;
 }
 
 void Signal::addConnection(ConnectionSharedPtr connection)
 {
-    ScopeLock lock(*this);
+    lock_guard lock(*this);
     m_connections.push_back(connection);
 }
 
 void Signal::removeConnection(ConnectionSharedPtr connection)
 {
-    ScopeLock lock(*this);
+    lock_guard lock(*this);
     ConnectionList::iterator it, end = m_connections.end();
     for (it = m_connections.begin(); it != end; ++it)
     {
@@ -308,7 +309,7 @@ Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 
 bool Signal::disconnect(const Signal& signal)
 {
-    ScopeLock lock(*this);
+    lock_guard lock(*this);
     ConnectionList::iterator it, end = m_connections.end();
 
     for (it = m_connections.begin(); it != end; ++it)
@@ -327,7 +328,7 @@ bool Signal::disconnect(const Signal& signal)
 
 bool Signal::disconnectImpl(Variant receiver, const void* callableAddress)
 {
-    ScopeLock lock(*this);
+    lock_guard lock(*this);
     ConnectionList::iterator it, end = m_connections.end();
 
     for (it = m_connections.begin(); it != end; ++it)
@@ -351,16 +352,16 @@ int Signal::activate(Callable::ArgumentPack &args)
         return 0;
     }
 
-    ScopeLock lock(*this);
+    lock_guard lock(*this);
 
     FlagScope<true> triggerLock(m_triggering);
     int count = 0;
 
-    for (auto& connection : m_connections)
+    for (auto connection : m_connections)
     {
         if (connection)
         {
-            ScopeRelock relock(*this);
+            ScopeUnlock relock(*this);
             connection->activate(args);
             count++;
         }

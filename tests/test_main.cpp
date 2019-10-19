@@ -2,7 +2,7 @@
 #include <mox/utils/globals.hpp>
 #include <gtest/gtest.h>
 
-#include <mox/metadata/metaobject.hpp>
+#include <mox/mox_module.hpp>
 
 /******************************************************************************
  *
@@ -20,6 +20,8 @@ void UnitTest::TearDown()
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
-    mox::registerMetaType<mox::MetaObject>();
+    mox::MoxModule module;
+    module.registerModule();
+
     return RUN_ALL_TESTS();
 }

@@ -99,7 +99,7 @@ template <typename Function>
 Callable::Callable(Function fn)
     : m_ret(VariantDescriptor::get<typename function_traits<Function>::return_type>())
     , m_args(function_traits<Function>::argument_descriptors())
-    , m_address(::address(fn))
+    , m_address(mox::address(fn))
     , m_type(static_cast<FunctionType>(function_traits<Function>::type))
     , m_isConst(function_traits<Function>::is_const)
 {

@@ -19,9 +19,11 @@
 set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/platform_config.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/pimpl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/platforms/adaptation.hpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/globals.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/locks.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/string.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/function_traits.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/type_traits.hpp
@@ -44,6 +46,24 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/detail/signal_impl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal_host.hpp
+
+    #event handling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_handler.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_queue.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/socket_notifier.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_sources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_dispatcher.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_loop.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_handling_declarations.hpp
+
+    #modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/module.hpp
+
+    # Mox core
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/mox_module.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/timer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/object.hpp
     )
 
 set(SOURCES
@@ -58,4 +78,45 @@ set(SOURCES
     # Signal
     ${CMAKE_CURRENT_SOURCE_DIR}/signal/signal_p.h
     ${CMAKE_CURRENT_SOURCE_DIR}/signal/signal.cpp
+    # Event handling
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_handler.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_queue.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/socket_notifier.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_sources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_dispatcher.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_loop.cpp
+
+    # object
+    ${CMAKE_CURRENT_SOURCE_DIR}/timer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/object.cpp
+
+    #modules
+    ${CMAKE_CURRENT_SOURCE_DIR}/module/modules.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/mox_module.cpp
     )
+
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    set(PLATFORM_HEADERS
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/event_dispatcher.h
+        )
+    set(PLATFORM_SOURCES
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/event_dispatcher.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/post_event_source.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/socket_notifier_source.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/timer_source.cpp
+        )
+endif()
+
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+    set(PLATFORM_HEADERS
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/mac_util.h
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/event_dispatcher.h
+        )
+    set(PLATFORM_SOURCES        
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/event_dispatcher.mm
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/timer_source.mm
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/post_event_source.mm
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/socket_notifier.mm
+        )
+endif()

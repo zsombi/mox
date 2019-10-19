@@ -16,7 +16,24 @@ set(PROJECT_VERSION_MINOR 7)
 set(PROJECT_VERSION_PATCH 1)
 
 if (BUILD_SHARED_LIBS)
-    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${HEADERS})
+    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${PLATFORM_SOURCES} ${HEADERS} ${PLATFORM_HEADERS})
 else()
-    add_library(${PROJECT_NAME} ${SOURCES} ${HEADERS})
+    add_library(${PROJECT_NAME} ${SOURCES} ${PLATFORM_SOURCES} ${HEADERS} ${PLATFORM_HEADERS})
+endif()
+
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    target_link_libraries(mox ${LIBGLIB_LIBRARIES})
+endif()
+
+# platform specific packages
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    include(FindPkgConfig)
+    pkg_check_modules(LIBGLIB REQUIRED glib-2.0)
+    INCLUDE_DIRECTORIES(${LIBGLIB_INCLUDE_DIRS})
+endif()
+
+# MacOS stuff
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+    target_link_libraries(mox "-framework Foundation -framework CoreFoundation")
+    set_target_properties(mox PROPERTIES LINK_FLAGS "-Wl,-F/Library/Frameworks")
 endif()

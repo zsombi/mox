@@ -270,11 +270,19 @@ protected:
     bool m_triggering = false;
 };
 
-template <typename... ArgumentPack>
+template <typename... Arguments>
 struct SignalDescriptor : AbstractSignalDescriptor
 {
+private:
+    auto registerArguments()
+    {
+        std::array<Metatype, sizeof...(Arguments)> dummy = {{registerMetaType<Arguments>()...}};
+        UNUSED(dummy);
+        return VariantDescriptorContainer::get<Arguments...>();
+    }
+public:
     SignalDescriptor()
-        : AbstractSignalDescriptor(VariantDescriptorContainer::get<ArgumentPack...>())
+        : AbstractSignalDescriptor(registerArguments())
     {
     }
 };

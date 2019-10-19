@@ -200,13 +200,6 @@ void registerAtomicTypes(MetaData& metaData)
     metaData.synonymTypes.push_back(std::make_pair(&typeid(long), Metatype::Int64));
     metaData.synonymTypes.push_back(std::make_pair(&typeid(unsigned long), Metatype::UInt64));
 #endif
-    // register MetaObject
-    metaData.addMetaType("MetaObject", typeid(MetaObject), false, true, false);
-    metaData.addMetaType("MetaObject*", typeid(MetaObject*), false, true, true);
-    MetaObject::StaticMetaClass::get();
-
-    metaData.addMetaType("Connection", metadata::remove_cv<Signal::ConnectionSharedPtr>(), false, false, true);
-    metaData.addMetaType("vector<int32>", metadata::remove_cv<std::vector<int32_t>>(), false, false, false);
 }
 
 }// namespace mox

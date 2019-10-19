@@ -100,14 +100,14 @@ std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, bool>
 Signal::disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
     Variant receiverInstance(&receiver);
-    return disconnectImpl(receiverInstance, ::address(method));
+    return disconnectImpl(receiverInstance, mox::address(method));
 }
 
 template <typename SlotFunction>
 std::enable_if_t<!std::is_base_of_v<Signal, SlotFunction>, bool>
 Signal::disconnect(const SlotFunction& slot)
 {
-    return disconnectImpl(Variant(), ::address(slot));
+    return disconnectImpl(Variant(), mox::address(slot));
 }
 
 } // namespace mox

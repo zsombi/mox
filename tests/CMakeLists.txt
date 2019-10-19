@@ -31,6 +31,9 @@ set(SOURCES
     test_callables.cpp
     test_metamethod.cpp
     test_signal.cpp
+    test_object.cpp
+    test_event_handling.cpp
+    test_socket_notifiers.cpp
     )
 add_executable(unittest ${SOURCES})
 target_link_libraries(unittest gtest_main mox)

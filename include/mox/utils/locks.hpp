@@ -21,7 +21,12 @@
 
 #if !defined(MOX_SINGLE_THREADED)
 #include <mutex>
+#include <atomic>
 #endif
+
+#include <mox/utils/globals.hpp>
+
+#include <functional>
 
 namespace mox
 {
@@ -31,66 +36,211 @@ namespace mox
 class ObjectLock
 {
 public:
-    virtual ~ObjectLock() = default;
+    ~ObjectLock() = default;
 
-    virtual void lock()
+    void lock()
     {
+        FATAL(!m_locked, "Object already locked!")
+        m_locked = true;
     }
 
-    virtual void unlock()
+    void unlock()
     {
+        FATAL(m_locked, "Object already unlocked!")
+        m_locked = false;
     }
+
+    bool try_lock()
+    {
+        if (m_locked)
+        {
+            return false;
+        }
+        lock();
+        return m_locked;
+    }
+private:
+    bool m_locked = false;
 };
 
 template<typename LockType>
-class ScopeLock
+class lock_guard
 {
 public:
-    explicit ScopeLock(LockType& lock)
+    explicit lock_guard(LockType& lock)
         : m_lock(lock)
     {
         m_lock.lock();
     }
-    ~ScopeLock()
+    ~lock_guard()
     {
         m_lock.unlock();
     }
 
-    ScopeLock(const ScopeLock&) = delete;
-    ScopeLock& operator=(const ScopeLock&) = delete;
+private:
+    lock_guard(const lock_guard&) = delete;
+    lock_guard& operator=(const lock_guard&) = delete;
+
+    LockType&  m_lock;
+};
+
+// Emulate atomic.
+template <typename T>
+class atomic
+{
+public:
+    T load() const
+    {
+        return m_value;
+    }
+    T load() const volatile
+    {
+        return m_value;
+    }
+
+    void store(T value)
+    {
+        m_value = value;
+    }
+    void store(T value) volatile
+    {
+        m_value = value;
+    }
+
+    T operator=(T value)
+    {
+        store(value);
+    }
+    T operator=(T value) volatile
+    {
+        store(value);
+    }
+
+    operator T()
+    {
+        return load();
+    }
+    operator T() volatile
+    {
+        return load();
+    }
+
+    explicit atomic() = default;
+    explicit atomic(T value)
+        : m_value(value)
+    {
+    }
+
+    DISABLE_COPY(atomic)
+    DISABLE_MOVE(atomic)
 
 private:
-    LockType&  m_lock;
+    T m_value;
 };
 
 #else
 
+using std::atomic;
+using atomic_bool = std::atomic_bool;
+using atomic_int32_t = std::atomic_int32_t;
+using std::lock_guard;
 using ObjectLock = std::mutex;
-typedef std::lock_guard<ObjectLock> ScopeLock;
 
 #endif // MOX_SINGLE_THREADED
 
+/// The template unlocks the lock passed as argument on construction, and relocks
+/// it on destruction.
 template<typename LockType>
-class ScopeRelock
+class ScopeUnlock
 {
 public:
-    explicit ScopeRelock(LockType& lock)
+    explicit ScopeUnlock(LockType& lock)
         : m_lock(lock)
-    {
-        m_lock.lock();
-    }
-    ~ScopeRelock()
     {
         m_lock.unlock();
     }
-
-    ScopeRelock(const ScopeRelock&) = delete;
-    ScopeRelock& operator=(const ScopeRelock&) = delete;
+    ~ScopeUnlock()
+    {
+        m_lock.lock();
+    }
 
 private:
+    DISABLE_COPY(ScopeUnlock)
     LockType&  m_lock;
 };
 
+/// The OrderedLock class is a scope lock locking two individual LockType instances.
+/// The lock objects are locked in ascending ordered based on their address, the smaller
+/// address lock is locked before the other. Just like with lock_guard, the object locks
+/// are guaranteed to unlock on destruction.
+template <typename LockType>
+class OrderedLock
+{
+public:
+    explicit OrderedLock(LockType* l1, LockType* l2)
+        : m_l1((l1 == l2) ?      l1 : (std::less<LockType*>()(l1, l2) ? l1 : l2))
+        , m_l2((l1 == l2) ? nullptr : (std::less<LockType*>()(l1, l2) ? l2 : l1))
+    {
+        if (m_l1) m_l1->lock();
+        if (m_l2) m_l2->lock();
+    }
+    ~OrderedLock()
+    {
+        if (m_l1) m_l1->unlock();
+        if (m_l2) m_l2->unlock();
+    }
+
+    DISABLE_COPY(OrderedLock)
+
+private:
+    LockType* m_l1 = nullptr;
+    LockType* m_l2 = nullptr;
+};
+
+/// The class locks two mutexes so that it avoids eventual deadlocks that occur
+/// in threads when the mutexes are locked in different order. Assumes that the
+/// first mutex is locked. If the lock fails on the second mutex, it unlocks
+/// the first mutex and then relocks the mutexes in the proper order.
+template <typename LockType>
+class OrderedRelock
+{
+public:
+    explicit OrderedRelock(LockType l1, LockType l2)
+    {
+        // l1 is already locked, l2 not... do we need to unlock and relock?
+        if (l1 == l2 || !l2)
+        {
+            // Do nothing;
+            m_lock = nullptr;
+        }
+        else if (l1 < l2)
+        {
+            l2->lock();
+            m_lock = l2;
+        }
+        else if (!l2->try_lock())
+        {
+            l1->unlock();
+            l2->lock();
+            l1->lock();
+            m_lock = l2;
+        }
+    }
+    ~OrderedRelock()
+    {
+        if (m_lock)
+        {
+            m_lock->unlock();
+        }
+    }
+
+    DISABLE_COPY(OrderedRelock)
+
+private:
+    LockType* m_lock = nullptr;
+};
+
+/// Flips the flag value for the time of the scope lifetime.
 template <bool Value>
 struct FlagScope
 {
@@ -104,8 +254,34 @@ struct FlagScope
         m_flag = !Value;
     }
 
+    DISABLE_COPY(FlagScope)
+
 private:
     bool& m_flag;
+};
+
+template <typename Type>
+struct ValueScope
+{
+    using CleanupFunc = std::function<void()>;
+
+    explicit ValueScope(Type& value, CleanupFunc cleanup = nullptr)
+        : m_value(value)
+        , m_cleanup(cleanup)
+    {
+        ++m_value;
+    }
+    ~ValueScope()
+    {
+        --m_value;
+        if (m_value <= 0 && m_cleanup)
+        {
+            m_cleanup();
+        }
+    }
+private:
+    Type& m_value;
+    CleanupFunc m_cleanup;
 };
 
 }

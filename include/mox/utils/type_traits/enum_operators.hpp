@@ -32,7 +32,7 @@ struct enable_enum_operators : public std::false_type
 
 /// Increment operator for enum class.
 template <typename Enum>
-std::enable_if_t<enable_enum_operators<Enum>::value, Enum>& operator ++(Enum& enumerator)
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum>& operator ++(Enum& enumerator)
 {
     using underlying_type = std::underlying_type_t<Enum>;
     enumerator = static_cast<Enum>(static_cast<underlying_type>(enumerator) + 1);
@@ -41,11 +41,70 @@ std::enable_if_t<enable_enum_operators<Enum>::value, Enum>& operator ++(Enum& en
 
 /// Decrement operator for enum class.
 template <typename Enum>
-std::enable_if_t<enable_enum_operators<Enum>::value, Enum>& operator --(Enum& enumerator)
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum>& operator --(Enum& enumerator)
 {
     using underlying_type = std::underlying_type_t<Enum>;
     enumerator = static_cast<Enum>(static_cast<underlying_type>(enumerator) - 1);
     return enumerator;
+}
+
+/// Bitwise OR operator between two enum class values.
+template <typename Enum>
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum> operator|(Enum lhs, Enum rhs)
+{
+    using underlying_type = std::underlying_type_t<Enum>;
+    return static_cast<Enum>(static_cast<underlying_type>(lhs) | static_cast<underlying_type>(rhs));
+}
+
+/// Bitwise AND operator between two enum class values.
+template <typename Enum>
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum> operator&(Enum lhs, Enum rhs)
+{
+    using underlying_type = std::underlying_type_t<Enum>;
+    return static_cast<Enum>(static_cast<underlying_type>(lhs) & static_cast<underlying_type>(rhs));
+}
+
+/// Bitwise XOR operator between two enum class values.
+template <typename Enum>
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum> operator^(Enum lhs, Enum rhs)
+{
+    using underlying_type = std::underlying_type_t<Enum>;
+    return static_cast<Enum>(static_cast<underlying_type>(lhs) ^ static_cast<underlying_type>(rhs));
+}
+
+/// Bitwise NOT operator over an enum class value.
+template <typename Enum>
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum> operator~(Enum lhs)
+{
+    using underlying_type = std::underlying_type_t<Enum>;
+    return static_cast<Enum>(~static_cast<underlying_type>(lhs));
+}
+
+/// Bitwise OR assignment operator between two enum class values.
+template <typename Enum>
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum&> operator|=(Enum& lhs, Enum rhs)
+{
+    using underlying_type = std::underlying_type_t<Enum>;
+    lhs = static_cast<Enum>(static_cast<underlying_type>(lhs) | static_cast<underlying_type>(rhs));
+    return lhs;
+}
+
+/// Bitwise AND assignment operator between two enum class values.
+template <typename Enum>
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum&> operator&=(Enum& lhs, Enum rhs)
+{
+    using underlying_type = std::underlying_type_t<Enum>;
+    lhs = static_cast<Enum>(static_cast<underlying_type>(lhs) & static_cast<underlying_type>(rhs));
+    return lhs;
+}
+
+/// Bitwise XOR assignment operator between two enum class values.
+template <typename Enum>
+constexpr std::enable_if_t<enable_enum_operators<Enum>::value, Enum&> operator^=(Enum& lhs, Enum rhs)
+{
+    using underlying_type = std::underlying_type_t<Enum>;
+    lhs = static_cast<Enum>(static_cast<underlying_type>(lhs) ^ static_cast<underlying_type>(rhs));
+    return lhs;
 }
 
 /// Use this macro to enable enum class operators.

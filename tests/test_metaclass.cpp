@@ -22,7 +22,7 @@
 
 using namespace mox;
 
-class TBaseClass// : public MetaClassHelper<TBaseClass>
+class TBaseClass
 {
 public:
     struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TBaseClass>

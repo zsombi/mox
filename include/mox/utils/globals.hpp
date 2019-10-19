@@ -19,8 +19,11 @@
 #ifndef GLOBALS_HPP
 #define GLOBALS_HPP
 
+#include <chrono>
 #include <iostream>
 #include <memory>
+#include <vector>
+#include <algorithm>
 
 // Standard integer types
 #include <inttypes.h>
@@ -38,6 +41,10 @@ typedef long intptr_t_;
 
 #endif
 
+using Timestamp = std::chrono::system_clock::time_point;
+
+#define FALLTHROUGH     [[fallthrough]]
+
 // unused parameters
 #define UNUSED(x)       (void)x
 
@@ -50,7 +57,14 @@ typedef long intptr_t_;
 
 
 #ifdef DEBUG
-#   define TRACE(x)     std::cout << x << std::endl;
+static inline std::string dbg_fileName(const char* path)
+{
+    std::string fname(path);
+    fname = fname.substr(fname.rfind('/') + 1);
+    return fname;
+}
+
+#   define TRACE(x)     std::cout << dbg_fileName(__FILE__) << " : " << __LINE__ << " :- " << x << std::endl;
 #else
 #   define TRACE(x)
 #endif
@@ -65,14 +79,23 @@ typedef long intptr_t_;
     Class(Class&&) = delete; \
     Class& operator=(Class&&) = delete;
 
-/// Creates a polymorphic shared pointer.
+namespace mox
+{
+
+/// Creates a polymorphic shared pointer. Wipes the code bloat caused by the shared pointer.
 template <typename BaseType, typename Type, typename... Args>
 std::shared_ptr<Type> make_polymorphic_shared(Args&&... args)
 {
     static_assert(std::is_base_of_v<BaseType, Type>, "BaseType is not a superclass of Type.");
-    Type *p = new Type(std::forward<Args>(args)...);
-    std::shared_ptr<BaseType> baseShared(static_cast<BaseType*>(p));
-    return std::static_pointer_cast<Type>(baseShared);
+    auto shared = std::shared_ptr<BaseType>{std::unique_ptr<BaseType>(std::make_unique<Type>(std::forward<Args>(args)...))};
+    return std::static_pointer_cast<Type>(shared);
+}
+
+/// Vector utility, removes the occurences for which the predicate gives affirmative result.
+template <typename Type, typename Allocator, typename Predicate>
+void erase_if(std::vector<Type, Allocator>& v, const Predicate& predicate)
+{
+    v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
 }
 
 /// Returns the address of a method.
@@ -100,5 +123,7 @@ void* address(const Functor& fn)
 {
     return (void*&)fn;
 }
+
+} // mox
 
 #endif // GLOBALS
