@@ -16,26 +16,37 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#ifndef ADAPTATION_HPP
+#ifndef THREAD_HPP
+#define THREAD_HPP
 
-#define ADAPTATION_HPP
+#ifdef MOX_SINGLE_THREADED
+#error "Mox built with single thread mode cannot use threads"
+#endif
 
-#include <string_view>
-#include <mox/event_handling/event_handling_declarations.hpp>
+#include <thread>
+#include <mox/config/platform_config.hpp>
 
 namespace mox
 {
 
-class MOX_API Adaptation
+class thread_differs : public std::exception
 {
-    explicit Adaptation() = default;
 public:
-    static EventDispatcherSharedPtr createEventDispatcher(bool main);
-    static TimerSourcePtr createTimerSource(std::string_view name);
-    static PostEventSourcePtr createPostEventSource(std::string_view name);
-    static SocketNotifierSourcePtr createSocketNotifierSource(std::string_view name);
+    const char* what() const EXCEPTION_NOEXCEPT override
+    {
+        return "Object cannot be parented to a different thread";
+    }
 };
 
-} // namespace mox
+class thread_data_set : public std::exception
+{
+public:
+    const char* what() const EXCEPTION_NOEXCEPT override
+    {
+        return "ThreadLoop is already set on this thread";
+    }
+};
 
-#endif // ADAPTATION_HPP
+}
+
+#endif // THREAD_HPP

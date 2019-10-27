@@ -22,8 +22,6 @@
 namespace mox
 {
 
-static EventDispatcher* mainEventLoop = nullptr;
-
 /******************************************************************************
  * GlibEventDispatcher
  */
@@ -56,11 +54,6 @@ void GlibEventDispatcher::initialize()
 
 GlibEventDispatcher::~GlibEventDispatcher()
 {
-    if (mainEventLoop == this)
-    {
-        mainEventLoop = nullptr;
-    }
-
     // Kill all the sources before the context is destroyed
     m_eventSources.clear();
 
@@ -89,20 +82,16 @@ void GlibEventDispatcher::scheduleIdleTasks()
     g_source_unref(idleSource);
 }
 
-int GlibEventDispatcher::processEvents(ProcessFlags flags)
+void GlibEventDispatcher::processEvents(ProcessFlags flags)
 {
     setState(EventDispatchState::Running);
 
     if (flags == ProcessFlags::RunOnce)
     {
-        bool ret = g_main_context_iteration(context, TRUE);
+        g_main_context_iteration(context, TRUE);
         if (getState() == EventDispatchState::Exiting)
         {
             forEachSource<AbstractEventSource>(&AbstractEventSource::shutDown);
-        }
-        if (!ret)
-        {
-            m_exitCode.store(std::numeric_limits<int>::min());
         }
     }
     else
@@ -112,14 +101,11 @@ int GlibEventDispatcher::processEvents(ProcessFlags flags)
         forEachSource<AbstractEventSource>(&AbstractEventSource::shutDown);
         setState(EventDispatchState::Stopped);
     }
-
-    return m_exitCode.load();
 }
 
-void GlibEventDispatcher::exit(int exitCode)
+void GlibEventDispatcher::stop()
 {
     setState(EventDispatchState::Exiting);
-    m_exitCode.store(exitCode);
     // Stop the loop;
     g_main_loop_quit(evLoop);
 }
@@ -144,22 +130,18 @@ size_t GlibEventDispatcher::runningTimerCount() const
 /******************************************************************************
  * EventDispatcher factory function
  */
-EventDispatcherSharedPtr Adaptation::createEventDispatcher()
+EventDispatcherSharedPtr Adaptation::createEventDispatcher(bool main)
 {
-    EventDispatcherSharedPtr evLoop;
-    if (!mainEventLoop)
+    if (!main)
     {
         // For main loop
-        evLoop = std::make_shared<GlibEventDispatcher>(*g_main_context_default());
-        mainEventLoop = evLoop.get();
+        return std::make_shared<GlibEventDispatcher>(*g_main_context_default());
     }
     else
     {
         // For threads...
-        evLoop = std::make_shared<GlibEventDispatcher>();
+        return std::make_shared<GlibEventDispatcher>();
     }
-
-    return evLoop;
 }
 
 }

@@ -152,7 +152,7 @@ void GTimerSource::removeTimer(Timer &timer)
     auto index = findSource(timer.shared_from_this());
     FATAL(index, "The timer is not registered")
 
-    ScopeLock lock(timers);
+    lock_guard lock(timers);
     Source* src = timers[*index];
     timers[*index] = nullptr;
     Source::destroy(src);
@@ -173,7 +173,7 @@ void GTimerSource::shutDown()
             source->timer->stop();
         }
     };
-    ScopeLock lock(timers);
+    lock_guard lock(timers);
     timers.forEach(cleanup);
 }
 

@@ -19,6 +19,7 @@
 #include <mox/event_handling/event_loop.hpp>
 #include <mox/event_handling/event_handler.hpp>
 #include <mox/event_handling/event.hpp>
+#include <mox/module/thread_loop.hpp>
 #include <mox/object.hpp>
 
 namespace mox
@@ -60,7 +61,7 @@ bool dispatchToHandlers(bool tunneled, ObjectSharedPtr target, Function function
  *
  */
 EventLoop::EventLoop()
-    : m_dispatcher(EventDispatcher::get())
+    : m_dispatcher(ThreadData::thisThreadData()->eventDispatcher())
     , m_state(EventDispatchState::Inactive)
 {
     m_dispatcher->pushEventLoop(*this);
@@ -77,18 +78,63 @@ void EventLoop::setState(EventDispatchState newState)
     m_state.store(newState);
 }
 
-bool EventLoop::postEvent(EventPtr&& event)
+int EventLoop::processEvents(ProcessFlags flags)
 {
-    EventDispatchState state = m_state.load();
-    if (state == EventDispatchState::Exiting || state == EventDispatchState::Stopped)
+    if (!m_dispatcher)
+    {
+        throw no_event_dispatcher();
+    }
+
+    m_dispatcher->processEvents(flags);
+    return ThreadData::thisThreadData()->exitCode();
+}
+
+void EventLoop::exit(int exitCode)
+{
+    if (!m_dispatcher)
+    {
+        throw no_event_dispatcher();
+    }
+    ThreadData::thisThreadData()->m_exitCode.store(exitCode);
+    m_dispatcher->stop();
+}
+
+void EventLoop::wakeUp()
+{
+    if (!m_dispatcher)
+    {
+        throw no_event_dispatcher();
+    }
+    m_dispatcher->wakeUp();
+}
+
+/******************************************************************************
+ *
+ */
+bool postEvent(EventPtr&& event)
+{
+    ObjectSharedPtr target = event->target();
+    if (!target)
     {
         return false;
     }
-    m_queue.push(std::forward<EventPtr>(event));
+
+    ThreadDataSharedPtr threadData = target->threadData();
+    if (!threadData)
+    {
+        return false;
+    }
+
+    threadData->m_eventQueue.push(std::forward<EventPtr>(event));
+    EventLoopPtr loop = threadData->eventLoop();
+    if (loop)
+    {
+        loop->wakeUp();
+    }
     return true;
 }
 
-bool EventLoop::sendEvent(Event& event)
+bool sendEvent(Event& event)
 {
     ObjectSharedPtr spTarget = event.target();
     if (!spTarget)
@@ -96,12 +142,18 @@ bool EventLoop::sendEvent(Event& event)
         return false;
     }
 
+    if (spTarget->threadData() != ThreadData::thisThreadData())
+    {
+        std::cerr << "Post the events dedicated to targets residing in a different thread" << std::endl;
+        return false;
+    }
+
     // Filter by tunneling
-    auto filter = [](Object& handler, Event& event)
+    auto tunnel = [](Object& handler, Event& event)
     {
         return handler.filterEvent(event);
     };
-    if (dispatchToHandlers(true, spTarget, filter, event))
+    if (dispatchToHandlers(true, spTarget, tunnel, event))
     {
         return true;
     }
@@ -113,31 +165,6 @@ bool EventLoop::sendEvent(Event& event)
         return event.isHandled();
     };
     return dispatchToHandlers(false, spTarget, bubble, event);
-}
-
-void EventLoop::dispatchEventQueue()
-{
-    if (m_queue.empty())
-    {
-        return;
-    }
-
-    TRACE("process posted events")
-    m_queue.process(sendEvent);
-}
-
-int EventLoop::processEvents(ProcessFlags flags)
-{
-    return m_dispatcher->processEvents(flags);
-}
-
-void EventLoop::exit(int exitCode)
-{
-    if (!exitCode)
-    {
-        exitCode = m_dispatcher->exitCode();
-    }
-    m_dispatcher->exit(exitCode);
 }
 
 }

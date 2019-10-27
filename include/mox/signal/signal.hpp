@@ -25,6 +25,7 @@
 #include <vector>
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
+#include <mox/utils/containers.hpp>
 #include <mox/metadata/callable.hpp>
 #include <mox/metadata/metaclass.hpp>
 
@@ -83,6 +84,20 @@ public:
     class MOX_API Connection : public std::enable_shared_from_this<Connection>
     {
     public:
+        /// The type of the connection.
+        enum class Type
+        {
+            /// The connection is deferred, either the sender or the receiver is deferred.
+            Deferred,
+            /// The signal is connected to a function, a functor or a lambda.
+            ConnectedToCallable,
+            /// The signal is connected to a method.
+            ConnectedToMethod,
+            /// The signal is connected to a metamethod.
+            ConnectedToMetaMethod,
+            /// The signal is connected to an other signal.
+            ConnectedToSignal
+        };
         /// Destructor.
         virtual ~Connection() = default;
 
@@ -90,18 +105,14 @@ public:
         /// \return If the connection is connected, \e true, otherwise \e false.
         virtual bool isConnected() const = 0;
 
-        Signal& signal() const;
+        /// Returns the sender signal of the connection.
+        /// \return The sender signal of the connection, \e nullptr if the signal is destroyed
+        /// before the connection gets activated.
+        Signal* signal() const;
 
         /// Disconnects the signal.
         /// \return If the disconnect succeeds, \e true. If the disconnect fails, \e false.
         bool disconnect();
-
-        /// Tests a connection against the \a receiver and \a funcAddress passed as argument.
-        /// \param receiver The receiver instance to check against.
-        /// \param funcAddress The function address to test the connection against.
-        /// \return If the connection holds the receiver and the function address passed as argument,
-        /// returns \e true. Otherwise \e false.
-        virtual bool compare(Variant receiver, const void* funcAddress) const;
 
     protected:
         /// Constructs a connection attached to the \a signal.
@@ -112,14 +123,17 @@ public:
         virtual void activate(Callable::ArgumentPack& args) = 0;
 
         /// Resets the connection.
-        virtual void reset() = 0;
+        virtual void reset();
 
         /// The signal the connection is attached to.
-        Signal& m_signal;
+        Signal* m_signal = nullptr;
+        /// The type of the connection.
+        Type m_connectionType = Type::Deferred;
         /// Pass the connection object to the slot.
-        bool m_passConnectionObject;
+        bool m_passConnectionObject = false;
 
         friend class Signal;
+        friend class DeferredSignalEvent;
     };
 
     /// The connection type.
@@ -232,6 +246,7 @@ public:
         : m_host(owner)
         , m_descriptor(des)
         , m_id(m_host.registerSignal(*this))
+        , m_connections([](const ConnectionSharedPtr& connection) { return !connection; })
     {
     }
     /// Destructor.
@@ -239,8 +254,7 @@ public:
 
 protected:
     Signal() = delete;
-    Signal(const Signal&) = delete;
-    Signal& operator=(const Signal&) = delete;
+    DISABLE_COPY(Signal)
 
     /// Adds a \a connection to the signal.
     void addConnection(ConnectionSharedPtr connection);
@@ -255,8 +269,6 @@ protected:
     /// Disconnects a connection that holds a \a receiver and \a callableAddress.
     bool disconnectImpl(Variant receiver, const void* callableAddress);
 
-    /// Connection container type.
-    typedef std::vector<ConnectionSharedPtr> ConnectionList;
 
     /// The signal host address.
     SignalHostNotion& m_host;
@@ -265,7 +277,7 @@ protected:
     /// The metasignal of the signal.
     size_t m_id = std::numeric_limits<size_t>::max();
     /// The collection of active connections.
-    ConnectionList m_connections;
+    LockableContainer<ConnectionSharedPtr> m_connections;
     /// Triggering flag. Locks the signal from recursive triggering.
     bool m_triggering = false;
 };

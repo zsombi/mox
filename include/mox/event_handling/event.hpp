@@ -22,6 +22,7 @@
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
+#include <mox/signal/signal.hpp>
 
 #include <chrono>
 
@@ -36,6 +37,7 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 enum class EventType : int32_t
 {
     Base,
+    DeferredSignal,
     UserType = 100
 };
 ENABLE_ENUM_OPERATORS(EventType)
@@ -77,7 +79,7 @@ public:
     Timestamp timestamp() const;
 
 
-    /// Registers a new event type. Returns teh newly registered event type.
+    /// Registers a new event type. Returns the newly registered event type.
     static EventType registerNewType();
 
 private:
@@ -88,6 +90,16 @@ private:
     EventType m_type = EventType::Base;
     Priority m_priority = Priority::Normal;
     bool m_isHandled = false;
+};
+
+class MOX_API DeferredSignalEvent : public Event
+{
+    Signal::ConnectionSharedPtr m_connection;
+    Callable::ArgumentPack m_arguments;
+public:
+    explicit DeferredSignalEvent(ObjectSharedPtr target, Signal::ConnectionSharedPtr connection, const Callable::ArgumentPack& args);
+
+    void activate();
 };
 
 } // namespace mox

@@ -164,77 +164,86 @@ TEST(EventQueue, test_process_event_priority_changes_order)
 
 TEST(EventDispatcher, test_basics)
 {
-    EventDispatcherSharedPtr loop = EventDispatcher::create();
+    TestModule test;
 
-    auto idleFunc = [loop]()
+    int exit = 0;
+    auto idleFunc = [&exit]()
     {
-        loop->exit(100);
+        ThreadData::thisThreadData()->eventDispatcher()->stop();
+        exit = 100;
         return true;
     };
-    loop->addIdleTask(idleFunc);
+    ThreadData::thisThreadData()->eventDispatcher()->addIdleTask(idleFunc);
 
-    EXPECT_EQ(100, loop->processEvents());
+    ThreadData::thisThreadData()->eventDispatcher()->processEvents();
+    EXPECT_EQ(100, exit);
 }
 
 TEST(EventDispatcher, test_exit_after_several_idle_calls)
 {
-    EventDispatcherSharedPtr loop = EventDispatcher::create();
+    TestModule test;
     int count = 5;
 
-    auto idleFunc = [&count, loop]()
+    int exit = 0;
+    auto idleFunc = [&count, &exit]()
     {
         if (--count <= 0)
         {
-            loop->exit(100);
+            ThreadData::thisThreadData()->eventDispatcher()->stop();
+            exit = 100;
             return true;
         }
         return false;
     };
-    loop->addIdleTask(idleFunc);
-
-    EXPECT_EQ(100, loop->processEvents());
+    ThreadData::thisThreadData()->eventDispatcher()->addIdleTask(idleFunc);
+    ThreadData::thisThreadData()->eventDispatcher()->processEvents();
+    EXPECT_EQ(100, exit);
 }
 
 TEST(EventDispatcher, test_single_shot_timer_quits_loop)
 {
-    EventDispatcherSharedPtr loop = EventDispatcher::create();
-
+    TestModule test;
     TimerPtr timer = Timer::createSingleShot(std::chrono::milliseconds(100));
 
-    auto handler = []()
+    int exit = 0;
+    auto handler = [&exit]()
     {
         TRACE("Call exit with 1")
-        EventDispatcher::get()->exit(1);
+        exit = 1;
+        ThreadData::thisThreadData()->eventDispatcher()->stop();
     };
     timer->expired.connect(handler);
     timer->start();
-    EXPECT_EQ(1, loop->processEvents());
-    EXPECT_EQ(0u, loop->runningTimerCount());
+    ThreadData::thisThreadData()->eventDispatcher()->processEvents();
+    EXPECT_EQ(1, exit);
+    EXPECT_EQ(0u, ThreadData::thisThreadData()->eventDispatcher()->runningTimerCount());
 }
 
 TEST(EventDispatcher, test_repeating_timer_quits_loop)
 {
-    EventDispatcherSharedPtr loop = EventDispatcher::create();
-
+    TestModule test;
     TimerPtr timer = Timer::createRepeating(std::chrono::milliseconds(100));
 
     int repeatCount = 10;
-    auto handler = [&repeatCount]()
+    int exit = 0;
+    auto handler = [&repeatCount, &exit]()
     {
         if (--repeatCount <= 0)
         {
-            EventDispatcher::get()->exit(1);
+            exit = 1;
+            ThreadData::thisThreadData()->eventDispatcher()->stop();
         }
     };
     timer->expired.connect(handler);
     timer->start();
-    EXPECT_EQ(1, loop->processEvents());
-    EXPECT_EQ(0u, loop->runningTimerCount());
+    ThreadData::thisThreadData()->eventDispatcher()->processEvents();
+    EXPECT_EQ(1, exit);
+    EXPECT_EQ(0u, ThreadData::thisThreadData()->eventDispatcher()->runningTimerCount());
 }
 
 TEST(EventDispatcher, test_ping_timer_idle_task)
 {
-    EventDispatcherSharedPtr loop = EventDispatcher::create();
+    TestModule test;
     TimerPtr ping = Timer::createRepeating(std::chrono::milliseconds(500));
 
     int countDown = 3;
@@ -242,15 +251,15 @@ TEST(EventDispatcher, test_ping_timer_idle_task)
     {
         if (--countDown <= 0)
         {
-            EventDispatcher::get()->exit();
+            ThreadData::thisThreadData()->eventDispatcher()->stop();
             return;
         }
-        EventDispatcher::get()->wakeUp();
+        ThreadData::thisThreadData()->eventDispatcher()->wakeUp();
     };
     ping->expired.connect(pingHandler);
     ping->start();
-    EXPECT_EQ(0, loop->processEvents());
-    EXPECT_EQ(0u, loop->runningTimerCount());
+    ThreadData::thisThreadData()->eventDispatcher()->processEvents();
+    EXPECT_EQ(0u, ThreadData::thisThreadData()->eventDispatcher()->runningTimerCount());
     EXPECT_EQ(0, countDown);
 }
 
@@ -304,7 +313,7 @@ class QuitHandler : public Object
         ++handleCount;
         if (handleCount == 2)
         {
-            EventDispatcher::get()->exit(10);
+            threadData()->eventLoop()->exit(10);
         }
     }
 
@@ -321,58 +330,58 @@ public:
 
 TEST(EventDispatcher, test_post_event)
 {
+    TestModule testModule;
     ObjectSharedPtr host = Object::create();
-    EventDispatcherSharedPtr dispatcher = EventDispatcher::create();
     EventLoop loop;
 
-    EXPECT_TRUE(dispatcher->postEvent(make_event<Event>(EventType::Base, host)));
-    dispatcher->addIdleTask([dispatcher]() { dispatcher->exit(111); return true; });
-    EXPECT_EQ(111, dispatcher->processEvents());
-    EXPECT_FALSE(dispatcher->postEvent(make_event<Event>(EventType::Base, host)));
+    EXPECT_TRUE(mox::postEvent(make_event<Event>(EventType::Base, host)));
+    ThreadData::thisThreadData()->eventDispatcher()->addIdleTask([]() { ThreadData::thisThreadData()->eventLoop()->exit(111); return true; });
+    EXPECT_EQ(111, loop.processEvents());
+    EXPECT_TRUE(mox::postEvent(make_event<Event>(EventType::Base, host)));
 }
 
 TEST(EventDispatcher, test_filter_events)
 {
+    TestModule test;
     ObjectSharedPtr root = Object::create();
     std::shared_ptr<Filter> filter = Filter::create(root.get());
     std::shared_ptr<Handler> handler = Handler::create(filter.get());
 
-    EventDispatcherSharedPtr dispatcher = EventDispatcher::create();
     EventLoop loop;
-    dispatcher->postEvent(make_event<Event>(Filter::type, handler));
+    mox::postEvent(make_event<Event>(Filter::type, handler));
 
-    EXPECT_EQ(0u, dispatcher->processEvents(ProcessFlags::RunOnce));
+    EXPECT_EQ(0u, loop.processEvents(ProcessFlags::RunOnce));
     EXPECT_TRUE(filter->eventFiltered);
     EXPECT_FALSE(handler->eventReached);
 }
 
 TEST(EventDispatcher, test_pass_filter_events)
 {
+    TestModule test;
     ObjectSharedPtr root = Object::create();
     std::shared_ptr<Filter> filter = Filter::create(root.get());
     std::shared_ptr<Handler> handler = Handler::create(filter.get());
 
-    EventDispatcherSharedPtr dispatcher = EventDispatcher::create();
     EventLoop loop;
-    dispatcher->postEvent(make_event<Event>(EventType::Base, handler));
+    mox::postEvent(make_event<Event>(EventType::Base, handler));
 
-    EXPECT_EQ(0u, dispatcher->processEvents(ProcessFlags::RunOnce));
+    EXPECT_EQ(0u, loop.processEvents(ProcessFlags::RunOnce));
     EXPECT_FALSE(filter->eventFiltered);
     EXPECT_TRUE(handler->eventReached);
 }
 
 TEST(EventDispatcher, test_filter_events_from_filter)
 {
+    TestModule test;
     ObjectSharedPtr root = Object::create();
     std::shared_ptr<Filter> filter1 = Filter::create(root.get());
     std::shared_ptr<Filter> filter2 = Filter::create(filter1.get());
     std::shared_ptr<Handler> handler = Handler::create(filter2.get());
 
-    EventDispatcherSharedPtr dispatcher = EventDispatcher::create();
     EventLoop loop;
-    dispatcher->postEvent(make_event<Event>(Filter::type, handler));
+    mox::postEvent(make_event<Event>(Filter::type, handler));
 
-    EXPECT_EQ(0u, dispatcher->processEvents(ProcessFlags::RunOnce));
+    EXPECT_EQ(0u, loop.processEvents(ProcessFlags::RunOnce));
     EXPECT_TRUE(filter1->eventFiltered);
     EXPECT_FALSE(filter2->eventFiltered);
     EXPECT_FALSE(handler->eventReached);
@@ -381,29 +390,29 @@ TEST(EventDispatcher, test_filter_events_from_filter)
 
 TEST(EventLoop, test_loop_in_loop)
 {
+    TestModule test;
     auto object = Object::create();
     auto handler = QuitHandler::create(object.get());
 
-    auto dispatcher = EventDispatcher::create();
     EventLoop loop;
 
-    EXPECT_TRUE(dispatcher->postEvent(make_event<Event>(EventType::Base, handler)));
+    EXPECT_TRUE(mox::postEvent(make_event<Event>(EventType::Base, handler)));
     auto timerHandler = [&handler]()
     {
         {
             EventLoop local;
             auto delayedPost = [&handler]()
             {
-                EventDispatcher::postEvent(make_event<Event>(EventType::Base, handler));
+                mox::postEvent(make_event<Event>(EventType::Base, handler));
             };
             Timer::singleShot(std::chrono::milliseconds(100), delayedPost).first->start();
             local.processEvents();
-            local.exit();
+            local.exit(10);
         }
     };
     Timer::singleShot(std::chrono::milliseconds(200), timerHandler).first->start();
 
-    EXPECT_EQ(10, dispatcher->processEvents());
+    EXPECT_EQ(10, loop.processEvents());
 
     EXPECT_EQ(2, handler->handleCount);
 }

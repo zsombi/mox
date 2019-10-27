@@ -22,6 +22,9 @@
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metaobject.hpp>
 #include <mox/event_handling/event_handler.hpp>
+#include <mox/signal/signal_host.hpp>
+#include <mox/config/thread.hpp>
+#include <mox/module/thread_data.hpp>
 
 namespace mox
 {
@@ -37,7 +40,7 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 ///
 /// Derived from EventHandlingProvider, provides event handling mechanisms. See EventHandlingProvider for more
 /// details on event handling.
-class MOX_API Object : public MetaObject, public EventHandlingProvider, public std::enable_shared_from_this<Object>
+class MOX_API Object : public SignalHost<MetaObject>, public EventHandlingProvider, public std::enable_shared_from_this<Object>
 {
 public:
     /// The static metaclass of Object.
@@ -60,6 +63,8 @@ public:
     void addChild(Object& child);
     /// Removes the \a child object from this object's children.
     void removeChild(Object& child);
+    /// Removes the child object at \a index from this object's children.
+    void removeChildAt(size_t index);
     /// Returns the number of children in the object.
     /// \return The number of children of this object, 0 if the object has no children.
     size_t childCount() const;
@@ -71,9 +76,44 @@ public:
     /// \return The child object at index, nullptr if there is no child at the specified index.
     ObjectSharedPtr childAt(size_t index);
 
+    /// Specifies the traverse order.
+    enum class TraverseOrder
+    {
+        /// NLR order
+        PreOrder,
+        /// LRN
+        PostOrder,
+        /// RLN
+        InversePreOrder,
+        /// NRL
+        InversePostOrder
+    };
+    /// Specifies the visiting result
+    enum class VisitResult
+    {
+        /// Aborts the traversal.
+        Abort,
+        /// Continues the traversal
+        Continue,
+        /// Continues the traversal on the siblings of the visited object.
+        ContinueSibling
+    };
+
+    using VisitorFunction = std::function<VisitResult(Object&)>;
+    VisitResult traverse(const VisitorFunction& visitor, TraverseOrder order);
+    VisitResult traverseChildren(const VisitorFunction& visitor, TraverseOrder order);
+
+    /// Returns the thread data of this object.
+    ThreadDataSharedPtr threadData() const;
+
 protected:
     /// Constructor.
     explicit Object();
+
+    /// Visitor function, moves this object and its child objects to the given thread.
+    /// \param threadData The thread data where this object is moved.
+    /// \return The visit result.
+    virtual VisitResult moveToThread(ThreadDataSharedPtr threadData);
 
     /// Convenience template function, creates an obhect derived from Object, and adds it to the
     /// parent object.
@@ -93,6 +133,8 @@ private:
 
     Object* m_parent = nullptr;
     ChildContainer m_children;
+    ThreadDataWeakPtr m_threadData;
+    friend class ThreadLoop;
 };
 
 } // mox

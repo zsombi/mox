@@ -29,7 +29,7 @@ namespace mox
 
 /// The SocketNotifier class provides notifications on events occurring on a socket descriptor.
 /// The socket descriptor is either a file handler or a normal socket handler.
-class MOX_API SocketNotifier : public SignalHost<SocketNotifier>, public std::enable_shared_from_this<SocketNotifier>
+class MOX_API SocketNotifier : public SignalHost<ObjectLock>, public std::enable_shared_from_this<SocketNotifier>
 {
 public:
     /// The type of the handler.

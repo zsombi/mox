@@ -17,12 +17,13 @@
  */
 
 #include <mox/event_handling/socket_notifier.hpp>
+#include <mox/module/thread_data.hpp>
 
 namespace mox
 {
 
 SocketNotifier::SocketNotifier(Handler handler, Modes modes)
-    : m_source(std::dynamic_pointer_cast<SocketNotifierSource>(EventDispatcher::get()->findEventSource("default_socket_notifier")))
+    : m_source(std::dynamic_pointer_cast<SocketNotifierSource>(ThreadData::thisThreadData()->eventDispatcher()->findEventSource("default_socket_notifier")))
     , m_handler(handler)
     , m_modes(modes & supportedModes())
 {

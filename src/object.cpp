@@ -18,11 +18,13 @@
 
 #include <mox/object.hpp>
 #include <mox/metadata/callable.hpp>
+#include <mox/module/thread_loop.hpp>
 
 namespace mox
 {
 
 Object::Object()
+    : m_threadData(ThreadData::thisThreadData())
 {
 }
 
@@ -31,6 +33,19 @@ Object::~Object()
     if (m_parent)
     {
         m_parent->removeChild(*this);
+    }
+
+    while (!m_children.empty())
+    {
+        // If the child is a thread, the thread must be stopped before it gets removed from this object.
+        ThreadLoopSharedPtr thread = std::dynamic_pointer_cast<ThreadLoop>(m_children.back());
+        if (thread)
+        {
+            thread->exitAndJoin();
+        }
+        // Set the parent to null so it doesn't try to remove the child from parent again.
+        m_children.back().get()->m_parent = nullptr;
+        removeChildAt(m_children.size() - 1);
     }
 }
 
@@ -42,6 +57,12 @@ ObjectSharedPtr Object::create(Object* parent)
 Object* Object::parent() const
 {
     return m_parent;
+}
+
+Object::VisitResult Object::moveToThread(ThreadDataSharedPtr threadData)
+{
+    m_threadData = threadData;
+    return VisitResult::Continue;
 }
 
 void Object::addChild(Object& child)
@@ -57,9 +78,21 @@ void Object::addChild(Object& child)
 
     if (oldParent)
     {
+        if (oldParent->threadData() != m_threadData.lock())
+        {
+            throw thread_differs();
+        }
         ScopeUnlock relock(*oldParent);
         oldParent->removeChild(child);
     }
+
+    ThreadDataSharedPtr td = m_threadData.lock();
+    auto threadMover = [td](Object& object)
+    {
+        lock_guard lock(object);
+        return object.moveToThread(td);
+    };
+    child.traverse(threadMover, TraverseOrder::PreOrder);
 
     m_children.push_back(child.shared_from_this());
     child.m_parent = this;
@@ -71,6 +104,17 @@ void Object::removeChild(Object& child)
     OrderedLock lock(this, &child);
     m_children.erase(m_children.begin() + int(index));
     child.m_parent = nullptr;
+}
+
+void Object::removeChildAt(size_t index)
+{
+    FATAL(index < m_children.size(), "Child index out of range")
+    {
+        Object* child = m_children[index].get();
+        OrderedLock lock(this, child);
+        child->m_parent = nullptr;
+    }
+    m_children.erase(m_children.begin() + int(index));
 }
 
 size_t Object::childCount() const
@@ -106,6 +150,68 @@ ObjectSharedPtr Object::childAt(size_t index)
         return nullptr;
     }
     return m_children[index];
+}
+
+Object::VisitResult Object::traverse(const VisitorFunction& visitor, TraverseOrder order)
+{
+    switch (order)
+    {
+        case TraverseOrder::PreOrder:
+        case TraverseOrder::InversePostOrder:
+        {
+            VisitResult result = visitor(*this);
+            if (result == VisitResult::Continue)
+            {
+                result = traverseChildren(visitor, order);
+            }
+            return result;
+        }
+        case TraverseOrder::PostOrder:
+        case TraverseOrder::InversePreOrder:
+        {
+            VisitResult result = traverseChildren(visitor, order);
+            if (result == VisitResult::Abort)
+            {
+                return result;
+            }
+            return visitor(*this);
+        }
+    }
+
+    return VisitResult::Continue;
+}
+
+Object::VisitResult Object::traverseChildren(const VisitorFunction& visitor, TraverseOrder order)
+{
+    VisitResult result = VisitResult::Continue;
+    auto visit = [&visitor, &result, order](ObjectSharedPtr child)
+    {
+        result = child->traverse(visitor, order);
+        return (result == VisitResult::Abort);
+    };
+
+    switch (order)
+    {
+        case TraverseOrder::PreOrder:
+        case TraverseOrder::PostOrder:
+        {
+            std::find_if(m_children.begin(), m_children.end(), visit);
+            break;
+        }
+        case TraverseOrder::InversePreOrder:
+        case TraverseOrder::InversePostOrder:
+        {
+            std::find_if(m_children.rbegin(), m_children.rend(), visit);
+            break;
+        }
+    }
+
+    return result;
+}
+
+ThreadDataSharedPtr Object::threadData() const
+{
+    return m_threadData.lock();
 }
 
 }

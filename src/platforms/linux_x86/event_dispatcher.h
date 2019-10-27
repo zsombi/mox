@@ -137,8 +137,8 @@ public:
     explicit GlibEventDispatcher(GMainContext& mainContext);
     ~GlibEventDispatcher() override;
 
-    int processEvents(ProcessFlags flags) override;
-    void exit(int exitCode = 0) override;
+    void processEvents(ProcessFlags flags) override;
+    void stop() override;
     void wakeUp() override;
     size_t runningTimerCount() const override;
 

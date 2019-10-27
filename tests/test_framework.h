@@ -23,12 +23,24 @@
 #include <unordered_map>
 #include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
+#include <mox/module/thread_data.hpp>
 
 class UnitTest : public ::testing::Test
 {
 protected:
     void SetUp() override;
     void TearDown() override;
+};
+
+class TestModule
+{
+public:
+    explicit TestModule()
+        : threadData(mox::ThreadData::create())
+    {
+    }
+
+    mox::ThreadDataSharedPtr threadData;
 };
 
 #define SLEEP(msec) std::this_thread::sleep_for(std::chrono::milliseconds(msec))

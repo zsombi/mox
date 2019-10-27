@@ -75,7 +75,7 @@ public:
 
 protected:
     /// Constructor;
-    explicit EventHandlingProvider() = default;
+    explicit EventHandlingProvider();
     /// Method called on filtering phase, when an event is dispatched to an object.
     /// \return If the event is filtered out, returns \e true, otherwise \e false.
     bool filterEvent(Event& event);
@@ -83,6 +83,7 @@ protected:
     void processEvent(Event& event);
 
     friend class EventLoop;
+    friend bool sendEvent(Event&);
 
 private:
     using TokenList = std::list<TokenPtr>;

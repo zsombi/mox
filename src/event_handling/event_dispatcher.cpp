@@ -34,20 +34,6 @@ namespace mox
 /******************************************************************************
  *
  */
-namespace
-{
-
-#if defined(MOX_SINGLE_THREADED)
-static EventDispatcher* tlsEventDispatcher = nullptr;
-#else
-static __thread EventDispatcher* tlsEventDispatcher = nullptr;
-#endif
-
-}
-
-/******************************************************************************
- *
- */
 EventDispatchState EventDispatcher::getState() const
 {
     return m_eventLoopStack.empty()
@@ -88,17 +74,11 @@ bool EventDispatcher::runIdleTasks()
 }
 
 EventDispatcher::EventDispatcher()
-    : m_exitCode(0)
 {
-    tlsEventDispatcher = this;
 }
 
 EventDispatcher::~EventDispatcher()
 {
-    if (tlsEventDispatcher == this)
-    {
-        tlsEventDispatcher = nullptr;
-    }
     TRACE("EventDispatcher died")
 }
 
@@ -134,9 +114,9 @@ PostEventSourcePtr EventDispatcher::getActivePostEventSource()
     return std::static_pointer_cast<PostEventSource>(*it);
 }
 
-EventDispatcherSharedPtr EventDispatcher::create()
+EventDispatcherSharedPtr EventDispatcher::create(bool main)
 {
-    EventDispatcherSharedPtr evLoop = Adaptation::createEventDispatcher();
+    EventDispatcherSharedPtr evLoop = Adaptation::createEventDispatcher(main);
 
     TimerSourcePtr timerSource = Adaptation::createTimerSource("default_timer");
     evLoop->addEventSource(timerSource);
@@ -148,11 +128,6 @@ EventDispatcherSharedPtr EventDispatcher::create()
     evLoop->addEventSource(socketSource);
 
     return evLoop;
-}
-
-EventDispatcherSharedPtr EventDispatcher::get()
-{
-    return tlsEventDispatcher ? tlsEventDispatcher->shared_from_this() : nullptr;
 }
 
 void EventDispatcher::addEventSource(AbstractEventSourceSharedPtr source)
@@ -200,32 +175,6 @@ void EventDispatcher::addIdleTask(IdleFunction&& function)
 {
     m_idleTasks.push(std::move(function));
     scheduleIdleTasks();
-}
-
-bool EventDispatcher::postEvent(EventPtr&& event)
-{
-    EventDispatcherSharedPtr dispatcher = EventDispatcher::get();
-    if (!dispatcher || dispatcher->m_eventLoopStack.empty())
-    {
-        return false;
-    }
-
-    if (!dispatcher->getActivePostEventSource())
-    {
-        return false;
-    }
-
-    if (dispatcher->getEventLoop()->postEvent(std::forward<EventPtr>(event)))
-    {
-        dispatcher->wakeUp();
-        return true;
-    }
-    return false;
-}
-
-int EventDispatcher::exitCode() const
-{
-    return m_exitCode.load();
 }
 
 }

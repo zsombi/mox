@@ -49,17 +49,14 @@ public:
     /// Destructor, removes the event loop from the event dispatcher.
     ~EventLoop();
 
-    /// Posts the event into the event loop. The event is scheduled for handling at the next
-    /// event dispatching cycle.
-    bool postEvent(EventPtr&& event);
-    /// Sends the event to the target object specified in the event. Returns true
-    static bool sendEvent(Event& event);
-
     /// Invokes event processing of a local event loop.
     int processEvents(ProcessFlags flags = ProcessFlags::ProcessAll);
 
     /// Exit the current event loop.
     void exit(int exitCode = 0);
+
+    /// Wakes up the event loop.
+    void wakeUp();
 
     /// Returns the dispatcher state.
     EventDispatchState state() const
@@ -74,12 +71,21 @@ private:
 
     EventDispatcherSharedPtr m_dispatcher;
     /// The event queue of the loop.
-    EventQueue m_queue;
     atomic<EventDispatchState> m_state;
-
-    void dispatchEventQueue();
-
 };
+
+/// Posts an \a event to handle asynchronously.
+/// \return If the thread the event's target object belongs has no event dispatcher, or event loop, returns \e false, otherwise \e true.
+bool MOX_API postEvent(EventPtr&& event);
+
+/// Sends the event to the target object specified in the event. Returns true
+bool MOX_API sendEvent(Event& event);
+
+template <class EventClass, typename... Arguments>
+bool postEvent(Arguments... arguments)
+{
+    return postEvent(make_event<EventClass>(arguments...));
+}
 
 }
 

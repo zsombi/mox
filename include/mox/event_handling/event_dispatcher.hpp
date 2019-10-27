@@ -64,11 +64,7 @@ public:
 
     /// Creates a dispatcher for the current thread, with the default event sources.
     /// \return The created event dispatcher instance.
-    static EventDispatcherSharedPtr create();
-    /// Returns the event dispatcher instance of the current thread. You must call create()
-    /// first to create the dispatcher.
-    /// \return The event dispatcher instance of the current thread.
-    static EventDispatcherSharedPtr get();
+    static EventDispatcherSharedPtr create(bool main);
     /// Destructor. Destroys the dispatcher.
     virtual ~EventDispatcher();
 
@@ -105,13 +101,6 @@ public:
         }
     }
 
-    /// Posts an \a event to handle asynchronously.
-    /// \return If the event dispatcher has no post event source, returns \e false, otherwise \e true.
-    static bool postEvent(EventPtr&& event);
-
-    /// Returns the exit code of the current dispatching.
-    int exitCode() const;
-
     /// Returns the state of the dispatching. If there is no event loop set, the method
     /// returns EventDispatchState::Inactive.
     EventDispatchState getState() const;
@@ -123,9 +112,9 @@ public:
 
     /// Process the events from the event sources.
     /// \see ProcessFlags
-    virtual int processEvents(ProcessFlags flags = ProcessFlags::ProcessAll) = 0;
-    /// Exit the current running event dispatcher.
-    virtual void exit(int exitCode = 0) = 0;
+    virtual void processEvents(ProcessFlags flags = ProcessFlags::ProcessAll) = 0;
+    /// Stops the current running event dispatcher.
+    virtual void stop() = 0;
     /// Wake up a suspended event dispatcher, if the event dispatcher is running, notify the
     /// dispatcher to re-schedule the event sources.
     virtual void wakeUp() = 0;
@@ -165,8 +154,6 @@ protected:
     std::vector<AbstractEventSourceSharedPtr> m_eventSources;
     /// Idle task queue.
     std::queue<EventDispatcher::IdleFunction> m_idleTasks;
-    /// The exit code.
-    atomic<int32_t> m_exitCode;
 
 private:
 

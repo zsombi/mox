@@ -17,6 +17,7 @@
  */
 
 #include <mox/timer.hpp>
+#include <mox/module/thread_data.hpp>
 
 namespace mox
 {
@@ -24,7 +25,7 @@ namespace mox
 static int32_t timerUId = 0;
 
 Timer::Timer(Type type, std::chrono::milliseconds interval)
-    : m_source(std::dynamic_pointer_cast<TimerSource>(EventDispatcher::get()->findEventSource("default_timer")))
+    : m_source(std::dynamic_pointer_cast<TimerSource>(ThreadData::thisThreadData()->eventDispatcher()->findEventSource("default_timer")))
     , m_interval(interval)
     , m_type(type)
     , m_id(++timerUId)

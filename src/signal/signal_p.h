@@ -26,15 +26,47 @@ namespace mox
 
 constexpr size_t INVALID_SIGNAL = std::numeric_limits<size_t>::max();
 
-class FunctionConnection : public Signal::Connection
+/******************************************************************************
+ * Connect concept
+ */
+template <typename DerivedConnectionType>
+class ConnectionPrivates : public Signal::Connection
 {
+    DerivedConnectionType* getThisObject()
+    {
+        return static_cast<DerivedConnectionType*>(this);
+    }
+
+public:
+    explicit ConnectionPrivates(Signal& signal)
+        : Signal::Connection(signal)
+    {
+    }
+
+    Callable::ArgumentPack prepareActivation(Callable::ArgumentPack& args)
+    {
+        Callable::ArgumentPack copy;
+        if (m_passConnectionObject)
+        {
+            copy.add(shared_from_this());
+        }
+        copy += args;
+        return copy;
+    }
+};
+
+
+class FunctionConnection : public ConnectionPrivates<FunctionConnection>
+{
+    using BaseClass = ConnectionPrivates<FunctionConnection>;
+
 protected:
     Callable m_slot;
 
 public:
     FunctionConnection(Signal& signal, Callable&& callable);
 
-    bool compare(Variant receiver, const void* funcAddress) const override;
+    bool compare(const void* funcAddress) const;
     bool isConnected() const override
     {
         return m_slot.type() != FunctionType::Invalid;
@@ -51,13 +83,15 @@ class MethodConnection : public FunctionConnection
 public:
     MethodConnection(Signal& signal, Variant receiver, Callable&& callable);
 
-    bool compare(Variant receiver, const void* funcAddress) const override;
+    bool compare(Variant receiver, const void* funcAddress) const;
     void activate(Callable::ArgumentPack& args) override;
     void reset() override;
 };
 
-class MetaMethodConnection : public Signal::Connection
+class MetaMethodConnection : public ConnectionPrivates<MetaMethodConnection>
 {
+    using BaseClass = ConnectionPrivates<MetaMethodConnection>;
+
     Variant m_receiver;
     const MetaClass::Method* m_slot;
 
@@ -73,7 +107,7 @@ public:
     {
         return m_slot && (m_slot->type() != FunctionType::Invalid);
     }
-    bool compare(Variant receiver, const void* funcAddress) const override;
+    bool compare(Variant receiver, const void* funcAddress) const;
     void activate(Callable::ArgumentPack& args) override;
     void reset() override;
 };
@@ -81,11 +115,11 @@ typedef std::shared_ptr<MetaMethodConnection> MetaMethodConnectionSharedPtr;
 
 class SignalConnection : public Signal::Connection
 {
-    Signal* m_receiverSignal;
+    Signal* m_receiverSignal = nullptr;
 
 public:
 
-    Signal* signal() const
+    Signal* receiverSignal() const
     {
         return m_receiverSignal;
     }

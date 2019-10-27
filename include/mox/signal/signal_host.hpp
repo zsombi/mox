@@ -54,10 +54,7 @@ public:
 
 protected:
     /// Constructor.
-    explicit SignalHostNotion(ObjectLock& lock)
-        : m_lock(lock)
-    {
-    }
+    explicit SignalHostNotion(ObjectLock& lock);
 
     /// Signal host lock, guards the signal register.
     ObjectLock& m_lock;
@@ -66,32 +63,12 @@ protected:
 };
 
 /// Template class adapting the SignalHostNotion over a DerivedType.
-template <typename DerivedType, typename Enabler = void>
-class SignalHost;
-
-/// Template specialization, when the DerivedType is derived from ObjectLock.
-template <typename DerivedType>
-class SignalHost<DerivedType, typename std::enable_if_t<std::is_base_of_v<DerivedType, ObjectLock>>> : public SignalHostNotion
-{
-    ObjectLock& getObjectLock()
-    {
-        DerivedType* derived = static_cast<DerivedType*>(this);
-        return dynamic_cast<ObjectLock&>(*derived);
-    }
-public:
-    explicit SignalHost()
-        : SignalHostNotion(getObjectLock())
-    {
-    }
-};
-
-/// Template specialization, when the DerivedType is not derived from ObjectLock.
-template <typename DerivedType>
-class SignalHost<DerivedType, typename std::enable_if_t<!std::is_base_of_v<DerivedType, ObjectLock>>> : public SignalHostNotion, public ObjectLock
+template <typename LockType>
+class SignalHost : public LockType, public SignalHostNotion
 {
 public:
     explicit SignalHost()
-        : SignalHostNotion(static_cast<ObjectLock&>(*this))
+        : SignalHostNotion(static_cast<LockType&>(*this))
     {
     }
 };

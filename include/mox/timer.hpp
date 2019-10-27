@@ -34,7 +34,7 @@ using TimerPtr = std::shared_ptr<Timer>;
 /// using createRepeating() or repeating() methods.
 ///
 /// When the timer expires, the expired signal is emitted.
-class MOX_API Timer : public SignalHost<Timer>, public std::enable_shared_from_this<Timer>
+class MOX_API Timer : public SignalHost<ObjectLock>, public std::enable_shared_from_this<Timer>
 {
 public:
     /// Expired signal descriptor. The signal's argument contains the timer object that is

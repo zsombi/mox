@@ -18,10 +18,16 @@
 
 #include "signal_p.h"
 #include <mox/utils/locks.hpp>
+#include <mox/object.hpp>
+
+#include <mox/event_handling/event_loop.hpp>
 
 namespace mox
 {
 
+/******************************************************************************
+ *
+ */
 static AbstractSignalDescriptor::TUuid nextUuid()
 {
     static AbstractSignalDescriptor::TUuid uuidPool = 0u;
@@ -43,12 +49,18 @@ bool AbstractSignalDescriptor::operator==(const AbstractSignalDescriptor& other)
  *
  */
 Signal::Connection::Connection(Signal& signal)
-    : m_signal(signal)
+    : m_signal(&signal)
     , m_passConnectionObject(false)
 {
 }
 
-Signal& Signal::Connection::signal() const
+void Signal::Connection::reset()
+{
+    m_signal = nullptr;
+    m_connectionType = Type::Deferred;
+}
+
+Signal* Signal::Connection::signal() const
 {
     return m_signal;
 }
@@ -60,46 +72,38 @@ bool Signal::Connection::disconnect()
         return false;
     }
 
-    m_signal.removeConnection(shared_from_this());
+    if (m_signal)
+    {
+        m_signal->removeConnection(shared_from_this());
+    }
     return true;
-}
-
-bool Signal::Connection::compare(Variant receiver, const void* funcAddress) const
-{
-    UNUSED(receiver);
-    UNUSED(funcAddress);
-    return false;
 }
 
 /******************************************************************************
  *
  */
 FunctionConnection::FunctionConnection(Signal& signal, Callable&& callable)
-    : Signal::Connection(signal)
+    : BaseClass(signal)
     , m_slot(callable)
 {
+    m_connectionType = Type::ConnectedToCallable;
     m_passConnectionObject = !m_slot.descriptors().empty() && m_slot.descriptors()[0].type == metaType<Signal::ConnectionSharedPtr>();
 }
 
-bool FunctionConnection::compare(Variant, const void *funcAddress) const
+bool FunctionConnection::compare(const void *funcAddress) const
 {
     return (m_slot.address() == funcAddress);
 }
 
 void FunctionConnection::activate(Callable::ArgumentPack& args)
 {
-    Callable::ArgumentPack copy;
-    if (m_passConnectionObject)
-    {
-        copy.add(shared_from_this());
-    }
-    copy += args;
-    m_slot.apply(copy);
+    m_slot.apply(prepareActivation(args));
 }
 
 void FunctionConnection::reset()
 {
     m_slot.reset();
+    Connection::reset();
 }
 
 /******************************************************************************
@@ -109,24 +113,28 @@ MethodConnection::MethodConnection(Signal& signal, Variant receiver, Callable&& 
     : FunctionConnection(signal, std::forward<Callable>(callable))
     , m_receiver(receiver)
 {
+    m_connectionType = Type::ConnectedToMethod;
 }
 
 bool MethodConnection::compare(Variant receiver, const void *funcAddress) const
 {
-    return (m_receiver.metaType() == receiver.metaType()) && FunctionConnection::compare(receiver, funcAddress);
+    return (m_receiver.metaType() == receiver.metaType()) && FunctionConnection::compare(funcAddress);
 }
 
 void MethodConnection::activate(Callable::ArgumentPack& args)
 {
-    Callable::ArgumentPack copy;
-    if (m_passConnectionObject)
+    try
     {
-        copy.add(shared_from_this());
+        Object* receiver = m_receiver;
+        if (receiver && receiver->threadData() != ThreadData::thisThreadData())
+        {
+            // Async!!
+            postEvent<DeferredSignalEvent>(receiver->shared_from_this(), shared_from_this(), args);
+            return;
+        }
     }
-    copy += args;
-    copy.setInstance(m_receiver);
-
-    m_slot.apply(copy);
+    catch (...) {}
+    m_slot.apply(prepareActivation(args).setInstance(m_receiver));
 }
 
 void MethodConnection::reset()
@@ -139,10 +147,11 @@ void MethodConnection::reset()
  *
  */
 MetaMethodConnection::MetaMethodConnection(Signal& signal, Variant receiver, const MetaClass::Method& slot)
-    : Signal::Connection(signal)
+    : BaseClass(signal)
     , m_receiver(receiver)
     , m_slot(&slot)
 {
+    m_connectionType = Type::ConnectedToMetaMethod;
     m_passConnectionObject = !m_slot->descriptors().empty() && m_slot->descriptors()[0].type == metaType<Signal::ConnectionSharedPtr>();
 }
 
@@ -153,20 +162,25 @@ bool MetaMethodConnection::compare(Variant receiver, const void *funcAddress) co
 
 void MetaMethodConnection::activate(Callable::ArgumentPack& args)
 {
-    Callable::ArgumentPack copy;
-    if (m_passConnectionObject)
+    try
     {
-        copy.add(shared_from_this());
+        Object* receiver = m_receiver;
+        if (receiver && receiver->threadData() != ThreadData::thisThreadData())
+        {
+            // Async!!
+            postEvent<DeferredSignalEvent>(receiver->shared_from_this(), shared_from_this(), args);
+            return;
+        }
     }
-    copy += args;
-    copy.setInstance(m_receiver);
-    m_slot->apply(copy);
+    catch (...) {}
+    m_slot->apply(prepareActivation(args).setInstance(m_receiver));
 }
 
 void MetaMethodConnection::reset()
 {
     m_receiver.reset();
     m_slot = nullptr;
+    Connection::reset();
 }
 
 /******************************************************************************
@@ -176,6 +190,7 @@ SignalConnection::SignalConnection(Signal& sender, const Signal& other)
     : Signal::Connection(sender)
     , m_receiverSignal(const_cast<Signal*>(&other))
 {
+    m_connectionType = Type::ConnectedToSignal;
 }
 
 void SignalConnection::activate(Callable::ArgumentPack& args)
@@ -189,11 +204,17 @@ void SignalConnection::activate(Callable::ArgumentPack& args)
 void SignalConnection::reset()
 {
     m_receiverSignal = nullptr;
+    Connection::reset();
 }
 
 /******************************************************************************
  *
  */
+SignalHostNotion::SignalHostNotion(ObjectLock& lock)
+    : m_lock(lock)
+{
+}
+
 SignalHostNotion::~SignalHostNotion()
 {
 }
@@ -233,28 +254,32 @@ void SignalHostNotion::removeSignal(Signal& signal)
 Signal::~Signal()
 {
     m_host.removeSignal(*this);
+    m_connections.forEach([](ConnectionSharedPtr& connection) { if (connection) connection->m_signal = nullptr; });
     m_id = INVALID_SIGNAL;
 }
 
 void Signal::addConnection(ConnectionSharedPtr connection)
 {
+    FATAL(isValid(), "Invalid signal")
     lock_guard lock(*this);
     m_connections.push_back(connection);
 }
 
 void Signal::removeConnection(ConnectionSharedPtr connection)
 {
+    FATAL(isValid(), "Invalid signal")
     lock_guard lock(*this);
-    ConnectionList::iterator it, end = m_connections.end();
-    for (it = m_connections.begin(); it != end; ++it)
+    lock_guard refConnection(m_connections);
+
+    auto predicate = [&connection](ConnectionSharedPtr& conn)
     {
-        ConnectionSharedPtr conn = *it;
-        if (conn == connection)
-        {
-            it->reset();
-            connection->reset();
-            return;
-        }
+        return (conn == connection);
+    };
+    auto index = m_connections.find(predicate);
+    if (index)
+    {
+        m_connections[*index].reset();
+        connection->reset();
     }
 }
 
@@ -275,6 +300,7 @@ bool Signal::isValid() const
 
 Signal::ConnectionSharedPtr Signal::connect(Variant receiver, const MetaClass::Method& metaMethod)
 {
+    FATAL(isValid(), "Invalid signal")
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MetaMethodConnection>(*this, receiver, metaMethod);
     addConnection(connection);
     return connection;
@@ -282,6 +308,7 @@ Signal::ConnectionSharedPtr Signal::connect(Variant receiver, const MetaClass::M
 
 Signal::ConnectionSharedPtr Signal::connect(Callable&& lambda)
 {
+    FATAL(isValid(), "Invalid signal")
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, FunctionConnection>(*this, std::forward<Callable>(lambda));
     addConnection(connection);
     return connection;
@@ -289,6 +316,7 @@ Signal::ConnectionSharedPtr Signal::connect(Callable&& lambda)
 
 Signal::ConnectionSharedPtr Signal::connect(Variant receiver, Callable&& slot)
 {
+    FATAL(isValid(), "Invalid signal")
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MethodConnection>(*this, receiver, std::forward<Callable>(slot));
     addConnection(connection);
     return connection;
@@ -296,6 +324,7 @@ Signal::ConnectionSharedPtr Signal::connect(Variant receiver, Callable&& slot)
 
 Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 {
+    FATAL(isValid(), "Invalid signal")
     // Check if the two arguments match.
     if (!signal.m_descriptor.arguments.isInvocableWith(m_descriptor.arguments))
     {
@@ -309,18 +338,21 @@ Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 
 bool Signal::disconnect(const Signal& signal)
 {
+    FATAL(isValid(), "Invalid signal")
     lock_guard lock(*this);
-    ConnectionList::iterator it, end = m_connections.end();
+    lock_guard refConnections(m_connections);
 
-    for (it = m_connections.begin(); it != end; ++it)
+    auto predicate = [&signal](ConnectionSharedPtr& connection)
     {
-        SignalConnectionSharedPtr signalConnection = std::static_pointer_cast<SignalConnection>(*it);
-        if (signalConnection && signalConnection->signal() == &signal)
-        {
-            *it = nullptr;
-            signalConnection->reset();
-            return true;
-        }
+        SignalConnectionSharedPtr signalConnection = std::dynamic_pointer_cast<SignalConnection>(connection);
+        return (signalConnection && signalConnection->receiverSignal() == &signal);
+    };
+    auto index = m_connections.find(predicate);
+    if (index)
+    {
+        m_connections[*index]->reset();
+        m_connections[*index].reset();
+        return true;
     }
 
     return false;
@@ -328,18 +360,43 @@ bool Signal::disconnect(const Signal& signal)
 
 bool Signal::disconnectImpl(Variant receiver, const void* callableAddress)
 {
+    FATAL(isValid(), "Invalid signal")
     lock_guard lock(*this);
-    ConnectionList::iterator it, end = m_connections.end();
+    lock_guard refConnections(m_connections);
 
-    for (it = m_connections.begin(); it != end; ++it)
+    auto predicate = [&receiver, callableAddress](ConnectionSharedPtr& connection)
     {
-        ConnectionSharedPtr connection = *it;
-        if (connection && connection->compare(receiver, callableAddress))
+        if (!connection)
         {
-            *it = nullptr;
-            connection->reset();
-            return true;
+            return false;
         }
+
+        switch (connection->m_connectionType)
+        {
+            case Connection::Type::ConnectedToCallable:
+            {
+                return static_cast<FunctionConnection*>(connection.get())->compare(callableAddress);
+            }
+            case Connection::Type::ConnectedToMethod:
+            {
+                return static_cast<MethodConnection*>(connection.get())->compare(receiver, callableAddress);
+            }
+            case Connection::Type::ConnectedToMetaMethod:
+            {
+                return static_cast<MetaMethodConnection*>(connection.get())->compare(receiver, callableAddress);
+            }
+            default:
+            {
+                return false;
+            }
+        }
+    };
+    auto index = m_connections.find(predicate);
+    if (index)
+    {
+        m_connections[*index]->reset();
+        m_connections[*index].reset();
+        return true;
     }
 
     return false;
@@ -347,6 +404,7 @@ bool Signal::disconnectImpl(Variant receiver, const void* callableAddress)
 
 int Signal::activate(Callable::ArgumentPack &args)
 {
+    FATAL(isValid(), "Invalid signal")
     if (m_triggering)
     {
         return 0;
@@ -357,18 +415,19 @@ int Signal::activate(Callable::ArgumentPack &args)
     FlagScope<true> triggerLock(m_triggering);
     int count = 0;
 
-    for (auto connection : m_connections)
+    lock_guard refConnections(m_connections);
+    auto activator = [&args, self = this, &count](ConnectionSharedPtr& connection)
     {
-        if (connection)
+        if (!connection)
         {
-            ScopeUnlock relock(*this);
-            connection->activate(args);
-            count++;
+            return;
         }
-    }
+        ScopeUnlock relock(*self);
+        connection->activate(args);
+        ++count;
+    };
+    m_connections.forEach(activator);
 
-    // Compact the connection container by removing the null connections.
-    m_connections.erase(std::remove(m_connections.begin(), m_connections.end(), nullptr), m_connections.end());
     return count;
 }
 

@@ -241,8 +241,8 @@ public:
     explicit CFEventDispatcher();
     ~CFEventDispatcher() override;
 
-    int processEvents(ProcessFlags flags) override;
-    void exit(int exitCode = 0) override;
+    void processEvents(ProcessFlags flags) override;
+    void stop() override;
     void wakeUp() override;
     size_t runningTimerCount() const override;
 

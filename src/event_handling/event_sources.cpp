@@ -85,12 +85,14 @@ PostEventSource::PostEventSource(std::string_view name)
 
 void PostEventSource::dispatch()
 {
-    EventLoopPtr loop = eventDispatcher()->getEventLoop();
-    if (!loop)
+    FATAL(ThreadData::thisThreadData()->eventDispatcher() == eventDispatcher(), "Source running in wrong thread!");
+
+    EventLoopPtr eventLoop = ThreadData::thisThreadData()->eventLoop();
+    if (eventLoop && eventLoop->state() == EventDispatchState::Running)
     {
-        return;
+        TRACE("process posted events")
+        ThreadData::thisThreadData()->m_eventQueue.process(sendEvent);
     }
-    loop->dispatchEventQueue();
 }
 
 /******************************************************************************

@@ -61,6 +61,16 @@ public:
 /******************************************************************************
  *
  */
+EventHandlingProvider::EventHandlingProvider()
+{
+    auto deferredSignalHandler = [](Event& event)
+    {
+        DeferredSignalEvent& deferredSignal = dynamic_cast<DeferredSignalEvent&>(event);
+        deferredSignal.activate();
+    };
+    addEventHandler(EventType::DeferredSignal, deferredSignalHandler);
+}
+
 EventHandlingProvider::~EventHandlingProvider()
 {
 }

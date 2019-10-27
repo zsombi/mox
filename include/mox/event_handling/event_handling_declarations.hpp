@@ -19,6 +19,7 @@
 #define EVENT_HANDLING_DECLARATIONS_HPP
 
 #include <memory>
+#include <mox/config/platform_config.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
 
 namespace mox
@@ -82,6 +83,24 @@ enum class ProcessFlags
     ProcessAll = 0xFF
 };
 ENABLE_ENUM_OPERATORS(ProcessFlags);
+
+class no_event_dispatcher : public std::exception
+{
+public:
+    const char* what() const EXCEPTION_NOEXCEPT override
+    {
+        return "No EventDispatcher is set on the thread";
+    }
+};
+
+class no_event_loop : public std::exception
+{
+public:
+    const char* what() const EXCEPTION_NOEXCEPT override
+    {
+        return "No EventLoop is set on the thread to handle posted events";
+    }
+};
 
 }
 

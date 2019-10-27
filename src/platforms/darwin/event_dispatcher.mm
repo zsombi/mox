@@ -150,8 +150,8 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
             }
             if (m_runOnce && getState() == EventDispatchState::Running && !runningTimerCount())
             {
-                TRACE("runOnce invoked, exit with " << m_exitCode.load())
-                exit(m_exitCode.load());
+                TRACE("runOnce invoked")
+                stop();
             }
             else
             {
@@ -185,12 +185,12 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
 /******************************************************************************
  *
  */
-EventDispatcherSharedPtr Adaptation::createEventDispatcher()
+EventDispatcherSharedPtr Adaptation::createEventDispatcher(bool)
 {
     return make_polymorphic_shared<EventDispatcher, CFEventDispatcher>();
 }
 
-int CFEventDispatcher::processEvents(ProcessFlags flags)
+void CFEventDispatcher::processEvents(ProcessFlags flags)
 {
     if (flags == ProcessFlags::RunOnce)
     {
@@ -204,7 +204,6 @@ int CFEventDispatcher::processEvents(ProcessFlags flags)
         FlagScope<false> lockRunOnce(m_runOnce);
         CFRunLoopRun();
     }
-    return m_exitCode.load();
 }
 
 void CFEventDispatcher::runOnce()
@@ -221,25 +220,21 @@ void CFEventDispatcher::runOnce()
     UNUSED(result);
 }
 
-void CFEventDispatcher::exit(int exitCode)
+void CFEventDispatcher::stop()
 {
     switch (getState())
     {
         case EventDispatchState::Suspended:
         {
-            m_exitCode.store(exitCode);
             wakeUp();
-            setState(EventDispatchState::Exiting);
             TRACE("Wake up and stop")
-            break;
+            FALLTHROUGH;
         }
         case EventDispatchState::Running:
         {
-            TRACE("Stop with " << exitCode)
-            m_exitCode.store(exitCode);
+            TRACE("Stop dispatcher")
             setState(EventDispatchState::Exiting);
             CFRunLoopStop(runLoop);
-            TRACE("Stop out with " << m_exitCode.load())
             break;
         }
         case EventDispatchState::Inactive:
@@ -248,8 +243,7 @@ void CFEventDispatcher::exit(int exitCode)
             {
                 // The dispatch was run w/o event loop, so there's nothing to track the state from.
                 // Simply stop the loop, and exit.
-                TRACE("No event loop set, perform cold stop with exit code " << exitCode)
-                m_exitCode.store(exitCode);
+                TRACE("No event loop set, perform cold stop.")
                 CFRunLoopStop(runLoop);
                 break;
             }

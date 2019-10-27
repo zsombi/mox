@@ -31,14 +31,14 @@ using namespace mox;
 
 TEST(SocketNotifier, test_stdout_write_watch)
 {
-    EventDispatcherSharedPtr dispatcher = EventDispatcher::create();
+    TestModule test;
     SocketNotifierSharedPtr notifier = SocketNotifier::create(fileno(stdout), SocketNotifier::Modes::Write);
 
-    auto write = []()
+    bool notified = false;
+    auto write = [&notified]()
     {
-        std::cerr << "Exiting..." << std::endl;
-        EventDispatcher::get()->exit(100);
-        std::cerr << "Post-Exiting..." << std::endl;
+        notified = true;
+        ThreadData::thisThreadData()->eventDispatcher()->stop();
     };
     notifier->activated.connect(write);
 
@@ -48,6 +48,7 @@ TEST(SocketNotifier, test_stdout_write_watch)
         std::cout << "Feed chars to stdout" << std::endl;
         return false;
     };
-    dispatcher->addIdleTask(idle);
-    EXPECT_EQ(100, dispatcher->processEvents());
+    ThreadData::thisThreadData()->eventDispatcher()->addIdleTask(idle);
+    ThreadData::thisThreadData()->eventDispatcher()->processEvents();
+    EXPECT_TRUE(notified);
 }

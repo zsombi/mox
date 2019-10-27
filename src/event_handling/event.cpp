@@ -75,7 +75,24 @@ EventType Event::registerNewType()
 }
 
 /******************************************************************************
- *
+ * DeferredSignalEvent
  */
+DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, Signal::ConnectionSharedPtr connection, const Callable::ArgumentPack& args)
+    : Event(EventType::DeferredSignal, target, Priority::Urgent)
+    , m_connection(connection)
+    , m_arguments(args)
+{
+}
+
+void DeferredSignalEvent::activate()
+{
+    TRACE("Asynchronously activate connection for target " << target())
+    if (target() && m_connection)
+    {
+        TRACE("Activate...");
+        m_connection->activate(m_arguments);
+        TRACE("Activation completed");
+    }
+}
 
 } // mox

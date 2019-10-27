@@ -25,7 +25,7 @@
 
 using namespace mox;
 
-class SignalTestClass : public MetaObject, public SignalHost<SignalTestClass>
+class SignalTestClass : public SignalHost<MetaObject>
 {
 public:
 
@@ -60,7 +60,7 @@ public:
     };
 };
 
-class  SlotHolder : public SignalHost<SlotHolder>
+class  SlotHolder : public SignalHost<ObjectLock>
 {
     int slot1Call = 0;
     int slot2Call = 0;
@@ -556,7 +556,11 @@ TEST_F(SignalTest, test_disconnect_next_connection_in_activation)
 
     auto lambda = [&receiver](Signal::ConnectionSharedPtr connection)
     {
-        connection->signal().disconnect(receiver, &SlotHolder::method1);
+        Signal* signal = connection->signal();
+        if (signal)
+        {
+            signal->disconnect(receiver, &SlotHolder::method1);
+        }
     };
     EXPECT_NOT_NULL(sender.sigV.connect(lambda));
     EXPECT_NOT_NULL(sender.sigV.connect(receiver, &SlotHolder::method1));

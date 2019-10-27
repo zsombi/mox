@@ -67,12 +67,11 @@ void EventQueue::process(const EventDispatcherFunction& dispatcher)
     lock_guard lock(*this);
     while (!empty())
     {
-        EventPtr const& event = top();
-        {
-            ScopeUnlock relock(*this);
-            dispatcher(*event);
-        }
+        EventPtr event(std::move(c.front()));
         pop();
+
+        ScopeUnlock relock(*this);
+        dispatcher(*event);
     }
 }
 

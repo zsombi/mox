@@ -153,7 +153,7 @@ gboolean GSocketNotifierSource::Source::check(GSource* source)
             hasPendingEvents = hasPendingEvents || ((poll.fd.revents & poll.fd.events) != 0);
         }
     };
-    ScopeLock lock(src->self->pollHandlers);
+    lock_guard lock(src->self->pollHandlers);
     src->self->pollHandlers.forEach(callback);
 
     // if the pollfds are empty trigger dispatch so this source can be removed
@@ -198,7 +198,7 @@ gboolean GSocketNotifierSource::Source::dispatch(GSource *source, GSourceFunc, g
             }
         }
     };
-    ScopeLock lock(src->self->pollHandlers);
+    lock_guard lock(src->self->pollHandlers);
     src->self->pollHandlers.forEach(callback);
 
     return G_SOURCE_CONTINUE;
@@ -262,7 +262,7 @@ void GSocketNotifierSource::removeNotifier(SocketNotifier& notifier)
     }
 
     // Lock the container to make sure the container size is not altered.
-    ScopeLock lock(pollHandlers);
+    lock_guard lock(pollHandlers);
     g_source_remove_poll(static_cast<GSource*>(source), &pollHandlers[*index].fd);
     pollHandlers[*index].reset();
 }
@@ -275,4 +275,5 @@ SocketNotifierSourcePtr Adaptation::createSocketNotifierSource(std::string_view 
 {
     return SocketNotifierSourcePtr(new GSocketNotifierSource(name));
 }
+
 }

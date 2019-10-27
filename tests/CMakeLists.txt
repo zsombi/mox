@@ -34,6 +34,7 @@ set(SOURCES
     test_object.cpp
     test_event_handling.cpp
     test_socket_notifiers.cpp
+    test_threads.cpp
     )
 add_executable(unittest ${SOURCES})
 target_link_libraries(unittest gtest_main mox)

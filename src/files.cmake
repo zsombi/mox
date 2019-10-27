@@ -19,6 +19,7 @@
 set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/platform_config.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/pimpl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/thread.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/platforms/adaptation.hpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/globals.hpp
@@ -59,6 +60,8 @@ set(HEADERS
 
     #modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/module.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/thread_data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/thread_loop.hpp
 
     # Mox core
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/mox_module.hpp
@@ -93,6 +96,8 @@ set(SOURCES
 
     #modules
     ${CMAKE_CURRENT_SOURCE_DIR}/module/modules.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/module/thread_data.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/module/thread_loop.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mox_module.cpp
     )
 
