@@ -47,7 +47,6 @@ public:
         GPostEventSource* eventSource = nullptr;
 
         static gboolean prepare(GSource* src, gint *timeout);
-        static gboolean check(GSource* source);
         static gboolean dispatch(GSource* source, GSourceFunc, gpointer);
 
         static Source* create(GPostEventSource& eventSource);
@@ -82,7 +81,7 @@ public:
     };
 
     Source* source = nullptr;
-    LockableContainer<GPollHandler> pollHandlers;
+    RefCountedCollection<GPollHandler> pollHandlers;
 
     explicit GSocketNotifierSource(std::string_view name);
     ~GSocketNotifierSource() final;
@@ -103,7 +102,6 @@ public:
         bool active = true;
 
         static gboolean prepare(GSource* src, gint* timeout);
-        static gboolean check(GSource* source);
         static gboolean dispatch(GSource* source, GSourceFunc, gpointer);
 
         static Source *create(Timer& timer);
@@ -123,7 +121,7 @@ public:
     // from AbstractEventSource
     void shutDown() final;
 
-    LockableContainer<Source*> timers;
+    RefCountedCollection<Source*> timers;
 };
 
 class GlibEventDispatcher : public EventDispatcher
@@ -133,10 +131,11 @@ class GlibEventDispatcher : public EventDispatcher
     static gboolean idleFunc(gpointer userData);
 
 public:
-    explicit GlibEventDispatcher();
-    explicit GlibEventDispatcher(GMainContext& mainContext);
+    explicit GlibEventDispatcher(ThreadData& threadData);
+    explicit GlibEventDispatcher(ThreadData& threadData, GMainContext& mainContext);
     ~GlibEventDispatcher() override;
 
+    bool isProcessingEvents() const override;
     void processEvents(ProcessFlags flags) override;
     void stop() override;
     void wakeUp() override;
@@ -146,6 +145,7 @@ public:
 
     GMainLoop* evLoop = nullptr;
     GMainContext* context = nullptr;
+    bool isRunning = false;
 };
 
 }

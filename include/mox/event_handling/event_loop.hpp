@@ -26,6 +26,8 @@
 namespace mox
 {
 
+class ThreadData;
+
 /// The EventLoop class provides the event handling in Mox. Each event loop is subscribed
 /// to the current thread's event dispatcher. The event dispatcher is assumed to contain
 /// a post-event source, which schedules the event dispatching. During the event dispatch,
@@ -33,12 +35,9 @@ namespace mox
 /// targets.
 ///
 /// You can have multiple event loops on a thread, but only one of those can be active.
-/// While there is only one active event loop on a thread, you can still post events to
-/// the other, inactive event loops. Those events are getting procesed when the event loop
-/// is re-activated.
 ///
 /// An event loop is activated by declaring the event loop on the stack. Once declared on
-/// the stack, you must call the processEvents() method to process the events on the loop.
+/// the stack, you can call the processEvents() method to process the events on the loop.
 /// The event loop is deactivated only when it gets destroyed.
 class MOX_API EventLoop
 {
@@ -58,20 +57,11 @@ public:
     /// Wakes up the event loop.
     void wakeUp();
 
-    /// Returns the dispatcher state.
-    EventDispatchState state() const
-    {
-        return m_state.load();
-    }
-    /// Set the dispatcher state.
-    void setState(EventDispatchState newState);
-
 private:
     friend class PostEventSource;
 
+    ThreadData& m_threadData;
     EventDispatcherSharedPtr m_dispatcher;
-    /// The event queue of the loop.
-    atomic<EventDispatchState> m_state;
 };
 
 /// Posts an \a event to handle asynchronously.
@@ -82,9 +72,9 @@ bool MOX_API postEvent(EventPtr&& event);
 bool MOX_API sendEvent(Event& event);
 
 template <class EventClass, typename... Arguments>
-bool postEvent(Arguments... arguments)
+bool postEvent(Arguments&&... arguments)
 {
-    return postEvent(make_event<EventClass>(arguments...));
+    return postEvent(make_event<EventClass>(std::forward<Arguments>(arguments)...));
 }
 
 }

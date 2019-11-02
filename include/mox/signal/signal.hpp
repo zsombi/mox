@@ -29,23 +29,22 @@
 #include <mox/metadata/callable.hpp>
 #include <mox/metadata/metaclass.hpp>
 
-#include <mox/signal/signal_host.hpp>
 #include <mox/utils/function_traits.hpp>
 
 namespace mox
 {
 
 class Signal;
-class SignalHostNotion;
+class SignalHostConcept;
 
-/// Abstract signal descriptor is the base descriptor class of mox signal types. The signal
+/// SignalDescriptorBase is the base descriptor class of mox signal types. The signal
 /// descriptor holds the argument signatures (descriptors) of a signal, and a unique identifier
 /// associated to the signal type.
 ///
 /// You can have mox signals in your class if:
 /// - you declare a signal descriptor for the signal as static inline const member,
-/// - you derive your class from SignalHostNotion or from a class that derives from SignalHostNotion.
-struct MOX_API AbstractSignalDescriptor
+/// - you derive your class from SignalHostConcept or from a class that derives from SignalHostConcept.
+struct MOX_API SignalDescriptorBase
 {
     typedef int64_t TUuid;
 
@@ -55,11 +54,11 @@ struct MOX_API AbstractSignalDescriptor
     const TUuid uuid = 0u;
 
     // Comparison operator.
-    bool operator==(const AbstractSignalDescriptor& other) const;
+    bool operator==(const SignalDescriptorBase& other) const;
 
 protected:
     /// Construct the signal descriptor with the argument container passed.
-    AbstractSignalDescriptor(const VariantDescriptorContainer& arguments);
+    SignalDescriptorBase(const VariantDescriptorContainer& arguments);
 };
 
 /// Signal is the concept of the Mox signals.
@@ -75,9 +74,56 @@ protected:
 ///
 /// Every mox signal is registered to a host. When the host is destroyed, all the signal connections are also
 /// disconnected and deferred.
-class MOX_API Signal : public ObjectLock
+class MOX_API Signal : public SharedLock<ObjectLock>
 {
 public:
+
+    /// This class holds the data that identifies a signal.
+    class SignalId : public SharedLock<ObjectLock>
+    {
+        friend class SignalHostConcept;
+        /// The signal host address.
+        SignalHostConcept& m_host;
+        /// The signal.
+        Signal& m_signal;
+        /// The signal descriptor.
+        const SignalDescriptorBase& m_descriptor;
+        /// The index of the signal within the host.
+        size_t m_index = std::numeric_limits<size_t>::max();
+
+    public:
+        /// Constructor.
+        explicit SignalId(SignalHostConcept& host, Signal& signal, const SignalDescriptorBase& descriptor);
+        /// Destructor.
+        ~SignalId();
+
+        /// Returns the index of the signal within the host.
+        operator size_t () const
+        {
+            return m_index;
+        }
+
+        Signal& getSignal() const
+        {
+            return m_signal;
+        }
+
+        /// Returns the signal descriptor.
+        const SignalDescriptorBase& descriptor() const
+        {
+            return m_descriptor;
+        }
+
+        /// Checks if the signal is valid.
+        /// \return If the signal identifier is valid, returns \e true, otherwise \e false.
+        bool isValid() const;
+
+        /// Test whether the descriptor identifies this signal.
+        /// \param descriptor The descriptor to check.
+        /// \return If the descriptor idenifies this signal, returns \e true, otherwise \e false.
+        bool isA(const SignalDescriptorBase& descriptor) const;
+    };
+
     /// The class represents a connection to a signal. The connection is a token which holds the
     /// signal connected, and the function, method, metamethod, functor or lambda the signal is
     /// connected to. This function is called slot.
@@ -139,18 +185,9 @@ public:
     /// The connection type.
     typedef std::shared_ptr<Connection> ConnectionSharedPtr;
 
-    /// Returns the signal host instance.
-    /// \return The signal host instance.
-    SignalHostNotion& host() const;
-
     /// Returns the signal identifier within a signal host.
     /// \return The signal identifier.
-    size_t id() const;
-
-    /// Checks the validity of a signal. A signal is invalid if it is no longer registered to
-    /// a signal host.
-    /// \return If the signal is valid, \e true, otherwise \e false.
-    bool isValid() const;
+    const SignalId& id() const;
 
     /// Activates the connections of the signal by invoking the slots from each connection passing
     /// the \a arguments to the slots. Connections created during the activation are not invoked
@@ -158,12 +195,6 @@ public:
     /// \param arguments The arguments to pass to the slots, being the arguments passed to the signal.
     /// \return The number of connections activated.
     int activate(Callable::ArgumentPack& arguments);
-
-    /// Returns the signal descriptor.
-    const AbstractSignalDescriptor& descriptor() const
-    {
-        return m_descriptor;
-    }
 
     /// Signal emitter. Packs the \a arguments into a Callable::ArgumentPack pack and activates
     /// the signal connections.
@@ -242,10 +273,9 @@ public:
     bool disconnect(const Signal& signal);
 
     template <class SignalOwner>
-    explicit Signal(SignalOwner& owner, const AbstractSignalDescriptor& des)
-        : m_host(owner)
-        , m_descriptor(des)
-        , m_id(m_host.registerSignal(*this))
+    explicit Signal(SignalOwner& owner, const SignalDescriptorBase& des)
+        : SharedLock<ObjectLock>(owner)
+        , m_id(owner, *this, des)
         , m_connections([](const ConnectionSharedPtr& connection) { return !connection; })
     {
     }
@@ -270,20 +300,16 @@ protected:
     bool disconnectImpl(Variant receiver, const void* callableAddress);
 
 
-    /// The signal host address.
-    SignalHostNotion& m_host;
-    /// The signal descriptor.
-    const AbstractSignalDescriptor& m_descriptor;
-    /// The metasignal of the signal.
-    size_t m_id = std::numeric_limits<size_t>::max();
+    /// The signal identifier.
+    SignalId m_id;
     /// The collection of active connections.
-    LockableContainer<ConnectionSharedPtr> m_connections;
+    RefCountedCollection<ConnectionSharedPtr> m_connections;
     /// Triggering flag. Locks the signal from recursive triggering.
     bool m_triggering = false;
 };
 
 template <typename... Arguments>
-struct SignalDescriptor : AbstractSignalDescriptor
+struct SignalDescriptor : SignalDescriptorBase
 {
 private:
     auto registerArguments()
@@ -294,7 +320,7 @@ private:
     }
 public:
     SignalDescriptor()
-        : AbstractSignalDescriptor(registerArguments())
+        : SignalDescriptorBase(registerArguments())
     {
     }
 };

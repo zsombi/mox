@@ -23,70 +23,48 @@
 class TestThread;
 using TestThreadSharedPtr = std::shared_ptr<TestThread>;
 
+using Notifier = std::promise<void>;
+using Watcher = std::future<void>;
+
+static const mox::EventType evQuit = mox::Event::registerNewType();
+
 class TestThread : public mox::ThreadLoop
 {
+    Notifier m_deathNotifier;
 public:
-    static inline int threadCount = 0;
-    static TestThreadSharedPtr create(Object* parent = nullptr)
+    static inline std::atomic<int> threadCount = 0;
+
+    static TestThreadSharedPtr create(Notifier&& notifier, Object* parent = nullptr)
     {
-        return createObject(new TestThread, parent);
+        auto thread = createObject(new TestThread(std::forward<Notifier>(notifier)), parent);
+
+        thread->started.connect(*thread, &TestThread::onStarted);
+        thread->stopped.connect(*thread, &TestThread::onStopped);
+
+        return thread;
+    }
+
+    ~TestThread() override
+    {
+        m_deathNotifier.set_value();
     }
 
 protected:
-    void run() override
+    explicit TestThread(Notifier&& notifier)
+    {
+        m_deathNotifier.swap(notifier);
+    }
+
+    void onStarted()
     {
         ++threadCount;
-        ThreadLoop::run();
+    }
+    void onStopped()
+    {
         --threadCount;
     }
 };
 
-TEST(Threads, test_thread_basics)
-{
-    TestModule mainThread;
-
-    auto test = mox::ThreadLoop::create();
-    test->start();
-
-    EXPECT_NE(test->threadData(), mox::ThreadData::thisThreadData());
-
-    // event handler to stop the thread
-    auto exiter = [](mox::Event&)
-    {
-        mox::ThreadLoop::thisThread()->exit(0);
-    };
-    test->addEventHandler(mox::EventType::Base, exiter);
-
-    // Post a message to the thread to quit the thread
-    EXPECT_TRUE(mox::postEvent<mox::Event>(mox::EventType::Base, test));
-
-    test->handler().join();
-    EXPECT_EQ(mox::ThreadLoop::Status::Stopped, test->getStatus());
-}
-
-TEST(Threads, test_parented_thread_deletes_before_quiting)
-{
-    TestModule mainThread;
-    auto root = mox::Object::create();
-
-    TestThread::create(root.get())->start();
-    EXPECT_EQ(1, TestThread::threadCount);
-    root.reset();
-    EXPECT_EQ(0, TestThread::threadCount);
-}
-
-TEST(Threads, test_parented_detached_thread_deletes_before_quiting)
-{
-    TestModule mainThread;
-    auto root = mox::Object::create();
-    TestThread::create(root.get())->start().handler().detach();
-    EXPECT_EQ(1, TestThread::threadCount);
-
-    root.reset();
-    EXPECT_EQ(0, TestThread::threadCount);
-}
-
-static mox::EventType evQuit = mox::Event::registerNewType();
 class Quitter : public mox::Object
 {
 public:
@@ -108,53 +86,101 @@ public:
     }
 };
 
-TEST(Threads, test_signal_connected_to_different_thread)
+class Threads : public UnitTest
 {
-    mox::registerMetaClass<Quitter>();
-
-    TestModule mainThread;
-    mox::EventLoop loop;
-    auto quitter = Quitter::create();
-
-    mox::ThreadLoopWeakPtr threadCheck;
-
+protected:
+    void SetUp() override
     {
-        auto thread = mox::ThreadLoop::create();
-        thread->stopped.connect(*quitter, &Quitter::quit);
-        threadCheck = thread;
+        UnitTest::SetUp();
 
-        auto quitEventHandler = [](mox::Event& event)
-        {
-            if (event.type() == evQuit)
-            {
-                mox::ThreadData::thisThreadData()->thread()->exit(0);
-            }
-        };
-        thread->addEventHandler(evQuit, quitEventHandler);
-
-        thread->start();
-
-        mox::postEvent<mox::Event>(evQuit, thread);
+        mox::registerMetaType<TestThread>();
+        mox::registerMetaType<TestThread*>();
+        mox::registerMetaClass<Quitter>();
     }
+};
 
-    EXPECT_EQ(10, loop.processEvents());
-    EXPECT_TRUE(threadCheck.expired());
+TEST_F(Threads, test_thread_basics)
+{
+    mox::Application mainThread;
+
+    auto test = mox::ThreadLoop::create();
+    test->start();
+
+    EXPECT_NE(test->threadData(), mox::ThreadData::thisThreadData());
+
+    // event handler to stop the thread
+    auto exiter = [](mox::Event&)
+    {
+        mox::ThreadLoop::thisThread()->exit(0);
+    };
+    test->addEventHandler(mox::EventType::Base, exiter);
+
+    // Post a message to the thread to quit the thread
+    EXPECT_TRUE(mox::postEvent<mox::Event>(mox::EventType::Base, test));
+
+    test->join();
+    EXPECT_EQ(mox::ThreadLoop::Status::Stopped, test->getStatus());
 }
 
-TEST(Threads, test_signal_connected_to_metamethod_in_different_thread)
+TEST_F(Threads, test_parented_thread_deletes_before_quiting)
 {
-    mox::registerMetaClass<Quitter>();
+    Notifier notifyDeath;
+    Watcher watchDeath = notifyDeath.get_future();
+    {
+        mox::Application mainThread;
 
-    TestModule mainThread;
-    mox::EventLoop loop;
-    auto quitter = Quitter::create();
+        {
+            auto thread = TestThread::create(std::move(notifyDeath), mainThread.getRootObject().get());
+            thread->start();
+        }
+        EXPECT_EQ(1, TestThread::threadCount);
+    }
+//    std::cout << "??" << std::endl;
+    watchDeath.wait();
+    EXPECT_EQ(0, TestThread::threadCount);
+}
 
-    mox::ThreadLoopWeakPtr threadCheck;
+TEST_F(Threads, DISABLED_test_parented_detached_thread_deletes_before_quiting)
+{
+    //FLAKY!!!
+    mox::Application mainThread;
+    auto root = mox::Object::create();
+
+    Notifier notify;
+    Watcher notifyWait = notify.get_future();
+
+    Notifier notifyDeath;
+    Watcher watchDeath = notifyDeath.get_future();
+    {
+        auto thread = TestThread::create(std::move(notifyDeath), root.get());
+        auto slot = [&notify]()
+        {
+            notify.set_value();
+        };
+        thread->stopped.connect(slot);
+        thread->start(true);
+    }
+    EXPECT_EQ(1, TestThread::threadCount);
+    root.reset();
+    notifyWait.wait();
+    watchDeath.wait();
+    EXPECT_EQ(0, TestThread::threadCount);
+}
+
+TEST_F(Threads, test_quit_application_from_thread_kills_thread)
+{
+
+}
+
+TEST_F(Threads, test_threads2)
+{
+    mox::Application mainThread;
+
+    Notifier notifyDeath;
+    Watcher watchDeath = notifyDeath.get_future();
 
     {
-        auto thread = mox::ThreadLoop::create();
-        thread->stopped.connect(*quitter, "quit");
-        threadCheck = thread;
+        auto thread = TestThread::create(std::move(notifyDeath));
 
         auto quitEventHandler = [](mox::Event& event)
         {
@@ -165,11 +191,85 @@ TEST(Threads, test_signal_connected_to_metamethod_in_different_thread)
         };
         thread->addEventHandler(evQuit, quitEventHandler);
 
-        thread->start();
+        // Add 2 child objects to thread
+        mox::Object::create(thread.get());
+        auto c2 = mox::Object::create(thread.get());
+        mox::Object::create(c2.get());
+
+        thread->start(true);
+
+        auto mainExit = []()
+        {
+            mox::ThreadData::mainThread()->thread()->exit(101);
+        };
+        thread->stopped.connect(mainExit);
 
         mox::postEvent<mox::Event>(evQuit, thread);
     }
 
-    EXPECT_EQ(10, loop.processEvents());
-    EXPECT_TRUE(threadCheck.expired());
+    EXPECT_EQ(101, mainThread.run());
+    EXPECT_EQ(0, TestThread::threadCount);
+    watchDeath.wait();
+}
+
+TEST_F(Threads, test_signal_connected_to_different_thread)
+{
+    mox::Application mainThread;
+    mainThread.setRootObject(*Quitter::create());
+
+    Notifier notifyDeath;
+    Watcher watchDeath = notifyDeath.get_future();
+    {
+        auto thread = TestThread::create(std::move(notifyDeath));
+        thread->stopped.connect(*mainThread.castRootObject<Quitter>(), &Quitter::quit);
+
+        auto quitEventHandler = [](mox::Event& event)
+        {
+            if (event.type() == evQuit)
+            {
+                mox::ThreadData::thisThreadData()->thread()->exit(0);
+            }
+        };
+        thread->addEventHandler(evQuit, quitEventHandler);
+
+        thread->start(true);
+        EXPECT_EQ(1, TestThread::threadCount);
+
+        mox::postEvent<mox::Event>(evQuit, thread);
+    }
+
+    EXPECT_EQ(10, mainThread.run());
+    watchDeath.wait();
+    EXPECT_EQ(0, TestThread::threadCount);
+}
+
+TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
+{
+    mox::Application mainThread;
+    mainThread.setRootObject(*Quitter::create());
+
+    Notifier notifyDeath;
+    Watcher watchDeath = notifyDeath.get_future();
+    {
+        auto thread = TestThread::create(std::move(notifyDeath));
+        thread->stopped.connect(*mainThread.castRootObject<Quitter>(), "quit");
+
+        auto quitEventHandler = [](mox::Event& event)
+        {
+            if (event.type() == evQuit)
+            {
+                mox::ThreadData::thisThreadData()->thread()->exit(0);
+            }
+        };
+        thread->addEventHandler(evQuit, quitEventHandler);
+
+        thread->start(true);
+        EXPECT_EQ(1, TestThread::threadCount);
+
+        mox::postEvent<mox::Event>(evQuit, thread);
+    }
+
+    EXPECT_EQ(10, mainThread.run());
+    watchDeath.wait();
+    EXPECT_EQ(0, TestThread::threadCount);
 }

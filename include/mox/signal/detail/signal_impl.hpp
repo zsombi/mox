@@ -38,7 +38,7 @@ mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const
     const MetaClass* metaClass = Receiver::StaticMetaClass::get();
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaClass::Method* method) -> bool
     {
-        return (method->name() == name) && method->isInvocableWith(this->m_descriptor.arguments);
+        return (method->name() == name) && method->isInvocableWith(this->id().descriptor().arguments);
     };
     const MetaClass::Method* metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
@@ -54,7 +54,7 @@ std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, Signal::Connec
 Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
     Callable slotCallable(method);
-    if (!slotCallable.isInvocableWith(m_descriptor.arguments))
+    if (!slotCallable.isInvocableWith(id().descriptor().arguments))
     {
         return nullptr;
     }
@@ -66,7 +66,7 @@ std::enable_if_t<!std::is_base_of_v<Signal, Function>, Signal::ConnectionSharedP
 Signal::connect(const Function& function)
 {
     Callable lambda(function);
-    if (!lambda.isInvocableWith(m_descriptor.arguments))
+    if (!lambda.isInvocableWith(id().descriptor().arguments))
     {
         return nullptr;
     }
@@ -84,7 +84,7 @@ bool Signal::disconnect(const Receiver& receiver, const char* methodName)
     const MetaClass* metaClass = Receiver::StaticMetaClass::get();
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaClass::Method* method) -> bool
     {
-        return (method->name() == name) && method->isInvocableWith(this->m_descriptor.arguments);
+        return (method->name() == name) && method->isInvocableWith(this->id().descriptor().arguments);
     };
     const MetaClass::Method* metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)

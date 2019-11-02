@@ -61,21 +61,17 @@ bool dispatchToHandlers(bool tunneled, ObjectSharedPtr target, Function function
  *
  */
 EventLoop::EventLoop()
-    : m_dispatcher(ThreadData::thisThreadData()->eventDispatcher())
-    , m_state(EventDispatchState::Inactive)
+    : m_threadData(*ThreadData::thisThreadData())
+    , m_dispatcher(m_threadData.eventDispatcher())
 {
-    m_dispatcher->pushEventLoop(*this);
+    m_threadData.m_eventLoopStack.push(this);
+    TRACE("Event loop added to thread data, count is " << m_threadData.m_eventLoopStack.size())
 }
 
 EventLoop::~EventLoop()
 {
-    m_dispatcher->popEventLoop();
-}
-
-void EventLoop::setState(EventDispatchState newState)
-{
-    TRACE("State changed from " << int(m_state.load()) << " to " << int(newState))
-    m_state.store(newState);
+    m_threadData.m_eventLoopStack.pop();
+    TRACE("Event loop removed from thread data, count is " << m_threadData.m_eventLoopStack.size())
 }
 
 int EventLoop::processEvents(ProcessFlags flags)
@@ -86,17 +82,17 @@ int EventLoop::processEvents(ProcessFlags flags)
     }
 
     m_dispatcher->processEvents(flags);
-    return ThreadData::thisThreadData()->exitCode();
+    return m_threadData.exitCode();
 }
 
 void EventLoop::exit(int exitCode)
 {
+    UNUSED(exitCode);
     if (!m_dispatcher)
     {
         throw no_event_dispatcher();
     }
-    ThreadData::thisThreadData()->m_exitCode.store(exitCode);
-    m_dispatcher->stop();
+    postEvent<QuitEvent>(m_threadData.thread(), exitCode);
 }
 
 void EventLoop::wakeUp()
@@ -126,11 +122,8 @@ bool postEvent(EventPtr&& event)
     }
 
     threadData->m_eventQueue.push(std::forward<EventPtr>(event));
-    EventLoopPtr loop = threadData->eventLoop();
-    if (loop)
-    {
-        loop->wakeUp();
-    }
+    threadData->eventDispatcher()->wakeUp();
+
     return true;
 }
 

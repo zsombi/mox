@@ -25,14 +25,12 @@
 namespace mox
 {
 
+using Notifier = std::promise<void>;
+using Waiter = std::future<void>;
+
 ThreadLoop::ThreadLoop()
 {
-}
-ThreadLoop::~ThreadLoop()
-{
-    TRACE("ThreadLoop object: destroying")
-    exitAndJoin();
-    TRACE("ThreadLoop object: destroyed")
+    addEventHandler(EventType::Quit, std::bind(&ThreadLoop::quitHandler, this, std::placeholders::_1));
 }
 
 void ThreadLoop::registerModule()
@@ -47,10 +45,17 @@ Object::VisitResult ThreadLoop::moveToThread(ThreadDataSharedPtr threadData)
     return VisitResult::ContinueSibling;
 }
 
+void ThreadLoop::quitHandler(Event& event)
+{
+    QuitEvent& quit = static_cast<QuitEvent&>(event);
+    m_threadData->m_exitCode.store(quit.getExitCode());
+    m_threadData->m_eventDispatcher->stop();
+}
+
 void ThreadLoop::moveToThread()
 {
-    ThreadDataSharedPtr thisTD = ThreadData::thisThreadData();
-    auto visitor = [thisTD](Object& object)
+    auto thisTD = ThreadData::thisThreadData();
+    auto visitor = [&thisTD](Object& object)
     {
         lock_guard lock(object);
         object.m_threadData = thisTD;
@@ -64,11 +69,19 @@ ThreadLoop::Status ThreadLoop::getStatus() const
     return m_status.load();
 }
 
+bool ThreadLoop::isRunning() const
+{
+    lock_guard lock(const_cast<ThreadLoop&>(*this));
+    return (m_status.load() == Status::Running);
+}
+
 void ThreadLoop::threadMain(std::promise<void> notifier)
 {
     TRACE("Preparing thread")
+    lock();
     ThreadDataSharedPtr threadData = ThreadData::create();
     threadData->m_thread = std::static_pointer_cast<ThreadLoop>(shared_from_this());
+    unlock();
     moveToThread();
 
     started(this);
@@ -80,56 +93,66 @@ void ThreadLoop::threadMain(std::promise<void> notifier)
     run();
     TRACE("Thread stopped")
 
+    TRACE("Thread really stopped")
+    // The thread data is no longer valid, therefore reset it, and remove from all the objects owned by this thread loop.
+    auto cleaner = [](Object& object)
+    {
+        lock_guard lock(object);
+        object.m_threadData.reset();
+        return Object::VisitResult::Continue;
+    };
+    traverseChildren(cleaner, TraverseOrder::InversePostOrder);
     stopped(this);
-    TRACE("Thread really died. Destroying ThreadData")
+    threadData->m_thread.reset();
+    m_threadData.reset();
 }
 
-ThreadLoop& ThreadLoop::start()
+void ThreadLoop::start(bool detached)
 {
-    std::promise<void> notifier;
-    std::future<void> notifierLock = notifier.get_future();
+    Notifier notifier;
+    Waiter notifierLock = notifier.get_future();
     m_thread = std::thread(&ThreadLoop::threadMain, this, std::move(notifier));
 
     // Wait till future gets signalled.
     notifierLock.wait();
-    return *this;
+    if (detached)
+    {
+        m_thread.detach();
+    }
 }
 
 void ThreadLoop::exit(int exitCode)
 {
     ThreadDataSharedPtr td = threadData();
-    if (!td)
+    if (!td || (m_status.load() == Status::Stopped))
     {
         return;
     }
-    EventLoopPtr loop = td->eventLoop();
-    if (loop)
-    {
-        loop->exit(exitCode);
-    }
+    postEvent<QuitEvent>(shared_from_this(), exitCode);
 }
 
-void ThreadLoop::exitAndJoin(int exitCode)
+bool ThreadLoop::join(bool force)
 {
-    if (m_status.load() != Status::Running)
+    if (ThreadData::thisThreadData() == m_threadData)
     {
-        return;
+        std::cerr << "Cannot join a thead from within the running thread!" << std::endl;
+        return false;
     }
-
-    if (ThreadData::thisThreadData() == m_threadData.lock())
+    if (!m_thread.joinable() && !force)
     {
-        // Cannot join.
-        std::cerr << "Cannot join a thead from inside the running thread!" << std::endl;
-        return;
+        std::cerr << "Detached thread must join forced." << std::endl;
+        return false;
     }
 
     if (m_thread.joinable())
     {
-        exit(exitCode);
+        TRACE("Joining thread")
         m_thread.join();
+        TRACE("Thread joined with success")
     }
-    else
+    else if (force)
     {
+        TRACE("Waiting detached thread to stop")
         std::promise<void> notifyer;
         auto notifyerWait = notifyer.get_future();
         auto watchThreadDown =[&notifyer]()
@@ -137,17 +160,26 @@ void ThreadLoop::exitAndJoin(int exitCode)
             notifyer.set_value();
         };
         stopped.connect(watchThreadDown);
-        exit(exitCode);
         notifyerWait.wait();
+        TRACE("Detached thread stop noticed")
     }
+
+    return true;
 }
 
-void ThreadLoop::run()
+bool ThreadLoop::exitAndJoin(int exitCode)
+{
+    exit(exitCode);
+    return join(true);
+}
+
+int ThreadLoop::run()
 {
     EventLoop loop;
     m_status.store(Status::Running);
     loop.processEvents();
     m_status.store(Status::Stopped);
+    return threadData()->exitCode();
 }
 
 ThreadLoopSharedPtr ThreadLoop::create(Object* parent)

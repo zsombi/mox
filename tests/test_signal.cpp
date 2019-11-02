@@ -527,11 +527,11 @@ TEST_F(SignalTest, test_proper_signal_ids)
 {
     DerivedEmitter sender;
 
-    EXPECT_EQ(0, sender.sig1.id());
-    EXPECT_EQ(1, sender.sig2.id());
-    EXPECT_EQ(2, sender.sig3.id());
-    EXPECT_EQ(3, sender.sigB.id());
-    EXPECT_EQ(4, sender.sigV.id());
+    EXPECT_EQ(0u, sender.sig1.id());
+    EXPECT_EQ(1u, sender.sig2.id());
+    EXPECT_EQ(2u, sender.sig3.id());
+    EXPECT_EQ(3u, sender.sigB.id());
+    EXPECT_EQ(4u, sender.sigV.id());
 }
 
 TEST_F(SignalTest, test_signal_in_derived)

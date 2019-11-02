@@ -80,19 +80,19 @@ void TimerSource::signal(Timer& timer)
  */
 PostEventSource::PostEventSource(std::string_view name)
     : AbstractEventSource(name)
+    , m_eventQueue(ThreadData::thisThreadData()->m_eventQueue)
 {
 }
 
 void PostEventSource::dispatch()
 {
-    FATAL(ThreadData::thisThreadData()->eventDispatcher() == eventDispatcher(), "Source running in wrong thread!");
-
-    EventLoopPtr eventLoop = ThreadData::thisThreadData()->eventLoop();
-    if (eventLoop && eventLoop->state() == EventDispatchState::Running)
+    FATAL(eventDispatcher(), "Orphan event source?")
+    if (!eventDispatcher()->isProcessingEvents())
     {
-        TRACE("process posted events")
-        ThreadData::thisThreadData()->m_eventQueue.process(sendEvent);
+        std::cerr << "Warning: source attempting processing posted events when the event loop is not running." << std::endl;
+        return;
     }
+    m_eventQueue.process(sendEvent);
 }
 
 /******************************************************************************

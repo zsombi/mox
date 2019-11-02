@@ -60,21 +60,6 @@ using SocketNotifierSourceWeakPtr = std::weak_ptr<SocketNotifierSource>;
 class EventLoop;
 using EventLoopPtr = EventLoop*;
 
-/// Defines the state of the event processing.
-enum class EventDispatchState
-{
-    /// The dispatcher is inactive.
-    Inactive,
-    /// The dispatcher is running.
-    Running,
-    /// The dispatcher is suspended. Not all platforms support this state.
-    Suspended,
-    /// The dispatcher is exiting.
-    Exiting,
-    /// The dispatcher is stopped.
-    Stopped
-};
-
 /// The event processing flags.
 enum class ProcessFlags
 {

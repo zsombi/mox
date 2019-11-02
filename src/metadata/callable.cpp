@@ -43,6 +43,28 @@ const char* Callable::invalid_argument::what() const EXCEPTION_NOEXCEPT
     return "invalid argument type applied";
 }
 
+Callable::Callable(Callable&& other)
+{
+    swap(other);
+}
+
+Callable& Callable::operator=(Callable&& other)
+{
+    swap(other);
+    return *this;
+}
+
+void Callable::swap(Callable& other)
+{
+    m_invoker.swap(other.m_invoker);
+    m_ret.swap(other.m_ret);
+    m_args.swap(other.m_args);
+    std::swap(m_address, other.m_address);
+    std::swap(m_classType, other.m_classType);
+    std::swap(m_type, other.m_type);
+    std::swap(m_isConst, other.m_isConst);
+}
+
 FunctionType Callable::type() const
 {
     return m_type;

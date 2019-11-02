@@ -29,7 +29,7 @@ std::string MetaClass::Method::name() const
 }
 
 
-MetaClass::Signal::Signal(MetaClass& metaClass, const AbstractSignalDescriptor& descriptor, std::string_view name)
+MetaClass::Signal::Signal(MetaClass& metaClass, const SignalDescriptorBase& descriptor, std::string_view name)
     : m_ownerClass(metaClass)
     , m_descriptor(descriptor)
     , m_name(name)
@@ -42,7 +42,7 @@ std::string MetaClass::Signal::name() const
     return m_name;
 }
 
-const AbstractSignalDescriptor& MetaClass::Signal::descriptor() const
+const SignalDescriptorBase& MetaClass::Signal::descriptor() const
 {
     return m_descriptor;
 }

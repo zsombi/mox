@@ -90,6 +90,8 @@ public:
 protected:
     /// Constructor.
     explicit PostEventSource(std::string_view name);
+    /// The event queue to process.
+    EventQueue& m_eventQueue;
 };
 
 /// This class defines the interface for the socket notifier event sources.

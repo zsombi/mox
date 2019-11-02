@@ -28,6 +28,29 @@ Object::Object()
 {
 }
 
+void Object::removeChildren()
+{
+    lock_guard lock(*this);
+
+    while (!m_children.empty())
+    {
+        // If the child is a thread, the thread must be stopped before it gets removed from this object.
+        ThreadLoopSharedPtr thread = std::dynamic_pointer_cast<ThreadLoop>(m_children.back());
+
+        // Remove child from parent first.
+        {
+            ScopeRelock relock(*this);
+            removeChildAt(m_children.size() - 1);
+        }
+
+        if (thread)
+        {
+            TRACE("Destroying thread object's parent, exit thread and join.")
+            thread->exitAndJoin();
+        }
+    }
+}
+
 Object::~Object()
 {
     if (m_parent)
@@ -35,18 +58,9 @@ Object::~Object()
         m_parent->removeChild(*this);
     }
 
-    while (!m_children.empty())
-    {
-        // If the child is a thread, the thread must be stopped before it gets removed from this object.
-        ThreadLoopSharedPtr thread = std::dynamic_pointer_cast<ThreadLoop>(m_children.back());
-        if (thread)
-        {
-            thread->exitAndJoin();
-        }
-        // Set the parent to null so it doesn't try to remove the child from parent again.
-        m_children.back().get()->m_parent = nullptr;
-        removeChildAt(m_children.size() - 1);
-    }
+    removeChildren();
+
+    m_threadData.reset();
 }
 
 ObjectSharedPtr Object::create(Object* parent)
@@ -78,19 +92,18 @@ void Object::addChild(Object& child)
 
     if (oldParent)
     {
-        if (oldParent->threadData() != m_threadData.lock())
+        if (oldParent->threadData() != m_threadData)
         {
             throw thread_differs();
         }
-        ScopeUnlock relock(*oldParent);
+        ScopeRelock relock(*oldParent);
         oldParent->removeChild(child);
     }
 
-    ThreadDataSharedPtr td = m_threadData.lock();
-    auto threadMover = [td](Object& object)
+    auto threadMover = [this](Object& object)
     {
         lock_guard lock(object);
-        return object.moveToThread(td);
+        return object.moveToThread(m_threadData);
     };
     child.traverse(threadMover, TraverseOrder::PreOrder);
 
@@ -211,7 +224,7 @@ Object::VisitResult Object::traverseChildren(const VisitorFunction& visitor, Tra
 
 ThreadDataSharedPtr Object::threadData() const
 {
-    return m_threadData.lock();
+    return m_threadData;
 }
 
 }

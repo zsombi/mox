@@ -164,7 +164,7 @@ TEST(EventQueue, test_process_event_priority_changes_order)
 
 TEST(EventDispatcher, test_basics)
 {
-    TestModule test;
+    Application test;
 
     int exit = 0;
     auto idleFunc = [&exit]()
@@ -181,7 +181,7 @@ TEST(EventDispatcher, test_basics)
 
 TEST(EventDispatcher, test_exit_after_several_idle_calls)
 {
-    TestModule test;
+    Application test;
     int count = 5;
 
     int exit = 0;
@@ -202,7 +202,7 @@ TEST(EventDispatcher, test_exit_after_several_idle_calls)
 
 TEST(EventDispatcher, test_single_shot_timer_quits_loop)
 {
-    TestModule test;
+    Application test;
     TimerPtr timer = Timer::createSingleShot(std::chrono::milliseconds(100));
 
     int exit = 0;
@@ -221,7 +221,7 @@ TEST(EventDispatcher, test_single_shot_timer_quits_loop)
 
 TEST(EventDispatcher, test_repeating_timer_quits_loop)
 {
-    TestModule test;
+    Application test;
     TimerPtr timer = Timer::createRepeating(std::chrono::milliseconds(100));
 
     int repeatCount = 10;
@@ -243,7 +243,7 @@ TEST(EventDispatcher, test_repeating_timer_quits_loop)
 
 TEST(EventDispatcher, test_ping_timer_idle_task)
 {
-    TestModule test;
+    Application test;
     TimerPtr ping = Timer::createRepeating(std::chrono::milliseconds(500));
 
     int countDown = 3;
@@ -330,7 +330,7 @@ public:
 
 TEST(EventDispatcher, test_post_event)
 {
-    TestModule testModule;
+    Application testModule;
     ObjectSharedPtr host = Object::create();
     EventLoop loop;
 
@@ -342,9 +342,8 @@ TEST(EventDispatcher, test_post_event)
 
 TEST(EventDispatcher, test_filter_events)
 {
-    TestModule test;
-    ObjectSharedPtr root = Object::create();
-    std::shared_ptr<Filter> filter = Filter::create(root.get());
+    Application test;
+    std::shared_ptr<Filter> filter = Filter::create(test.getRootObject().get());
     std::shared_ptr<Handler> handler = Handler::create(filter.get());
 
     EventLoop loop;
@@ -357,7 +356,7 @@ TEST(EventDispatcher, test_filter_events)
 
 TEST(EventDispatcher, test_pass_filter_events)
 {
-    TestModule test;
+    Application test;
     ObjectSharedPtr root = Object::create();
     std::shared_ptr<Filter> filter = Filter::create(root.get());
     std::shared_ptr<Handler> handler = Handler::create(filter.get());
@@ -372,7 +371,7 @@ TEST(EventDispatcher, test_pass_filter_events)
 
 TEST(EventDispatcher, test_filter_events_from_filter)
 {
-    TestModule test;
+    Application test;
     ObjectSharedPtr root = Object::create();
     std::shared_ptr<Filter> filter1 = Filter::create(root.get());
     std::shared_ptr<Filter> filter2 = Filter::create(filter1.get());
@@ -390,7 +389,7 @@ TEST(EventDispatcher, test_filter_events_from_filter)
 
 TEST(EventLoop, test_loop_in_loop)
 {
-    TestModule test;
+    Application test;
     auto object = Object::create();
     auto handler = QuitHandler::create(object.get());
 

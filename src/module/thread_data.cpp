@@ -39,8 +39,6 @@ ThreadData::ThreadData()
     {
         mainThreadData = this;
     }
-
-    m_eventDispatcher = EventDispatcher::create(mainThreadData == this);
 }
 
 ThreadData::~ThreadData()
@@ -55,6 +53,7 @@ ThreadData::~ThreadData()
 ThreadDataSharedPtr ThreadData::create()
 {
     ThreadDataSharedPtr threadData(new ThreadData);
+    threadData->m_eventDispatcher = EventDispatcher::create(*threadData, mainThreadData == threadData.get());
     return threadData;
 }
 
@@ -65,6 +64,11 @@ ThreadDataSharedPtr ThreadData::thisThreadData()
             : nullptr;
 }
 
+ThreadDataSharedPtr ThreadData::mainThread()
+{
+    return mainThreadData ? mainThreadData->shared_from_this() : nullptr;
+}
+
 EventDispatcherSharedPtr ThreadData::eventDispatcher() const
 {
     return m_eventDispatcher;
@@ -72,11 +76,7 @@ EventDispatcherSharedPtr ThreadData::eventDispatcher() const
 
 EventLoopPtr ThreadData::eventLoop() const
 {
-    if (!m_eventDispatcher)
-    {
-        return nullptr;
-    }
-    return m_eventDispatcher->getEventLoop();
+    return m_eventLoopStack.empty() ? nullptr : m_eventLoopStack.top();
 }
 
 int ThreadData::exitCode() const
@@ -91,7 +91,7 @@ void ThreadData::setExitCode(int code)
 
 ThreadLoopSharedPtr ThreadData::thread() const
 {
-    return m_thread.lock();
+    return m_thread;
 }
 
 }

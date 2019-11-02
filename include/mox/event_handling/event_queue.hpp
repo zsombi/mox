@@ -29,9 +29,9 @@ namespace mox
 {
 
 template <typename EventClass, typename... Arguments>
-auto make_event(Arguments... arguments)
+auto make_event(Arguments&&... arguments)
 {
-    return std::make_unique<EventClass>(arguments...);
+    return std::make_unique<EventClass>(std::forward<Arguments>(arguments)...);
 }
 
 struct EventQueueComparator

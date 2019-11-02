@@ -53,23 +53,40 @@ public:
         /// The thread is stopped.
         Stopped
     };
-    /// Destructor.
-    ~ThreadLoop() override;
 
     /// Return the status of the thread loop.
     Status getStatus() const;
 
-    /// Starts the thread.
-    ThreadLoop& start();
+    /// Starts the thread. If the thread object has no parent set, the thread is started as detached.
+    /// \param detached If set to \e true, the thread starts detached. Otherwise starts as joinable.
+    /// If the thread object is a parentless object, this argument is ingored.
+    virtual void start(bool detached = false);
 
     /// Exit a running thread. The thread's loop is stopped and the exit code is passed.
+    /// You can call this method both from within and or from outside of the thread.
     /// \param exitCode The exit code of the thread.
     void exit(int exitCode = 0);
+
+    /// Joins the thread. The call completes when the thread is finished. If the thread
+    /// is detached, and \a force is \e false, the call returns immediately without waiting
+    /// for the thread completion. You must call this function from outside of the running
+    /// thread this thread object handles. Calling this method from within the running thread
+    /// has no effect, and return \e false.
+    /// \param force If true, the call waits even if the thread is detached.
+    /// \return If the join succeeded, returns \e true. If the join is called from within
+    /// the running thread, or if the thread is detached, and you call join not forced,
+    /// return \e false.
+    bool join(bool force = true);
+
+    /// Returns the running state of the thread.
+    /// \return If the thread is running, returns \e true, otherwise \e false.
+    bool isRunning() const;
 
     /// Exit a running thread, and blocks the current thread till the other thread is completed.
     /// You must call the method from outside of the thread you want to exit.
     /// \param exitCode The exit code.
-    void exitAndJoin(int exitCode = 0);
+    /// \return If the operation succeeds, returns \e true, otherwise \e false.
+    bool exitAndJoin(int exitCode = 0);
 
     /// Creates a thread object. You can start the thread by calling start() method.
     /// \param parent The parent object to which this thread is parented, nullptr if the thread
@@ -80,14 +97,6 @@ public:
     /// Returns the current thread's object.
     /// \return The thread object.
     static ThreadLoopSharedPtr thisThread();
-
-    /// Return the thread's handler. You can use this to join the thread, to detach the thread,
-    /// or to perform additional tweaks on the thread.
-    /// \return The thread handler.
-    std::thread& handler() const
-    {
-        return m_thread;
-    }
 
     /// \name Metadata
     /// \{
@@ -111,19 +120,19 @@ protected:
     void registerModule() override;
 
     /// Runs the thread loop.
-    virtual void run();
+    virtual int run();
 
     /// Override Object::moveToThread() to guard moving objects parented to this thread object
     /// to other thread.
     Object::VisitResult moveToThread(ThreadDataSharedPtr threadData) override;
 
+    atomic<Status> m_status = Status::Inactive;
+    mutable std::thread m_thread;
+
 private:
     void moveToThread();
-
+    void quitHandler(Event& event);
     void threadMain(std::promise<void> notifier);
-
-    atomic<Status> m_status;
-    mutable std::thread m_thread;
 };
 
 }

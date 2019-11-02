@@ -144,28 +144,128 @@ using std::atomic;
 using atomic_bool = std::atomic_bool;
 using atomic_int32_t = std::atomic_int32_t;
 using std::lock_guard;
-using ObjectLock = std::mutex;
+//using ObjectLock = std::mutex;
+
+class ObjectLock
+{
+    mutable std::mutex m_mutex;
+    atomic<bool> m_isLocked = {false};
+public:
+    explicit ObjectLock() = default;
+    virtual ~ObjectLock()
+    {
+        FATAL(!m_isLocked.load(), "Destroying unlocked object!")
+    }
+
+    void lock()
+    {
+        m_mutex.lock();
+        m_isLocked.store(true);
+    }
+
+    void unlock()
+    {
+        m_mutex.unlock();
+        m_isLocked.store(false);
+    }
+
+    bool try_lock()
+    {
+        auto result = m_mutex.try_lock();
+        if (result)
+        {
+            m_isLocked.store(result);
+        }
+        return result;
+    }
+};
 
 #endif // MOX_SINGLE_THREADED
 
-/// The template unlocks the lock passed as argument on construction, and relocks
-/// it on destruction.
-template<typename LockType>
+template <typename LockType>
+class SharedLock
+{
+    LockType& m_sharedLock;
+    DISABLE_MOVE(SharedLock)
+
+public:
+    explicit SharedLock(LockType& sharedLock)
+        : m_sharedLock(sharedLock)
+    {
+    }
+
+    explicit SharedLock(const SharedLock& other)
+        : m_sharedLock(other.m_sharedLock)
+    {
+    }
+
+    SharedLock& operator=(const SharedLock<LockType>& other)
+    {
+        m_sharedLock = other.m_sharedLock;
+        return *this;
+    }
+
+    void lock()
+    {
+        m_sharedLock.lock();
+    }
+    void unlock()
+    {
+        m_sharedLock.unlock();
+    }
+    bool try_lock()
+    {
+        return m_sharedLock.try_lock();
+    }
+};
+
+template <typename Type>
+struct RefCounter
+{
+    explicit RefCounter(Type& value)
+        : m_value(value)
+    {
+        ++m_value;
+    }
+    ~RefCounter()
+    {
+        --m_value;
+    }
+private:
+    Type& m_value;
+};
+
+
+template <typename LockType>
 class ScopeUnlock
 {
+    LockType& m_lock;
 public:
     explicit ScopeUnlock(LockType& lock)
         : m_lock(lock)
     {
         m_lock.unlock();
     }
-    ~ScopeUnlock()
+};
+/// The template unlocks the lock passed as argument on construction, and relocks
+/// it on destruction.
+template<typename LockType>
+class ScopeRelock
+{
+public:
+    explicit ScopeRelock(LockType& lock)
+        : m_lock(lock)
+    {
+        m_lock.unlock();
+    }
+
+    ~ScopeRelock()
     {
         m_lock.lock();
     }
 
 private:
-    DISABLE_COPY(ScopeUnlock)
+    DISABLE_COPY(ScopeRelock)
     LockType&  m_lock;
 };
 

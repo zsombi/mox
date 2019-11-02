@@ -23,6 +23,8 @@
 #include <mox/utils/locks.hpp>
 #include <mox/event_handling/event_queue.hpp>
 
+#include <stack>
+
 namespace mox
 {
 
@@ -46,6 +48,8 @@ public:
     static ThreadDataSharedPtr create();
     /// Returns the thread data of this thread.
     static ThreadDataSharedPtr thisThreadData();
+    /// Returns the main thread data.
+    static ThreadDataSharedPtr mainThread();
 
     /// Returns the event dispatcher of the thread, if any created.
     EventDispatcherSharedPtr eventDispatcher() const;
@@ -65,12 +69,14 @@ protected:
     /// Sets the exit code of the thread.
     void setExitCode(int code);
 
-    EventQueue m_eventQueue;
-    ThreadLoopWeakPtr m_thread;
-    EventDispatcherSharedPtr m_eventDispatcher;
+    mutable EventQueue m_eventQueue;
+    mutable std::stack<EventLoopPtr> m_eventLoopStack;
+    mutable ThreadLoopSharedPtr m_thread;
+    mutable EventDispatcherSharedPtr m_eventDispatcher;
     atomic<int> m_exitCode;
 
     friend class ThreadLoop;
+    friend class Application;
     friend class EventLoop;
     friend class PostEventSource;
     friend bool postEvent(EventPtr&&);

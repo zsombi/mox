@@ -29,20 +29,20 @@ namespace mox
 {
 
 template <typename Type>
-class LockableContainer
+class RefCountedCollection
 {
     std::vector<Type> m_container;
     int m_refCount = 0;
     bool(*m_compactingPredicate)(const Type&);
 
-    DISABLE_COPY(LockableContainer)
+    DISABLE_COPY(RefCountedCollection)
 
 public:
-    explicit LockableContainer(bool(*predicate)(const Type&))
+    explicit RefCountedCollection(bool(*predicate)(const Type&))
         : m_compactingPredicate(predicate)
     {
     }
-    ~LockableContainer()
+    ~RefCountedCollection()
     {
     }
 

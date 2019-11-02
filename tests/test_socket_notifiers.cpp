@@ -31,7 +31,7 @@ using namespace mox;
 
 TEST(SocketNotifier, test_stdout_write_watch)
 {
-    TestModule test;
+    Application test;
     SocketNotifierSharedPtr notifier = SocketNotifier::create(fileno(stdout), SocketNotifier::Modes::Write);
 
     bool notified = false;
@@ -49,6 +49,6 @@ TEST(SocketNotifier, test_stdout_write_watch)
         return false;
     };
     ThreadData::thisThreadData()->eventDispatcher()->addIdleTask(idle);
-    ThreadData::thisThreadData()->eventDispatcher()->processEvents();
+    test.run();
     EXPECT_TRUE(notified);
 }

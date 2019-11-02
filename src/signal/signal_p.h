@@ -32,7 +32,7 @@ constexpr size_t INVALID_SIGNAL = std::numeric_limits<size_t>::max();
 template <typename DerivedConnectionType>
 class ConnectionPrivates : public Signal::Connection
 {
-    DerivedConnectionType* getThisObject()
+    DerivedConnectionType* getSelf()
     {
         return static_cast<DerivedConnectionType*>(this);
     }
@@ -128,7 +128,7 @@ public:
 
     bool isConnected() const override
     {
-        return m_receiverSignal && m_receiverSignal->isValid();
+        return m_receiverSignal && m_receiverSignal->id().isValid();
     }
     void activate(Callable::ArgumentPack& args) override;
     void reset() override;

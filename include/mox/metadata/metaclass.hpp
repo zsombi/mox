@@ -31,7 +31,7 @@ namespace mox
 {
 
 class MetaObject;
-struct AbstractSignalDescriptor;
+struct SignalDescriptorBase;
 
 /// MetaClass represents the type reflection or metadata of a managed structure or class. The metadata consists
 /// of factory functions, methods, properties and signals.
@@ -61,8 +61,8 @@ public:
         MetaClass& m_ownerClass;
         std::string m_name;
 
-        Method(Method const&) = delete;
-        Method(Method&&) = delete;
+        DISABLE_COPY(Method)
+        DISABLE_MOVE(Method)
     };
 
     /// Meta signals are links to the signal descriptors of a class. They expose metainformation to the
@@ -71,21 +71,21 @@ public:
     {
     public:
         /// Constructs a metasignal from a \a descriptor witha  given \a name, and attaches it to the \a metaClass.
-        explicit Signal(MetaClass& metaClass, const AbstractSignalDescriptor& descriptor, std::string_view name);
+        explicit Signal(MetaClass& metaClass, const SignalDescriptorBase& descriptor, std::string_view name);
 
         /// Returns the name of the metasignal.
         /// \return The name of the metasignal.
         std::string name() const;
 
         /// Returns the descriptor of the metasignal.
-        const AbstractSignalDescriptor& descriptor() const;
+        const SignalDescriptorBase& descriptor() const;
 
         /// Tests whether this signal is invocable with the given \a arguments.
         bool isInvocableWith(const VariantDescriptorContainer& arguments) const;
 
     private:
         MetaClass& m_ownerClass;
-        const AbstractSignalDescriptor& m_descriptor;
+        const SignalDescriptorBase& m_descriptor;
         std::string m_name;
 
         Signal(Signal const&) = delete;

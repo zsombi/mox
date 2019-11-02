@@ -101,6 +101,12 @@ public:
     template <typename Function>
     Callable(Function fn);
 
+    /// Move constructor.
+    Callable(Callable&& other);
+
+    /// Move operator.
+    Callable& operator=(Callable&&);
+
     /// Returns the type of the callable.
     /// \return The type of the callable.
     /// \see Type.
@@ -162,6 +168,9 @@ public:
     /// Resets the callable.
     void reset();
 
+    /// Swaps two callables.
+    void swap(Callable& other);
+
 private:
     InvokerFunction m_invoker;
     VariantDescriptor m_ret;
@@ -170,6 +179,8 @@ private:
     Metatype m_classType = Metatype::Invalid;
     FunctionType m_type = FunctionType::Invalid;
     bool m_isConst = false;
+
+    DISABLE_COPY(Callable)
 };
 
 } // namespace mox

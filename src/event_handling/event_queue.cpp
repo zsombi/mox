@@ -70,7 +70,8 @@ void EventQueue::process(const EventDispatcherFunction& dispatcher)
         EventPtr event(std::move(c.front()));
         pop();
 
-        ScopeUnlock relock(*this);
+        ScopeRelock relock(*this);
+        TRACE("Processing event: " << int(event->type()))
         dispatcher(*event);
     }
 }

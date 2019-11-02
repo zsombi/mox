@@ -62,6 +62,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/module.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/thread_data.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/thread_loop.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/application.hpp
 
     # Mox core
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/mox_module.hpp
@@ -98,6 +99,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/module/modules.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/module/thread_data.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/module/thread_loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/module/application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mox_module.cpp
     )
 

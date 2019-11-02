@@ -37,6 +37,7 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 enum class EventType : int32_t
 {
     Base,
+    Quit,
     DeferredSignal,
     UserType = 100
 };
@@ -92,10 +93,23 @@ private:
     bool m_isHandled = false;
 };
 
+class MOX_API QuitEvent : public Event
+{
+    DISABLE_COPY(QuitEvent)
+    int m_exitCode = 0;
+
+public:
+    explicit QuitEvent(ObjectSharedPtr target, int exitCode = 0);
+
+    int getExitCode() const;
+};
+
 class MOX_API DeferredSignalEvent : public Event
 {
+    DISABLE_COPY(DeferredSignalEvent)
     Signal::ConnectionSharedPtr m_connection;
     Callable::ArgumentPack m_arguments;
+
 public:
     explicit DeferredSignalEvent(ObjectSharedPtr target, Signal::ConnectionSharedPtr connection, const Callable::ArgumentPack& args);
 

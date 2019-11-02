@@ -98,8 +98,9 @@ static CFStringRef runLoopMode(NSDictionary *dictionary)
 namespace mox
 {
 
-CFEventDispatcher::CFEventDispatcher()
-    : runLoopActivitySource(this, &CFEventDispatcher::processRunLoopActivity, kCFRunLoopAllActivities)
+CFEventDispatcher::CFEventDispatcher(ThreadData& threadData)
+    : EventDispatcher(threadData)
+    , runLoopActivitySource(this, &CFEventDispatcher::processRunLoopActivity, kCFRunLoopAllActivities)
     , runLoop(CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent()))
     , modeTracker([[RunLoopModeTracker alloc] init])
 {
@@ -122,7 +123,6 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
         case kCFRunLoopEntry:
         {
             TRACE("Entering runloop")
-            setState(EventDispatchState::Running);
             break;
         }
         case kCFRunLoopBeforeTimers:
@@ -148,21 +148,16 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
             {
                 scheduleIdleTasks();
             }
-            if (m_runOnce && getState() == EventDispatchState::Running && !runningTimerCount())
+            if (m_runOnce && !runningTimerCount())
             {
                 TRACE("runOnce invoked")
                 stop();
-            }
-            else
-            {
-                setState(EventDispatchState::Suspended);
             }
             break;
         }
         case kCFRunLoopAfterWaiting:
         {
             TRACE("After waiting, resumed")
-            setState(EventDispatchState::Running);
             break;
         }
         case kCFRunLoopExit:
@@ -171,7 +166,6 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
             {
                 TRACE("Exiting")
                 forEachSource<AbstractEventSource>(&AbstractEventSource::shutDown);
-                setState(EventDispatchState::Stopped);
             }
             break;
         }
@@ -185,13 +179,19 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
 /******************************************************************************
  *
  */
-EventDispatcherSharedPtr Adaptation::createEventDispatcher(bool)
+EventDispatcherSharedPtr Adaptation::createEventDispatcher(ThreadData& threadData, bool)
 {
-    return make_polymorphic_shared<EventDispatcher, CFEventDispatcher>();
+    return make_polymorphic_shared<EventDispatcher, CFEventDispatcher>(threadData);
+}
+
+bool CFEventDispatcher::isProcessingEvents() const
+{
+    return m_isRunning;
 }
 
 void CFEventDispatcher::processEvents(ProcessFlags flags)
 {
+    FlagScope<true> toggleRunning(m_isRunning);
     if (flags == ProcessFlags::RunOnce)
     {
         TRACE("Entering runOnce()")
@@ -222,39 +222,8 @@ void CFEventDispatcher::runOnce()
 
 void CFEventDispatcher::stop()
 {
-    switch (getState())
-    {
-        case EventDispatchState::Suspended:
-        {
-            wakeUp();
-            TRACE("Wake up and stop")
-            FALLTHROUGH;
-        }
-        case EventDispatchState::Running:
-        {
-            TRACE("Stop dispatcher")
-            setState(EventDispatchState::Exiting);
-            CFRunLoopStop(runLoop);
-            break;
-        }
-        case EventDispatchState::Inactive:
-        {
-            if (!getEventLoop())
-            {
-                // The dispatch was run w/o event loop, so there's nothing to track the state from.
-                // Simply stop the loop, and exit.
-                TRACE("No event loop set, perform cold stop.")
-                CFRunLoopStop(runLoop);
-                break;
-            }
-            FALLTHROUGH;
-        }
-        default:
-        {
-            TRACE("Cannot stop the loop from this state! " << int(getState()))
-            break;
-        }
-    }
+    TRACE("Stop dispatcher")
+    CFRunLoopStop(runLoop);
 }
 
 void CFEventDispatcher::wakeUp()

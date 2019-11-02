@@ -28,7 +28,7 @@ namespace mox
 static GSourceFuncs glibTimerSourceFuncs =
 {
     GTimerSource::Source::prepare,
-    GTimerSource::Source::check,
+    nullptr,
     GTimerSource::Source::dispatch,
     nullptr,
     nullptr,
@@ -51,19 +51,12 @@ gboolean GTimerSource::Source::prepare(GSource *src, gint *timeout)
     {
         nextTimeout = 0;
     }
-    if (timeout)
-    {
-        *timeout = (nextTimeout > G_MAXINT)
-                ? G_MAXINT
-                : static_cast<gint>(nextTimeout);
-        TRACE("Timer " << source->timer->id() << " to kick in " << nextTimeout << " msecs");
-    }
-    return (nextTimeout == 0);
-}
+    *timeout = (nextTimeout > G_MAXINT)
+            ? G_MAXINT
+            : static_cast<gint>(nextTimeout);
+    TRACE("Timer " << source->timer->id() << " to kick in " << nextTimeout << " msecs");
 
-gboolean GTimerSource::Source::check(GSource *src)
-{
-    return prepare(src, nullptr);
+    return (nextTimeout == 0);
 }
 
 gboolean GTimerSource::Source::dispatch(GSource *src, GSourceFunc, gpointer)

@@ -21,57 +21,70 @@
 
 #include <mox/metadata/callable.hpp>
 #include <mox/utils/locks.hpp>
+#include <mox/signal/signal.hpp>
 
 #include <vector>
 
 namespace mox
 {
 
-struct AbstractSignalDescriptor;
-class Signal;
-
 /// The class is the counterpart of the Mox signals, it holds all the signals declared on a class.
-/// Each class that declares signals must be derived from SignalHostNotion class.
-class MOX_API SignalHostNotion
+/// Each class that declares signals must be derived from SignalHostConcept class.
+class MOX_API SignalHostConcept
 {
 public:
     /// Destructor.
-    virtual ~SignalHostNotion();
+    virtual ~SignalHostConcept();
 
     /// Registers the \a signal to the signal host.
     /// \param signal The signal to register.
     /// \return The signal ID of the registered signal.
-    size_t registerSignal(Signal& signal);
+    size_t registerSignal(Signal::SignalId& signal);
 
     /// Removes a signal from the signal host register.
     /// \param signal The signal to remove from the register.
-    void removeSignal(Signal& signal);
-
-    /// Activates the signal identified by the \a descriptor, passing the arguments packed in
-    /// \a args.
-    /// \return The number of activation times, or -1 if no signal was identified on the signal host.
-    int activate(const AbstractSignalDescriptor& descriptor, Callable::ArgumentPack& args);
+    void removeSignal(Signal::SignalId& signal);
 
 protected:
     /// Constructor.
-    explicit SignalHostNotion(ObjectLock& lock);
+    explicit SignalHostConcept();
 
-    /// Signal host lock, guards the signal register.
-    ObjectLock& m_lock;
     /// The signal register holding all declared signals on a signal host.
-    std::vector<const Signal*> m_signals;
+    std::vector<const Signal::SignalId*> m_signals;
 };
 
-/// Template class adapting the SignalHostNotion over a DerivedType.
+/// Template class adapting the SignalHostConcept over a DerivedType.
 template <typename LockType>
-class SignalHost : public LockType, public SignalHostNotion
+class SignalHost : public LockType, public SignalHostConcept
 {
-public:
-    explicit SignalHost()
-        : SignalHostNotion(static_cast<LockType&>(*this))
+    LockType& getSelf()
     {
+        return static_cast<LockType&>(*this);
     }
+
+public:
+    /// Activates the signal identified by the \a descriptor, passing the arguments packed in \a args.
+    /// \return The number of activation times, or -1 if no signal was identified on the signal host.
+    int activate(const SignalDescriptorBase& descriptor, Callable::ArgumentPack& args);
 };
+
+
+template <typename LockType>
+int SignalHost<LockType>::activate(const SignalDescriptorBase& descriptor, Callable::ArgumentPack& args)
+{
+    LockType& self = getSelf();
+    lock_guard{self};
+    for (auto& signal : m_signals)
+    {
+        if (signal->isA(descriptor))
+        {
+            ScopeUnlock unlock(self);
+            return signal->getSignal().activate(args);
+        }
+    }
+
+    return -1;
+}
 
 } // namespace mox
 

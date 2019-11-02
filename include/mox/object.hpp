@@ -110,6 +110,9 @@ protected:
     /// Constructor.
     explicit Object();
 
+    /// Removes all child objects of this Object.
+    void removeChildren();
+
     /// Visitor function, moves this object and its child objects to the given thread.
     /// \param threadData The thread data where this object is moved.
     /// \return The visit result.
@@ -133,7 +136,7 @@ private:
 
     Object* m_parent = nullptr;
     ChildContainer m_children;
-    ThreadDataWeakPtr m_threadData;
+    mutable ThreadDataSharedPtr m_threadData;
     friend class ThreadLoop;
 };
 

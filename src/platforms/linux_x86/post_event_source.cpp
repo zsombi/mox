@@ -29,20 +29,13 @@ gboolean GPostEventSource::Source::prepare(GSource* src, gint *timeout)
 {
     Source* source = reinterpret_cast<Source*>(src);
 
-    // OPT: shall the queue content be checked to see if the source can be called?
-    bool readyToDispatch = source->eventSource->wakeUpCalled.load();
+    bool readyToDispatch = source->eventSource->wakeUpCalled.load() && !source->eventSource->m_eventQueue.empty();
     // If there's no event posted, wait for a second to poll again.
     *timeout = readyToDispatch ? -1 : 5000;
 
     TRACE("posted event source ready " << readyToDispatch);
 
     return readyToDispatch;
-}
-
-gboolean GPostEventSource::Source::check(GSource* source)
-{
-    gint dummy;
-    return prepare(source, &dummy);
 }
 
 gboolean GPostEventSource::Source::dispatch(GSource* src, GSourceFunc, gpointer)
@@ -59,7 +52,7 @@ gboolean GPostEventSource::Source::dispatch(GSource* src, GSourceFunc, gpointer)
 static GSourceFuncs postEventSourceFuncs =
 {
     GPostEventSource::Source::prepare,
-    GPostEventSource::Source::check,
+    nullptr,
     GPostEventSource::Source::dispatch,
     nullptr,
     nullptr,

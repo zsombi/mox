@@ -183,7 +183,7 @@ public:
 
     void activate();
 
-    LockableContainer<TimerRecordPtr> timers;
+    RefCountedCollection<TimerRecordPtr> timers;
 };
 
 class CFPostEventSource : public PostEventSource
@@ -217,7 +217,7 @@ public:
         CFSocketNotifierSource& socketSource;
         CFSocketRef cfSocket = nullptr;
         CFRunLoopSourceRef cfSource = nullptr;
-        LockableContainer<SocketNotifierSharedPtr> notifiers;
+        RefCountedCollection<SocketNotifierSharedPtr> notifiers;
         SocketNotifier::Handler handler = -1;
         int readNotifierCount = 0;
         int writeNotifierCount = 0;
@@ -238,9 +238,10 @@ public:
 class CFEventDispatcher : public EventDispatcher
 {
 public:
-    explicit CFEventDispatcher();
+    explicit CFEventDispatcher(ThreadData& threadData);
     ~CFEventDispatcher() override;
 
+    bool isProcessingEvents() const override;
     void processEvents(ProcessFlags flags) override;
     void stop() override;
     void wakeUp() override;
@@ -256,6 +257,7 @@ public:
     RunLoopModeTracker *modeTracker = nullptr;
     CFStringRef currentMode = nullptr;
     bool m_runOnce = true;
+    bool m_isRunning = false;
 };
 
 }

@@ -29,12 +29,12 @@
 
 #include <functional>
 #include <queue>
-#include <stack>
 #include <type_traits>
 
 namespace mox
 {
 
+class ThreadData;
 class Timer;
 class SocketNotifier;
 class EventLoop;
@@ -63,8 +63,9 @@ public:
     using IdleFunction = std::function<bool()>;
 
     /// Creates a dispatcher for the current thread, with the default event sources.
+    /// \param threadData The ThreadData instance to own the event dispatcher.
     /// \return The created event dispatcher instance.
-    static EventDispatcherSharedPtr create(bool main);
+    static EventDispatcherSharedPtr create(ThreadData& threadData, bool main);
     /// Destructor. Destroys the dispatcher.
     virtual ~EventDispatcher();
 
@@ -101,15 +102,8 @@ public:
         }
     }
 
-    /// Returns the state of the dispatching. If there is no event loop set, the method
-    /// returns EventDispatchState::Inactive.
-    EventDispatchState getState() const;
-
-    /// Returns the current event loop of the dispatching.
-    /// \return The current EventLoop instance, nullptr if no event loop is set.
-    /// \note Event dispatching without an EventLoop will not process Mox events.
-    EventLoopPtr getEventLoop() const;
-
+    /// Checks whether the event dispatcher is processing the events.
+    virtual bool isProcessingEvents() const = 0;
     /// Process the events from the event sources.
     /// \see ProcessFlags
     virtual void processEvents(ProcessFlags flags = ProcessFlags::ProcessAll) = 0;
@@ -128,16 +122,7 @@ public:
 
 protected:
     /// Constructor.
-    explicit EventDispatcher();
-
-    /// Set the event \a loop instance as the active event loop.
-    void pushEventLoop(EventLoop& loop);
-    /// Removes the topmost event loop and restores the previous event loop.
-    void popEventLoop();
-
-    /// Sets the state of teh current EventLoop. Calling this method has no effect if the
-    /// dispatcher has no event loop instance set.
-    void setState(EventDispatchState newState);
+    explicit EventDispatcher(ThreadData& threadData);
 
     /// Returns the active post-event source.
     PostEventSourcePtr getActivePostEventSource();
@@ -148,8 +133,8 @@ protected:
     /// Schedule idle tasks.
     virtual void scheduleIdleTasks() = 0;
 
-    /// The event loop stack.
-    std::stack<EventLoopPtr> m_eventLoopStack;
+    /// The address of the ThreadData owning this event dispatcher.
+    ThreadData& m_threadData;
     /// Registered event sources.
     std::vector<AbstractEventSourceSharedPtr> m_eventSources;
     /// Idle task queue.
@@ -157,6 +142,7 @@ protected:
 
 private:
 
+    friend class PostEventSource;
     friend class EventLoop;
 };
 

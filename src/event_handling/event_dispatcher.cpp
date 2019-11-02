@@ -34,22 +34,6 @@ namespace mox
 /******************************************************************************
  *
  */
-EventDispatchState EventDispatcher::getState() const
-{
-    return m_eventLoopStack.empty()
-            ? EventDispatchState::Inactive
-            : getEventLoop()->state();
-}
-
-void EventDispatcher::setState(EventDispatchState newState)
-{
-    EventLoopPtr loop = getEventLoop();
-    if (loop)
-    {
-        loop->setState(newState);
-    }
-}
-
 bool EventDispatcher::runIdleTasks()
 {
     decltype (m_idleTasks) newQueue;
@@ -73,30 +57,14 @@ bool EventDispatcher::runIdleTasks()
     return !m_idleTasks.empty();
 }
 
-EventDispatcher::EventDispatcher()
+EventDispatcher::EventDispatcher(ThreadData& threadData)
+    : m_threadData(threadData)
 {
 }
 
 EventDispatcher::~EventDispatcher()
 {
     TRACE("EventDispatcher died")
-}
-
-void EventDispatcher::pushEventLoop(EventLoop& loop)
-{
-    m_eventLoopStack.push(&loop);
-    TRACE("Push new event loop, count now is " << m_eventLoopStack.size())
-}
-
-void EventDispatcher::popEventLoop()
-{
-    m_eventLoopStack.pop();
-    TRACE("Popped last event loop, count now is " << m_eventLoopStack.size())
-}
-
-EventLoopPtr EventDispatcher::getEventLoop() const
-{
-    return m_eventLoopStack.empty() ? nullptr : m_eventLoopStack.top();
 }
 
 PostEventSourcePtr EventDispatcher::getActivePostEventSource()
@@ -114,17 +82,17 @@ PostEventSourcePtr EventDispatcher::getActivePostEventSource()
     return std::static_pointer_cast<PostEventSource>(*it);
 }
 
-EventDispatcherSharedPtr EventDispatcher::create(bool main)
+EventDispatcherSharedPtr EventDispatcher::create(ThreadData& threadData, bool main)
 {
-    EventDispatcherSharedPtr evLoop = Adaptation::createEventDispatcher(main);
+    auto evLoop = Adaptation::createEventDispatcher(threadData, main);
 
-    TimerSourcePtr timerSource = Adaptation::createTimerSource("default_timer");
+    auto timerSource = Adaptation::createTimerSource("default_timer");
     evLoop->addEventSource(timerSource);
 
-    PostEventSourcePtr eventSource = Adaptation::createPostEventSource("default_post_event");
+    auto eventSource = Adaptation::createPostEventSource("default_post_event");
     evLoop->addEventSource(eventSource);
 
-    SocketNotifierSourcePtr socketSource = Adaptation::createSocketNotifierSource("default_socket_notifier");
+    auto socketSource = Adaptation::createSocketNotifierSource("default_socket_notifier");
     evLoop->addEventSource(socketSource);
 
     return evLoop;

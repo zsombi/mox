@@ -65,7 +65,7 @@ Callable::ArgumentPack& Callable::ArgumentPack::add(const Type& value)
 template <typename Type>
 Callable::ArgumentPack& Callable::ArgumentPack::setInstance(Type value)
 {
-    insert(begin(), Variant(value));
+    emplace(begin(), Variant(value));
     return *this;
 }
 

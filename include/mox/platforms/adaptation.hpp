@@ -30,7 +30,7 @@ class MOX_API Adaptation
 {
     explicit Adaptation() = default;
 public:
-    static EventDispatcherSharedPtr createEventDispatcher(bool main);
+    static EventDispatcherSharedPtr createEventDispatcher(ThreadData& threadData, bool main);
     static TimerSourcePtr createTimerSource(std::string_view name);
     static PostEventSourcePtr createPostEventSource(std::string_view name);
     static SocketNotifierSourcePtr createSocketNotifierSource(std::string_view name);

@@ -35,7 +35,7 @@ Event::Event(EventType type, ObjectSharedPtr target, Priority priority)
 
 ObjectSharedPtr Event::target() const
 {
-    return m_target.expired() ? nullptr : m_target.lock();
+    return m_target.lock();
 }
 
 EventType Event::type() const
@@ -72,6 +72,20 @@ EventType Event::registerNewType()
 {
     static EventType userType = EventType::UserType;
     return ++userType;
+}
+
+/******************************************************************************
+ * QuitEvent
+ */
+QuitEvent::QuitEvent(ObjectSharedPtr target, int exitCode)
+    : Event(EventType::Quit, target, Priority::Normal)
+    , m_exitCode(exitCode)
+{
+}
+
+int QuitEvent::getExitCode() const
+{
+    return m_exitCode;
 }
 
 /******************************************************************************

@@ -66,6 +66,9 @@ struct MOX_API VariantDescriptor
 
     /// Comparison operator, compares an \a other variant descriptor with this.
     bool operator==(const VariantDescriptor& other) const;
+
+    /// Swaps variant descriptors.
+    void swap(VariantDescriptor& other);
 };
 
 /// Defines a container with variant descriptors.

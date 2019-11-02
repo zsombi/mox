@@ -21,6 +21,8 @@
 #include <mox/metadata/variant.hpp>
 #include <mox/signal/signal.hpp>
 
+#include <algorithm>
+
 namespace mox
 {
 
@@ -115,6 +117,13 @@ bool VariantDescriptor::operator==(const VariantDescriptor& other) const
     return (other.type == type) &&
             other.isReference == isReference &&
             other.isConst == isConst;
+}
+
+void VariantDescriptor::swap(VariantDescriptor& other)
+{
+    std::swap(const_cast<Metatype&>(type), const_cast<Metatype&>(other.type));
+    std::swap(const_cast<bool&>(isReference), const_cast<bool&>(other.isReference));
+    std::swap(const_cast<bool&>(isConst), const_cast<bool&>(other.isConst));
 }
 
 bool VariantDescriptorContainer::isInvocableWith(const VariantDescriptorContainer &other) const
