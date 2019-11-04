@@ -24,8 +24,6 @@
 namespace mox
 {
 
-constexpr size_t INVALID_SIGNAL = std::numeric_limits<size_t>::max();
-
 /******************************************************************************
  * Connect concept
  */

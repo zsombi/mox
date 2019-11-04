@@ -91,6 +91,12 @@ std::shared_ptr<Type> make_polymorphic_shared(Args&&... args)
     return std::static_pointer_cast<Type>(shared);
 }
 
+template <typename Type, typename Allocator, typename VType>
+void erase(std::vector<Type, Allocator>& v, const VType& value)
+{
+    v.erase(std::remove(v.begin(), v.end(), value), v.end());
+}
+
 /// Vector utility, removes the occurences for which the predicate gives affirmative result.
 template <typename Type, typename Allocator, typename Predicate>
 void erase_if(std::vector<Type, Allocator>& v, const Predicate& predicate)

@@ -154,8 +154,8 @@ const std::type_info* MetatypeDescriptor::rtti() const
 
 MetatypeConverter* MetatypeDescriptor::findConverterTo(Metatype target)
 {
-    ConverterMap::iterator i = m_converters.find(target);
-    if (i == m_converters.end())
+    auto i = m_converters.find(target);
+    if (i == m_converters.cend())
         return nullptr;
     else
         return i->second.get();

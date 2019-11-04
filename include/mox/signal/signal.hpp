@@ -85,11 +85,9 @@ public:
         /// The signal host address.
         SignalHostConcept& m_host;
         /// The signal.
-        Signal& m_signal;
+        Signal* m_signal = nullptr;
         /// The signal descriptor.
         const SignalDescriptorBase& m_descriptor;
-        /// The index of the signal within the host.
-        size_t m_index = std::numeric_limits<size_t>::max();
 
     public:
         /// Constructor.
@@ -97,16 +95,8 @@ public:
         /// Destructor.
         ~SignalId();
 
-        /// Returns the index of the signal within the host.
-        operator size_t () const
-        {
-            return m_index;
-        }
-
-        Signal& getSignal() const
-        {
-            return m_signal;
-        }
+        /// Returns the owning signal.
+        Signal& getSignal() const;
 
         /// Returns the signal descriptor.
         const SignalDescriptorBase& descriptor() const

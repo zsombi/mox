@@ -121,7 +121,7 @@ MetatypeDescriptor& MetaData::getMetaType(Metatype type)
 {
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
     lock_guard locker(globalMetaData);
-    FATAL(static_cast<size_t>(type) < globalMetaData.metaTypes.size(), "Type not registered to be reflectable.");
+    FATAL(static_cast<size_t>(type) < globalMetaData.metaTypes.size(), "Type not registered to be reflectable.")
     return *globalMetaData.metaTypes[static_cast<size_t>(type)].get();
 }
 
@@ -131,11 +131,11 @@ void MetaData::addMetaClass(const MetaClass& metaClass)
     std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
 
     lock_guard locker(globalMetaData);
-    MetaClassContainer::const_iterator it = globalMetaData.metaClasses.find(name);
-    FATAL(it == globalMetaData.metaClasses.cend(), name + " MetaClass already registered!");
+    auto it = globalMetaData.metaClasses.find(name);
+    FATAL(it == globalMetaData.metaClasses.cend(), name + " MetaClass already registered!")
 
-    globalMetaData.metaClassRegister.insert(std::make_pair(metaClass.metaType(), &metaClass));
-    globalMetaData.metaClasses.insert(std::make_pair(name, &metaClass));
+    globalMetaData.metaClassRegister.insert({metaClass.metaType(), &metaClass});
+    globalMetaData.metaClasses.insert({name, &metaClass});
 
     TRACE("MetaClass added: " << name)
 }
@@ -150,15 +150,15 @@ void MetaData::removeMetaClass(const MetaClass& metaClass)
     std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
 
     lock_guard locker(globalMetaData);
-    MetaClassContainer::const_iterator it = globalMetaData.metaClasses.find(name);
+    auto it = globalMetaData.metaClasses.find(name);
     if (it != globalMetaData.metaClasses.cend())
     {
-        globalMetaData.metaClasses.erase(it);
+        globalMetaData.metaClasses.erase(it, it);
     }
-    MetaClassTypeRegister::const_iterator cit = globalMetaData.metaClassRegister.find(metaClass.metaType());
+    auto cit = globalMetaData.metaClassRegister.find(metaClass.metaType());
     if (cit != globalMetaData.metaClassRegister.cend())
     {
-        globalMetaData.metaClassRegister.erase(cit);
+        globalMetaData.metaClassRegister.erase(cit, cit);
     }
 
     TRACE("MetaClass " << name << " removed")
@@ -168,7 +168,7 @@ const MetaClass* MetaData::findMetaClass(std::string_view name)
 {
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
     lock_guard locker(globalMetaData);
-    MetaClassContainer::const_iterator it = globalMetaData.metaClasses.find(std::string(name));
+    auto it = globalMetaData.metaClasses.find(std::string(name));
     return it != globalMetaData.metaClasses.cend() ? it->second : nullptr;
 }
 
@@ -176,7 +176,7 @@ const MetaClass* MetaData::getMetaClass(Metatype metaType)
 {
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
     lock_guard locker(globalMetaData);
-    MetaClassTypeRegister::const_iterator it = globalMetaData.metaClassRegister.find(metaType);
+    auto it = globalMetaData.metaClassRegister.find(metaType);
     return it != globalMetaData.metaClassRegister.cend() ? it->second : nullptr;
 }
 

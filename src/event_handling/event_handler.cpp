@@ -79,7 +79,7 @@ EventHandlingProvider::TokenPtr EventHandlingProvider::addEventHandler(EventType
 {
     TokenPtr token = make_polymorphic_shared<Token, HandlerToken>(handler);
 
-    auto it = m_handlers.find(type);
+    Container::Iterator it = m_handlers.find(type);
     if (it == m_handlers.end())
     {
         TokenList list;

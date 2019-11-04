@@ -24,7 +24,6 @@
 
 #include <functional>
 #include <list>
-#include <unordered_map>
 
 namespace mox
 {
@@ -87,7 +86,7 @@ protected:
 
 private:
     using TokenList = std::list<TokenPtr>;
-    using Container = std::unordered_map<EventType, TokenList>;
+    using Container = FlatMap<EventType, TokenList>;
 
     Container m_handlers;
     Container m_filters;

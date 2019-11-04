@@ -20,9 +20,9 @@
 #define METADATA_P_H
 
 #include <vector>
-#include <unordered_map>
 #include <string>
 #include <functional>
+#include <mox/utils/flat_map.hpp>
 #include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/metadata/variant.hpp>
@@ -47,8 +47,8 @@ struct MetaData : public ObjectLock
 
     typedef std::vector<std::unique_ptr<MetatypeDescriptor>> MetaTypeContainer;
     typedef std::vector<std::pair<const std::type_info*, Metatype>> SynonymContainer;
-    typedef std::unordered_map<Metatype, const MetaClass*> MetaClassTypeRegister;
-    typedef std::unordered_map<std::string, const MetaClass*> MetaClassContainer;
+    typedef FlatMap<Metatype, const MetaClass*> MetaClassTypeRegister;
+    typedef FlatMap<std::string, const MetaClass*> MetaClassContainer;
 
     MetaTypeContainer metaTypes;
     SynonymContainer synonymTypes;

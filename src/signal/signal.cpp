@@ -51,21 +51,26 @@ bool SignalDescriptorBase::operator==(const SignalDescriptorBase& other) const
 Signal::SignalId::SignalId(SignalHostConcept& host, Signal& signal, const SignalDescriptorBase& descriptor)
     : SharedLock<ObjectLock>(signal)
     , m_host(host)
-    , m_signal(signal)
+    , m_signal(&signal)
     , m_descriptor(descriptor)
-    , m_index(m_host.registerSignal(*this))
 {
+    m_host.registerSignal(*this);
 }
 
 Signal::SignalId::~SignalId()
 {
     m_host.removeSignal(*this);
-    m_index = INVALID_SIGNAL;
+}
+
+Signal& Signal::SignalId::getSignal() const
+{
+    FATAL(m_signal, "Invlid signal queried!")
+    return *m_signal;
 }
 
 bool Signal::SignalId::isValid() const
 {
-    return m_index != INVALID_SIGNAL;
+    return m_signal != nullptr;
 }
 
 bool Signal::SignalId::isA(const SignalDescriptorBase &descriptor) const
@@ -249,7 +254,7 @@ SignalHostConcept::~SignalHostConcept()
 size_t SignalHostConcept::registerSignal(Signal::SignalId& signal)
 {
     lock_guard lock(signal);
-    m_signals.push_back(&signal);
+    m_signals.insert(&signal);
     return m_signals.size() - 1;
 }
 
@@ -257,7 +262,7 @@ void SignalHostConcept::removeSignal(Signal::SignalId& signal)
 {
     lock_guard lock(signal);
     FATAL(signal.isValid(), "Signal already removed")
-    m_signals[signal] = nullptr;
+    m_signals.erase(&signal);
 }
 
 /******************************************************************************

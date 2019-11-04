@@ -24,6 +24,8 @@ include(gtest)
 set(SOURCES
     test_framework.h
     test_main.cpp
+    test_flatset.cpp
+    test_flatmap.cpp
     test_metatypes.cpp
     test_converters.cpp
     test_argument.cpp

@@ -24,7 +24,7 @@
 #include <functional>
 #include <typeindex>
 #include <typeinfo>
-#include <unordered_map>
+#include <mox/utils/flat_map.hpp>
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metatype.hpp>
 
@@ -93,7 +93,7 @@ private:
     /// MetatypeDescriptor constructor.
     explicit MetatypeDescriptor(std::string_view name, int id, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer);
 
-    typedef std::unordered_map<Metatype, MetatypeConverterPtr> ConverterMap;
+    typedef FlatMap<Metatype, MetatypeConverterPtr> ConverterMap;
 
     ConverterMap m_converters;
     char* m_name{nullptr};

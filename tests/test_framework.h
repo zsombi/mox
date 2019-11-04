@@ -20,7 +20,6 @@
 #define TEST_FRAMEWORK_H
 
 #include <gtest/gtest.h>
-#include <unordered_map>
 #include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/module/application.hpp>

@@ -23,7 +23,7 @@
 #include <mox/utils/locks.hpp>
 #include <mox/signal/signal.hpp>
 
-#include <vector>
+#include <mox/utils/flat_set.hpp>
 
 namespace mox
 {
@@ -46,11 +46,21 @@ public:
     void removeSignal(Signal::SignalId& signal);
 
 protected:
+    struct SignalComparator : std::binary_function<const Signal::SignalId*, const Signal::SignalId*, bool>
+    {
+        SignalComparator() = default;
+        bool operator()(const Signal::SignalId* const l, const Signal::SignalId* const r) const
+        {
+            return l->descriptor().uuid < r->descriptor().uuid;
+        }
+    };
+
+    using SignalCollection = FlatSet<const Signal::SignalId*, SignalComparator>;
     /// Constructor.
     explicit SignalHostConcept();
 
     /// The signal register holding all declared signals on a signal host.
-    std::vector<const Signal::SignalId*> m_signals;
+    SignalCollection m_signals;
 };
 
 /// Template class adapting the SignalHostConcept over a DerivedType.
@@ -74,13 +84,14 @@ int SignalHost<LockType>::activate(const SignalDescriptorBase& descriptor, Calla
 {
     LockType& self = getSelf();
     lock_guard{self};
-    for (auto& signal : m_signals)
+
+    auto comparator = [](const auto* const value, const auto& des) { return value->isA(des); };
+    auto spot = std::lower_bound(m_signals.begin(), m_signals.end(), descriptor, comparator);
+
+    if (spot != m_signals.end())
     {
-        if (signal->isA(descriptor))
-        {
-            ScopeUnlock unlock(self);
-            return signal->getSignal().activate(args);
-        }
+        ScopeUnlock{self};
+        return (*spot)->getSignal().activate(args);
     }
 
     return -1;

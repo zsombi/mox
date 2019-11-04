@@ -21,6 +21,7 @@
 
 #include <vector>
 #include <string_view>
+#include <optional>
 
 #include <mox/metadata/variant.hpp>
 #include <mox/metadata/callable.hpp>
