@@ -172,7 +172,6 @@ public:
 
     explicit CFTimerSource(std::string_view name)
         : TimerSource(name)
-        , timers([] (TimerRecordPtr const& timer) { return timer->timerHandler == nullptr; })
     {
     }
 
@@ -183,7 +182,15 @@ public:
 
     void activate();
 
-    RefCountedCollection<TimerRecordPtr> timers;
+    struct NullTimer
+    {
+        bool operator()(TimerRecordPtr const& timer) const
+        {
+            return timer->timerHandler == nullptr;
+        }
+    };
+
+    SharedVector<TimerRecordPtr, NullTimer> timers;
 };
 
 class CFPostEventSource : public PostEventSource
@@ -217,7 +224,7 @@ public:
         CFSocketNotifierSource& socketSource;
         CFSocketRef cfSocket = nullptr;
         CFRunLoopSourceRef cfSource = nullptr;
-        RefCountedCollection<SocketNotifierSharedPtr> notifiers;
+        SharedVector<SocketNotifierSharedPtr> notifiers;
         SocketNotifier::Handler handler = -1;
         int readNotifierCount = 0;
         int writeNotifierCount = 0;

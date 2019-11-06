@@ -123,9 +123,9 @@ FunctionConnection::FunctionConnection(Signal& signal, Callable&& callable)
     m_passConnectionObject = !m_slot.descriptors().empty() && m_slot.descriptors()[0].type == metaType<Signal::ConnectionSharedPtr>();
 }
 
-bool FunctionConnection::compare(const void *funcAddress) const
+bool FunctionConnection::compare(const Callable& callable) const
 {
-    return (m_slot.address() == funcAddress);
+    return m_slot == callable;
 }
 
 void FunctionConnection::activate(Callable::ArgumentPack& args)
@@ -149,9 +149,9 @@ MethodConnection::MethodConnection(Signal& signal, Variant receiver, Callable&& 
     m_connectionType = Type::ConnectedToMethod;
 }
 
-bool MethodConnection::compare(Variant receiver, const void *funcAddress) const
+bool MethodConnection::compare(Variant receiver, const Callable& callable) const
 {
-    return (m_receiver.metaType() == receiver.metaType()) && FunctionConnection::compare(funcAddress);
+    return (m_receiver.metaType() == receiver.metaType()) && FunctionConnection::compare(callable);
 }
 
 void MethodConnection::activate(Callable::ArgumentPack& args)
@@ -188,9 +188,9 @@ MetaMethodConnection::MetaMethodConnection(Signal& signal, Variant receiver, con
     m_passConnectionObject = !m_slot->descriptors().empty() && m_slot->descriptors()[0].type == metaType<Signal::ConnectionSharedPtr>();
 }
 
-bool MetaMethodConnection::compare(Variant receiver, const void *funcAddress) const
+bool MetaMethodConnection::compare(Variant receiver, const Callable& callable) const
 {
-    return (m_receiver.metaType() == receiver.metaType()) && (m_slot->address() == funcAddress);
+    return (m_receiver.metaType() == receiver.metaType()) && (*m_slot == callable);
 }
 
 void MetaMethodConnection::activate(Callable::ArgumentPack& args)
@@ -277,7 +277,7 @@ void Signal::addConnection(ConnectionSharedPtr connection)
 {
     FATAL(m_id.isValid(), "Invalid signal")
     lock_guard lock(*this);
-    m_connections.push_back(connection);
+    m_connections.append(connection);
 }
 
 void Signal::removeConnection(ConnectionSharedPtr connection)
@@ -290,7 +290,7 @@ void Signal::removeConnection(ConnectionSharedPtr connection)
     {
         return (conn == connection);
     };
-    auto index = m_connections.find(predicate);
+    auto index = m_connections.findIf(predicate);
     if (index)
     {
         m_connections[*index].reset();
@@ -352,7 +352,7 @@ bool Signal::disconnect(const Signal& signal)
         SignalConnectionSharedPtr signalConnection = std::dynamic_pointer_cast<SignalConnection>(connection);
         return (signalConnection && signalConnection->receiverSignal() == &signal);
     };
-    auto index = m_connections.find(predicate);
+    auto index = m_connections.findIf(predicate);
     if (index)
     {
         m_connections[*index]->reset();
@@ -363,13 +363,13 @@ bool Signal::disconnect(const Signal& signal)
     return false;
 }
 
-bool Signal::disconnectImpl(Variant receiver, const void* callableAddress)
+bool Signal::disconnectImpl(Variant receiver, const Callable& callable)
 {
     FATAL(m_id.isValid(), "Invalid signal")
     lock_guard lock(*this);
     lock_guard refConnections(m_connections);
 
-    auto predicate = [&receiver, callableAddress](ConnectionSharedPtr& connection)
+    auto predicate = [&receiver, &callable](ConnectionSharedPtr& connection)
     {
         if (!connection)
         {
@@ -380,15 +380,15 @@ bool Signal::disconnectImpl(Variant receiver, const void* callableAddress)
         {
             case Connection::Type::ConnectedToCallable:
             {
-                return static_cast<FunctionConnection*>(connection.get())->compare(callableAddress);
+                return static_cast<FunctionConnection*>(connection.get())->compare(callable);
             }
             case Connection::Type::ConnectedToMethod:
             {
-                return static_cast<MethodConnection*>(connection.get())->compare(receiver, callableAddress);
+                return static_cast<MethodConnection*>(connection.get())->compare(receiver, callable);
             }
             case Connection::Type::ConnectedToMetaMethod:
             {
-                return static_cast<MetaMethodConnection*>(connection.get())->compare(receiver, callableAddress);
+                return static_cast<MetaMethodConnection*>(connection.get())->compare(receiver, callable);
             }
             default:
             {
@@ -396,7 +396,7 @@ bool Signal::disconnectImpl(Variant receiver, const void* callableAddress)
             }
         }
     };
-    auto index = m_connections.find(predicate);
+    auto index = m_connections.findIf(predicate);
     if (index)
     {
         m_connections[*index]->reset();

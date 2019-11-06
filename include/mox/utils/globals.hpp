@@ -104,32 +104,6 @@ void erase_if(std::vector<Type, Allocator>& v, const Predicate& predicate)
     v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
 }
 
-/// Returns the address of a method.
-template <class Class, typename Ret, typename... Args>
-void* address(Ret(Class::*func)(Args...))
-{
-    return (void*&)func;
-}
-
-/// Const method version of address().
-template <class Class, typename Ret, typename... Args>
-void* address(Ret(Class::*func)(Args...) const)
-{
-    return (void*&)func;
-}
-
-template <typename Ret, typename... Args>
-void* address(Ret(*func)(Args...))
-{
-    return (void*&)func;
-}
-
-template <typename Functor>
-void* address(const Functor& fn)
-{
-    return (void*&)fn;
-}
-
 } // mox
 
 #endif // GLOBALS

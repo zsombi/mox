@@ -44,7 +44,7 @@ public:
     {
     public:
         /// Constructor.
-        explicit invalid_argument();
+        explicit invalid_argument() = default;
 
         /// String representation of the exception.
         const char* what() const EXCEPTION_NOEXCEPT override;
@@ -107,6 +107,9 @@ public:
     /// Move operator.
     Callable& operator=(Callable&&);
 
+    /// Comparison operator.
+    bool operator==(const Callable& other) const;
+
     /// Returns the type of the callable.
     /// \return The type of the callable.
     /// \see Type.
@@ -161,10 +164,6 @@ public:
         return apply(thisArgs);
     }
 
-    /// Returns the address of the callable.
-    /// \return The arrdess of the callable. nullptr is returned when the callable is a lambda.
-    const void* address() const;
-
     /// Resets the callable.
     void reset();
 
@@ -175,7 +174,6 @@ private:
     InvokerFunction m_invoker;
     VariantDescriptor m_ret;
     VariantDescriptorContainer m_args;
-    void* m_address = nullptr;
     Metatype m_classType = Metatype::Invalid;
     FunctionType m_type = FunctionType::Invalid;
     bool m_isConst = false;

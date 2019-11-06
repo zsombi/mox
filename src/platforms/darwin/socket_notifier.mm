@@ -35,7 +35,6 @@ SocketNotifier::Modes SocketNotifier::supportedModes()
 CFSocketNotifierSource::Socket::Socket(CFSocketNotifierSource& socketSource, SocketNotifier& notifier)
     : socketSource(socketSource)
     , cfSource(nullptr)
-    , notifiers([](const SocketNotifierSharedPtr& notifier) { return notifier == nullptr; })
     , handler(notifier.handler())
 {
     // Create a CFSocket with both read and write, no matter if only one type is needed.
@@ -69,7 +68,7 @@ CFSocketNotifierSource::Socket::~Socket()
 
 void CFSocketNotifierSource::Socket::addNotifier(SocketNotifier &notifier)
 {
-    notifiers.push_back(notifier.shared_from_this());
+    notifiers.append(notifier.shared_from_this());
     if (notifier.hasReadMode())
     {
         if (!readNotifierCount)
@@ -96,7 +95,7 @@ bool CFSocketNotifierSource::Socket::removeNotifier(SocketNotifier& notifier)
     {
         return n.get() == &notifier;
     };
-    auto index = notifiers.find(notifierLookup);
+    auto index = notifiers.findIf(notifierLookup);
     if (!index)
     {
         return false;

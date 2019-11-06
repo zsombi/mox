@@ -209,7 +209,6 @@ gboolean GSocketNotifierSource::Source::dispatch(GSource *source, GSourceFunc, g
  */
 GSocketNotifierSource::GSocketNotifierSource(std::string_view name)
     : SocketNotifierSource(name)
-    , pollHandlers([](const GPollHandler& handler) { return handler.notifier == nullptr; })
 {
 }
 
@@ -245,7 +244,7 @@ void GSocketNotifierSource::shutDown()
 
 void GSocketNotifierSource::addNotifier(SocketNotifier& notifier)
 {
-    pollHandlers.emplace_back(GPollHandler(notifier));
+    pollHandlers.emplace(GPollHandler(notifier));
     g_source_add_poll(static_cast<GSource*>(source), &pollHandlers.back().fd);
 }
 
@@ -255,7 +254,7 @@ void GSocketNotifierSource::removeNotifier(SocketNotifier& notifier)
     {
         return poll.notifier.get() == &notifier;
     };
-    auto index = pollHandlers.find(predicate);
+    auto index = pollHandlers.findIf(predicate);
     if (!index)
     {
         return;

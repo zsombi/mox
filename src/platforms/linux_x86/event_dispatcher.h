@@ -80,8 +80,16 @@ public:
         static void destroy(Source*& source);
     };
 
+    struct NullPollHandler
+    {
+        bool operator()(const GPollHandler& handler) const
+        {
+            return handler.notifier == nullptr;
+        }
+    };
+
     Source* source = nullptr;
-    RefCountedCollection<GPollHandler> pollHandlers;
+    SharedVector<GPollHandler, NullPollHandler> pollHandlers;
 
     explicit GSocketNotifierSource(std::string_view name);
     ~GSocketNotifierSource() final;
@@ -121,7 +129,15 @@ public:
     // from AbstractEventSource
     void shutDown() final;
 
-    RefCountedCollection<Source*> timers;
+    struct ZeroTimer
+    {
+        bool operator()(Source* const& source) const
+        {
+            return !source || source->timer == nullptr;
+        }
+    };
+
+    SharedVector<Source*, ZeroTimer> timers;
 };
 
 class GlibEventDispatcher : public EventDispatcher

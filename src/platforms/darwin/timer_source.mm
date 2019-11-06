@@ -98,11 +98,11 @@ void CFTimerSource::addTimer(Timer& timer)
     {
         return record->timerHandler.get() == &timer;
     };
-    auto index = timers.find(predicate);
+    auto index = timers.findIf(predicate);
     FATAL(!index, "Timer already registered")
 
     lock_guard lock(timers);
-    timers.emplace_back(std::make_unique<TimerRecord>(timer));
+    timers.emplace(std::make_unique<TimerRecord>(timer));
 }
 
 void CFTimerSource::removeTimer(Timer &timer)
@@ -111,7 +111,7 @@ void CFTimerSource::removeTimer(Timer &timer)
     {
         return record->timerHandler.get() == &timer;
     };
-    auto index = timers.find(predicate);
+    auto index = timers.findIf(predicate);
     FATAL(index, "Timer not registered")
 
     lock_guard lock(timers);

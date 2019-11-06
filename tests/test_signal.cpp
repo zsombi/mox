@@ -291,14 +291,11 @@ TEST_F(SignalTest, test_disconnect_functor)
     SignalTestClass sender;
 
     auto fn1 = [](){};
-    void* addr = ::address(fn1);
-    UNUSED(addr);
 
     Signal::ConnectionSharedPtr connection = sender.sig1.connect(fn1);
     EXPECT_NOT_NULL(connection);
     EXPECT_EQ(1u, sender.sig1());
-//    sender.sig1.disconnect(fn1);
-    connection->disconnect();
+    sender.sig1.disconnect(fn1);
     EXPECT_EQ(0u, sender.sig1());
 }
 

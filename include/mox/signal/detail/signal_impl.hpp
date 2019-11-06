@@ -28,6 +28,9 @@ int Signal::operator()(Args... arguments)
     return activate(argPack);
 }
 
+/******************************************************************************
+ * Metamethod connect.
+ */
 template <class Receiver>
 mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const char* methodName)
 {
@@ -49,31 +52,6 @@ mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const
     return connect(Variant(const_cast<Receiver*>(&receiver)), *metaMethod);
 }
 
-template <typename SlotFunction>
-std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, Signal::ConnectionSharedPtr>
-Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
-{
-    Callable slotCallable(method);
-    if (!slotCallable.isInvocableWith(id().descriptor().arguments))
-    {
-        return nullptr;
-    }
-    return connect(Variant(&receiver), std::forward<Callable>(slotCallable));
-}
-
-template <typename Function>
-std::enable_if_t<!std::is_base_of_v<Signal, Function>, Signal::ConnectionSharedPtr>
-Signal::connect(const Function& function)
-{
-    Callable lambda(function);
-    if (!lambda.isInvocableWith(id().descriptor().arguments))
-    {
-        return nullptr;
-    }
-    return connect(std::forward<Callable>(lambda));
-}
-
-
 template <typename Receiver>
 bool Signal::disconnect(const Receiver& receiver, const char* methodName)
 {
@@ -92,7 +70,22 @@ bool Signal::disconnect(const Receiver& receiver, const char* methodName)
         return false;
     }
 
-    return disconnectImpl(Variant(const_cast<Receiver*>(&receiver)), metaMethod->address());
+    return disconnectImpl(Variant(const_cast<Receiver*>(&receiver)), *metaMethod);
+}
+
+/******************************************************************************
+ * Method connect.
+ */
+template <typename SlotFunction>
+std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, Signal::ConnectionSharedPtr>
+Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
+{
+    Callable slotCallable(method);
+    if (!slotCallable.isInvocableWith(id().descriptor().arguments))
+    {
+        return nullptr;
+    }
+    return connect(Variant(&receiver), std::forward<Callable>(slotCallable));
 }
 
 template <typename SlotFunction>
@@ -100,14 +93,29 @@ std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, bool>
 Signal::disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
     Variant receiverInstance(&receiver);
-    return disconnectImpl(receiverInstance, mox::address(method));
+    return disconnectImpl(receiverInstance, Callable(method));
+}
+
+/******************************************************************************
+ * Function and functor.
+ */
+template <typename Function>
+std::enable_if_t<!std::is_base_of_v<Signal, Function>, Signal::ConnectionSharedPtr>
+Signal::connect(const Function& function)
+{
+    Callable lambda(function);
+    if (!lambda.isInvocableWith(id().descriptor().arguments))
+    {
+        return nullptr;
+    }
+    return connect(std::forward<Callable>(lambda));
 }
 
 template <typename SlotFunction>
 std::enable_if_t<!std::is_base_of_v<Signal, SlotFunction>, bool>
 Signal::disconnect(const SlotFunction& slot)
 {
-    return disconnectImpl(Variant(), mox::address(slot));
+    return disconnectImpl(Variant(), Callable(slot));
 }
 
 } // namespace mox

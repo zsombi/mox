@@ -22,10 +22,6 @@
 namespace mox
 {
 
-Callable::invalid_argument::invalid_argument()
-{
-}
-
 size_t Callable::ArgumentPack::count() const
 {
     return size();
@@ -54,12 +50,16 @@ Callable& Callable::operator=(Callable&& other)
     return *this;
 }
 
+bool Callable::operator==(const Callable& other) const
+{
+    return m_invoker.target_type() == other.m_invoker.target_type();
+}
+
 void Callable::swap(Callable& other)
 {
     m_invoker.swap(other.m_invoker);
     m_ret.swap(other.m_ret);
     m_args.swap(other.m_args);
-    std::swap(m_address, other.m_address);
     std::swap(m_classType, other.m_classType);
     std::swap(m_type, other.m_type);
     std::swap(m_isConst, other.m_isConst);
@@ -115,14 +115,8 @@ Variant Callable::apply(const ArgumentPack& args) const
     return m_invoker(args);
 }
 
-const void* Callable::address() const
-{
-    return m_address;
-}
-
 void Callable::reset()
 {
-    m_address = nullptr;
     m_args.clear();
     m_classType = Metatype::Invalid;
     m_type = FunctionType::Invalid;

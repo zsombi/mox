@@ -28,23 +28,27 @@
 namespace mox
 {
 
-template <typename Type>
-class RefCountedCollection
+template <typename T>
+struct ZeroCheck
 {
-    std::vector<Type> m_container;
-    int m_refCount = 0;
-    bool(*m_compactingPredicate)(const Type&);
+    bool operator()(const T& value)
+    {
+        return !value;
+    }
+};
 
-    DISABLE_COPY(RefCountedCollection)
+template <typename Type, typename CompactingPredicate = ZeroCheck<Type>>
+class SharedVector
+{
+    using Container = std::vector<Type>;
+
+    Container m_container;
+    int m_refCount = 0;
+
+    DISABLE_COPY(SharedVector)
 
 public:
-    explicit RefCountedCollection(bool(*predicate)(const Type&))
-        : m_compactingPredicate(predicate)
-    {
-    }
-    ~RefCountedCollection()
-    {
-    }
+    explicit SharedVector() = default;
 
     int lockCount() const
     {
@@ -60,7 +64,7 @@ public:
     {
         if (--m_refCount <= 0)
         {
-            mox::erase_if(m_container, m_compactingPredicate);
+            mox::erase_if(m_container, CompactingPredicate());
         }
     }
 
@@ -78,24 +82,32 @@ public:
     {
         return m_container.back();
     }
+    const Type& back() const
+    {
+        return m_container.back();
+    }
 
     Type& operator[](size_t index)
     {
         return m_container[index];
     }
+    const Type& operator[](size_t index) const
+    {
+        return m_container[index];
+    }
 
-    void push_back(Type value)
+    void append(Type value)
     {
         m_container.push_back(value);
     }
 
-    void emplace_back(Type&& value)
+    void emplace(Type&& value)
     {
         m_container.emplace_back(std::forward<Type>(value));
     }
 
     template <typename Predicate>
-    std::optional<size_t> find(Predicate predicate)
+    std::optional<size_t> findIf(Predicate predicate)
     {
         auto it = std::find_if(m_container.begin(), m_container.end(), predicate);
         if (it == m_container.end())

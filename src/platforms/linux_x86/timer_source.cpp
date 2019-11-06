@@ -111,7 +111,6 @@ void GTimerSource::Source::destroy(Source*& src)
 
 GTimerSource::GTimerSource(std::string_view name)
     : TimerSource(name)
-    , timers([](Source* const& source) { return !source || source->timer == nullptr;})
 {
 }
 GTimerSource::~GTimerSource()
@@ -124,7 +123,7 @@ std::optional<size_t> GTimerSource::findSource(TimerPtr timer)
     {
         return source->timer == timer;
     };
-    return timers.find(predicate);
+    return timers.findIf(predicate);
 }
 
 void GTimerSource::addTimer(Timer &timer)
@@ -134,7 +133,7 @@ void GTimerSource::addTimer(Timer &timer)
     FATAL(!index, "The timer is already registered")
 
     Source* gtimer = Source::create(timer);
-    timers.push_back(gtimer);
+    timers.append(gtimer);
 
     GlibEventDispatcher* evLoop = static_cast<GlibEventDispatcher*>(m_eventDispatcher.lock().get());
     g_source_attach(static_cast<GSource*>(gtimer), evLoop->context);

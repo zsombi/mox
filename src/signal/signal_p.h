@@ -64,7 +64,7 @@ protected:
 public:
     FunctionConnection(Signal& signal, Callable&& callable);
 
-    bool compare(const void* funcAddress) const;
+    bool compare(const Callable& callable) const;
     bool isConnected() const override
     {
         return m_slot.type() != FunctionType::Invalid;
@@ -81,7 +81,7 @@ class MethodConnection : public FunctionConnection
 public:
     MethodConnection(Signal& signal, Variant receiver, Callable&& callable);
 
-    bool compare(Variant receiver, const void* funcAddress) const;
+    bool compare(Variant receiver, const Callable& callable) const;
     void activate(Callable::ArgumentPack& args) override;
     void reset() override;
 };
@@ -105,7 +105,7 @@ public:
     {
         return m_slot && (m_slot->type() != FunctionType::Invalid);
     }
-    bool compare(Variant receiver, const void* funcAddress) const;
+    bool compare(Variant receiver, const Callable& callable) const;
     void activate(Callable::ArgumentPack& args) override;
     void reset() override;
 };

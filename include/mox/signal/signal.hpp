@@ -266,7 +266,6 @@ public:
     explicit Signal(SignalOwner& owner, const SignalDescriptorBase& des)
         : SharedLock<ObjectLock>(owner)
         , m_id(owner, *this, des)
-        , m_connections([](const ConnectionSharedPtr& connection) { return !connection; })
     {
     }
     /// Destructor.
@@ -287,13 +286,13 @@ protected:
     ConnectionSharedPtr connect(Variant receiver, Callable&& slot);
 
     /// Disconnects a connection that holds a \a receiver and \a callableAddress.
-    bool disconnectImpl(Variant receiver, const void* callableAddress);
+    bool disconnectImpl(Variant receiver, const Callable& callable);
 
 
     /// The signal identifier.
     SignalId m_id;
     /// The collection of active connections.
-    RefCountedCollection<ConnectionSharedPtr> m_connections;
+    SharedVector<ConnectionSharedPtr> m_connections;
     /// Triggering flag. Locks the signal from recursive triggering.
     bool m_triggering = false;
 };
