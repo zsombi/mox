@@ -17,6 +17,7 @@
  */
 
 #include <mox/config/platform_config.hpp>
+#include <mox/config/deftypes.hpp>
 #include <mox/metadata/metatype.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <string>

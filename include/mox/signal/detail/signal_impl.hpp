@@ -19,14 +19,8 @@
 #ifndef SIGNAL_IMPL_HPP
 #define SIGNAL_IMPL_HPP
 
-namespace mox {
-
-template <typename... Args>
-int Signal::operator()(Args... arguments)
+namespace mox
 {
-    Callable::ArgumentPack argPack(arguments...);
-    return activate(argPack);
-}
 
 /******************************************************************************
  * Metamethod connect.
@@ -41,7 +35,7 @@ mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const
     const MetaClass* metaClass = Receiver::StaticMetaClass::get();
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaClass::Method* method) -> bool
     {
-        return (method->name() == name) && method->isInvocableWith(this->id().descriptor().arguments);
+        return (method->name() == name) && method->isInvocableWith(this->getType()->getArguments());
     };
     const MetaClass::Method* metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
@@ -62,7 +56,7 @@ bool Signal::disconnect(const Receiver& receiver, const char* methodName)
     const MetaClass* metaClass = Receiver::StaticMetaClass::get();
     auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaClass::Method* method) -> bool
     {
-        return (method->name() == name) && method->isInvocableWith(this->id().descriptor().arguments);
+        return (method->name() == name) && method->isInvocableWith(this->getType()->getArguments());
     };
     const MetaClass::Method* metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
@@ -81,7 +75,7 @@ std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, Signal::Connec
 Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
     Callable slotCallable(method);
-    if (!slotCallable.isInvocableWith(id().descriptor().arguments))
+    if (!slotCallable.isInvocableWith(m_signalType->getArguments()))
     {
         return nullptr;
     }
@@ -101,21 +95,30 @@ Signal::disconnect(typename function_traits<SlotFunction>::object& receiver, Slo
  */
 template <typename Function>
 std::enable_if_t<!std::is_base_of_v<Signal, Function>, Signal::ConnectionSharedPtr>
-Signal::connect(const Function& function)
+Signal::connect(const Function& slot)
 {
-    Callable lambda(function);
-    if (!lambda.isInvocableWith(id().descriptor().arguments))
+    Callable lambda(slot);
+    if (!lambda.isInvocableWith(m_signalType->getArguments()))
     {
         return nullptr;
     }
     return connect(std::forward<Callable>(lambda));
 }
 
-template <typename SlotFunction>
-std::enable_if_t<!std::is_base_of_v<Signal, SlotFunction>, bool>
-Signal::disconnect(const SlotFunction& slot)
+template <typename Function>
+std::enable_if_t<!std::is_base_of_v<Signal, Function>, bool>
+Signal::disconnect(const Function& slot)
 {
     return disconnectImpl(Variant(), Callable(slot));
+}
+
+/******************************************************************************
+ * SignalDecl.
+ */
+template <typename... Arguments>
+int SignalDecl<Arguments...>::operator()(Arguments... arguments)
+{
+    return activate(Callable::ArgumentPack(arguments...));
 }
 
 } // namespace mox

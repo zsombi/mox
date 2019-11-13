@@ -21,23 +21,52 @@
 #include <mox/metadata/metaobject.hpp>
 #include <mox/metadata/callable.hpp>
 #include <mox/signal/signal.hpp>
-#include <mox/signal/signal_host.hpp>
+
+#include <string_view>
 
 using namespace mox;
 
-class SignalTestClass : public SignalHost<MetaObject>
+class TestEmitterNoMetaClass : public ObjectLock
 {
 public:
+    explicit TestEmitterNoMetaClass() = default;
 
-    static inline SignalDescriptor<> const Sign1Des;
-    static inline SignalDescriptor<> const SignBDes;
-    static inline SignalDescriptor<int32_t> const Sign2Des;
-    static inline SignalDescriptor<int32_t, std::string> const Sign3Des;
+    static inline SignalTypeDecl<> VoidSignalType;
+    static inline SignalTypeDecl<int> IntSignalType;
 
-    Signal sig1{*this, Sign1Des};
-    Signal sig2{*this, Sign2Des};
-    Signal sig3{*this, Sign3Des};
-    Signal sigB{*this, SignBDes};
+    SignalDecl<> voidSig{*this, VoidSignalType};
+    SignalDecl<int> intSig{*this, IntSignalType};
+};
+
+class TestEmitterWithMetaClass : public ObjectLock
+{
+public:
+    explicit TestEmitterWithMetaClass() = default;
+
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestEmitterWithMetaClass>
+    {
+        static inline SignalTypeDecl<> VoidSignalType;
+        Signal voidSig{*this, VoidSignalType, "voidSig"};
+    };
+
+    static inline SignalTypeDecl<std::string_view> StringSignalType;
+
+    SignalDecl<std::string_view> string{*this, StringSignalType};
+    SignalDecl<> voidSig{*this, StaticMetaClass::VoidSignalType};
+};
+
+class SignalTestClass : public MetaObject
+{
+public:
+    static inline SignalTypeDecl<> Sign1Des;
+    static inline SignalTypeDecl<> SignBDes;
+    static inline SignalTypeDecl<int32_t> Sign2Des;
+    static inline SignalTypeDecl<int32_t, std::string> Sign3Des;
+
+    SignalDecl<> sig1{*this, Sign1Des};
+    SignalDecl<int32_t> sig2{*this, Sign2Des};
+    SignalDecl<int32_t, std::string> sig3{*this, Sign3Des};
+    SignalDecl<> sigB{*this, SignBDes};
 
     struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SignalTestClass, MetaObject>
     {
@@ -51,8 +80,8 @@ public:
 class DerivedEmitter : public SignalTestClass
 {
 public:
-    static inline SignalDescriptor<std::vector<int32_t>> const SignVDes;
-    Signal sigV{*this, SignVDes};
+    static inline SignalTypeDecl<std::vector<int32_t>> SignVDes;
+    SignalDecl<std::vector<int32_t>> sigV{*this, SignVDes};
 
     struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, DerivedEmitter, SignalTestClass>
     {
@@ -60,7 +89,7 @@ public:
     };
 };
 
-class  SlotHolder : public SignalHost<ObjectLock>
+class  SlotHolder : public ObjectLock
 {
     int slot1Call = 0;
     int slot2Call = 0;
@@ -68,8 +97,8 @@ class  SlotHolder : public SignalHost<ObjectLock>
     int slot4Call = 0;
 
 public:
-    static inline SignalDescriptor<int> const SigDes;
-    Signal sig{*this, SigDes};
+    static inline SignalTypeDecl<int> SigDes;
+    SignalDecl<int> sig{*this, SigDes};
 
     struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SlotHolder>
     {
@@ -125,15 +154,15 @@ public:
     {
     }
 
-    void autoDisconnect1(Signal::ConnectionSharedPtr connection)
+    void autoDisconnect1()
     {
-        connection->disconnect();
+        Signal::Connection::getActiveConnection()->disconnect();
     }
-    void autoDisconnect2(Signal::ConnectionSharedPtr connection, int32_t v)
+    void autoDisconnect2(int32_t v)
     {
         if (v == 10)
         {
-            connection->disconnect();
+            Signal::Connection::getActiveConnection()->disconnect();
         }
     }
 };
@@ -183,12 +212,39 @@ protected:
     {
         UnitTest::SetUp();
         registerMetaType<std::vector<int32_t>>();
+        registerMetaType<TestEmitterNoMetaClass>();
+        registerMetaType<TestEmitterNoMetaClass*>();
+        registerMetaClass<TestEmitterWithMetaClass>();
         registerMetaClass<SignalTestClass>();
         registerMetaClass<SlotHolder>();
         registerMetaClass<DerivedHolder>();
         registerMetaClass<DerivedEmitter>();
     }
 };
+
+TEST_F(SignalTest, test_signal_without_metaclass)
+{
+    TestEmitterNoMetaClass test;
+
+    EXPECT_EQ(0, test.voidSig());
+    EXPECT_EQ(0, test.intSig(10));
+
+    EXPECT_EQ(0, TestEmitterNoMetaClass::VoidSignalType.activate(intptr_t(&test), Callable::ArgumentPack()));
+    EXPECT_EQ(0, TestEmitterNoMetaClass::IntSignalType.activate(intptr_t(&test), Callable::ArgumentPack(100)));
+}
+
+TEST_F(SignalTest, test_signal_with_metaclass)
+{
+    TestEmitterWithMetaClass test;
+
+    EXPECT_EQ(0, test.voidSig());
+    EXPECT_EQ(0, TestEmitterWithMetaClass::StaticMetaClass::VoidSignalType.activate(intptr_t(&test), Callable::ArgumentPack()));
+
+    auto param = "alpha"sv;
+    EXPECT_EQ(0, test.string(param));
+    EXPECT_EQ(0, TestEmitterWithMetaClass::StringSignalType.activate(intptr_t(&test), Callable::ArgumentPack(param)));
+}
+
 
 TEST_F(SignalTest, test_signal_api)
 {
@@ -467,11 +523,11 @@ TEST_F(SignalTest, test_disconnect_on_emit)
     EXPECT_EQ(0, sender.sig2(10));
 }
 
-void autoDisconnect(Signal::ConnectionSharedPtr connection, int32_t v)
+void autoDisconnect(int32_t v)
 {
     if (v == 2)
     {
-        connection->disconnect();
+        Signal::Connection::getActiveConnection()->disconnect();
     }
 }
 
@@ -510,25 +566,14 @@ TEST_F(SignalTest, test_disconnect_on_emit_from_lambda)
 {
     SignalTestClass sender;
 
-    auto lambda = [](Signal::ConnectionSharedPtr connection)
+    auto lambda = []()
     {
-        connection->disconnect();
+        Signal::Connection::getActiveConnection()->disconnect();
     };
 
     EXPECT_NOT_NULL(sender.sig2.connect(lambda));
     EXPECT_EQ(1, sender.sig2(1));
     EXPECT_EQ(0, sender.sig2(1));
-}
-
-TEST_F(SignalTest, test_proper_signal_ids)
-{
-    DerivedEmitter sender;
-
-    EXPECT_TRUE(sender.sig1.id().isA(DerivedEmitter::Sign1Des));
-    EXPECT_TRUE(sender.sig2.id().isA(DerivedEmitter::Sign2Des));
-    EXPECT_TRUE(sender.sig3.id().isA(DerivedEmitter::Sign3Des));
-    EXPECT_TRUE(sender.sigB.id().isA(DerivedEmitter::SignBDes));
-    EXPECT_TRUE(sender.sigV.id().isA(DerivedEmitter::SignVDes));
 }
 
 TEST_F(SignalTest, test_signal_in_derived)
@@ -542,7 +587,7 @@ TEST_F(SignalTest, test_signal_in_derived)
     Signal::ConnectionSharedPtr connection = sender.sigV.connect(receiver2, &SlotHolder::method1);
     EXPECT_NOT_NULL(connection);
 
-    EXPECT_EQ(2, sender.sigV());
+    EXPECT_EQ(2, sender.sigV(std::vector<int>()));
     EXPECT_EQ(1, sender.sig1());
 }
 
@@ -551,9 +596,9 @@ TEST_F(SignalTest, test_disconnect_next_connection_in_activation)
     DerivedEmitter sender;
     SlotHolder receiver;
 
-    auto lambda = [&receiver](Signal::ConnectionSharedPtr connection)
+    auto lambda = [&receiver]()
     {
-        Signal* signal = connection->signal();
+        Signal* signal = Signal::Connection::getActiveConnection()->signal();
         if (signal)
         {
             signal->disconnect(receiver, &SlotHolder::method1);
@@ -563,7 +608,7 @@ TEST_F(SignalTest, test_disconnect_next_connection_in_activation)
     EXPECT_NOT_NULL(sender.sigV.connect(receiver, &SlotHolder::method1));
 
     // There should be only 1 activation, as lambda disconnects the other connection.
-    EXPECT_EQ(1, sender.sigV());
+    EXPECT_EQ(1, sender.sigV(std::vector<int>()));
 }
 
 TEST_F(SignalTest, test_emit_metasignals)
@@ -588,14 +633,11 @@ TEST_F(SignalTest, test_metaclass_invoke_metasignals)
     SignalTestClass sender;
     const SignalTestClass::StaticMetaClass* mc = SignalTestClass::StaticMetaClass::get();
 
-    EXPECT_EQ(0, mc->emit(sender, mc->sig1));
+    EXPECT_EQ(0, mc->sig1.emit(sender));
 
     // Invoke with convertible arguments.
-    EXPECT_EQ(0, mc->emit(sender, mc->sig2, std::string_view("10")));
+    EXPECT_EQ(0, mc->sig2.emit(sender, std::string_view("10")));
 
     // Invoke with not enough arguments.
-    EXPECT_EQ(-1, mc->emit(sender, mc->sig2));
-
-    // Invoke non-existent arguments.
-    EXPECT_EQ(-1, mc->emit(sender, DerivedEmitter::StaticMetaClass::get()->sigV));
+    EXPECT_EQ(-1, mc->sig2.emit(sender));
 }

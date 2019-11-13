@@ -32,7 +32,7 @@ namespace mox
 {
 
 class MetaObject;
-struct SignalDescriptorBase;
+class SignalType;
 
 /// MetaClass represents the type reflection or metadata of a managed structure or class. The metadata consists
 /// of factory functions, methods, properties and signals.
@@ -71,22 +71,33 @@ public:
     class MOX_API Signal
     {
     public:
-        /// Constructs a metasignal from a \a descriptor witha  given \a name, and attaches it to the \a metaClass.
-        explicit Signal(MetaClass& metaClass, const SignalDescriptorBase& descriptor, std::string_view name);
+        /// Constructs a metasignal from a \a type with a given \a name, and attaches it to the \a metaClass.
+        explicit Signal(MetaClass& metaClass, const SignalType& type, std::string_view name);
 
         /// Returns the name of the metasignal.
         /// \return The name of the metasignal.
         std::string name() const;
 
         /// Returns the descriptor of the metasignal.
-        const SignalDescriptorBase& descriptor() const;
+        const SignalType& type() const;
+
+        /// Activates a metasignal with a \a sender and \a arguments.
+        /// \return The activation count, -1 on error.
+        int activate(intptr_t sender, const Callable::ArgumentPack& arguments) const;
+
+        /// Emit a metasignal with the SenderObject and Arguments
+        /// \param sender
+        /// \param args
+        /// \return The activation count, -1 on error.
+        template <class SenderObject, typename... Arguments>
+        int emit(SenderObject& sender, Arguments... args) const;
 
         /// Tests whether this signal is invocable with the given \a arguments.
         bool isInvocableWith(const VariantDescriptorContainer& arguments) const;
 
     private:
         MetaClass& m_ownerClass;
-        const SignalDescriptorBase& m_descriptor;
+        const SignalType& m_type;
         std::string m_name;
 
         Signal(Signal const&) = delete;
@@ -102,10 +113,6 @@ public:
     /// or the method does not belong to the metaclass of the instance, returns \e nullopt.
     template <class Class, typename... Arguments>
     std::optional<Variant> invoke(Class& instance, const Method& method, Arguments... arguments) const;
-
-    /// Invokes a metasignal on an \a instance with the given \a arguments
-    template <typename Class, typename... Arguments>
-    int emit(Class& instance, const Signal& signal, Arguments... arguments) const;
 
     /// Visitor result values.
     enum VisitorResult

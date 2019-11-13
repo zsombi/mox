@@ -19,6 +19,7 @@
 #ifndef EVENT_HPP
 #define EVENT_HPP
 
+#include <mox/config/deftypes.hpp>
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
@@ -111,7 +112,7 @@ class MOX_API DeferredSignalEvent : public Event
     Callable::ArgumentPack m_arguments;
 
 public:
-    explicit DeferredSignalEvent(ObjectSharedPtr target, Signal::ConnectionSharedPtr connection, const Callable::ArgumentPack& args);
+    explicit DeferredSignalEvent(Object& target, Signal::Connection& connection, const Callable::ArgumentPack& args);
 
     void activate();
 };

@@ -43,13 +43,13 @@ void Variant::reset()
 
 Metatype Variant::metaType() const
 {
-    FATAL(m_data, "Variant is not initialized.");
+    FATAL(m_data, "Variant is not initialized.")
     return m_data->m_typeDescriptor.type;
 }
 
 const VariantDescriptor& Variant::descriptor() const
 {
-    FATAL(m_data, "Variant is not initialized.");
+    FATAL(m_data, "Variant is not initialized.")
     return m_data->m_typeDescriptor;
 }
 
@@ -130,11 +130,6 @@ bool VariantDescriptorContainer::isInvocableWith(const VariantDescriptorContaine
 {
     auto callableStart = begin();
     auto callableEnd = cend();
-
-    if ((callableStart != callableEnd) && (callableStart->type == metaType<Signal::ConnectionSharedPtr>()))
-    {
-        ++callableStart;
-    }
 
     auto paramStart = other.cbegin();
     auto paramEnd = other.cend();

@@ -145,7 +145,7 @@ TEST(FlatMapTests, test_erase)
     EXPECT_EQ(2u, test.size());
 
     // Use the free-function erase, FlatSet erase asserts on non-existent value removal.
-    mox::erase(test, 4);
+    mox::erase(test, std::make_pair(4, 2));
     EXPECT_EQ(2u, test.size());
 }
 

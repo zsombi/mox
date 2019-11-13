@@ -22,7 +22,6 @@
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metaobject.hpp>
 #include <mox/event_handling/event_handler.hpp>
-#include <mox/signal/signal_host.hpp>
 #include <mox/config/thread.hpp>
 #include <mox/module/thread_data.hpp>
 
@@ -40,7 +39,7 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 ///
 /// Derived from EventHandlingProvider, provides event handling mechanisms. See EventHandlingProvider for more
 /// details on event handling.
-class MOX_API Object : public SignalHost<MetaObject>, public EventHandlingProvider, public std::enable_shared_from_this<Object>
+class MOX_API Object : public MetaObject, public EventHandlingProvider, public std::enable_shared_from_this<Object>
 {
 public:
     /// The static metaclass of Object.

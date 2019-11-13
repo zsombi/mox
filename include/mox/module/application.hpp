@@ -27,23 +27,24 @@ namespace mox
 
 /// The Application class provides support for a main loop in your application. You can have only
 /// one instance of this class in your application.
-class MOX_API Application : public SignalHost<MetaObject>, public MoxModule
+class MOX_API Application : public MetaObject, public MoxModule
 {
-    static inline SignalDescriptor<> StartedSignalDescriptor;
-    static inline SignalDescriptor<> StoppedSignalDescriptor;
+    static inline SignalTypeDecl<> StartedSignalType;
+    static inline SignalTypeDecl<> StoppedSignalType;
 
 public:
     /// The static metaclass of the Application class.
     struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Application, MetaObject>
     {
-        Signal started{*this, StartedSignalDescriptor, "started"};
-        Signal stopped{*this, StoppedSignalDescriptor, "stopped"};
+        Signal started{*this, StartedSignalType, "started"};
+        Signal stopped{*this, StoppedSignalType, "stopped"};
+        Method quit{*this, &Application::quit, "quit"};
     };
 
     /// Signal is emitted when the application's event loop is started.
-    Signal started{*this, StartedSignalDescriptor};
+    SignalDecl<> started{*this, StartedSignalType};
     /// Signal emitted when the application's event loop exits.
-    Signal stopped{*this, StoppedSignalDescriptor};
+    SignalDecl<> stopped{*this, StoppedSignalType};
 
     /// Constructor, creates an application object. You can have only one application object in your
     /// application.
@@ -84,6 +85,9 @@ public:
     /// Exit the running application. Optionally, you can pass an exit code.
     /// \param exitCode The exit code to use when exiting the application's main loop.
     void exit(int exitCode = 0);
+
+    /// Quits the application.
+    void quit();
 
 private:
     ThreadDataSharedPtr m_mainThread;

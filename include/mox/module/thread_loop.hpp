@@ -40,9 +40,9 @@ using ThreadLoopSharedPtr = std::shared_ptr<ThreadLoop>;
 /// as the objects created during the lifetime of the thread are owned by the thread.
 class MOX_API ThreadLoop : public Object, public Module
 {
-    static inline SignalDescriptor<ThreadLoop*> StartedSignalDescriptor;
-    static inline SignalDescriptor<ThreadLoop*> StoppedSignalDescriptor;
 public:
+    static inline SignalTypeDecl<ThreadLoop*> StartedSignalType{};
+    static inline SignalTypeDecl<ThreadLoop*> StoppedSignalType{};
     /// The thread status.
     enum class Status
     {
@@ -103,15 +103,15 @@ public:
     /// The static metaclass of the thread loop.
     struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, ThreadLoop, Object>
     {
-        Signal started{*this, StartedSignalDescriptor, "started"};
-        Signal stopped{*this, StoppedSignalDescriptor, "stopped"};
+        Signal started{*this, StartedSignalType, "started"};
+        Signal stopped{*this, StoppedSignalType, "stopped"};
     };
 
     /// Signal emitted when the thread starts the event loop.
-    Signal started{*this, StartedSignalDescriptor};
+    SignalDecl<ThreadLoop*> started{*this, StartedSignalType};
     /// Signal emitted right before the thread stops its execution.
-    Signal stopped{*this, StoppedSignalDescriptor};
-    /// \{
+    SignalDecl<ThreadLoop*> stopped{*this, StoppedSignalType};
+    /// \}
 
 protected:
     /// Constructor.

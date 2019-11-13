@@ -31,6 +31,17 @@
 namespace mox
 {
 
+/// Exception thrown on invalid argument count, or invalid argument type.
+class MOX_API invalid_argument : public std::exception
+{
+public:
+    /// Constructor.
+    explicit invalid_argument() = default;
+
+    /// String representation of the exception.
+    const char* what() const EXCEPTION_NOEXCEPT override;
+};
+
 /******************************************************************************
  * Callables
  */
@@ -38,60 +49,35 @@ namespace mox
 /// The class represents a callable in Mox.
 class MOX_API Callable
 {
+    using ArgumentsBase = std::vector<Variant>;
+
 public:
-    /// Exception thrown on invalid argument count, or invalid argument type.
-    class MOX_API invalid_argument : public std::exception
-    {
-    public:
-        /// Constructor.
-        explicit invalid_argument() = default;
-
-        /// String representation of the exception.
-        const char* what() const EXCEPTION_NOEXCEPT override;
-    };
-
     /// ArgumentPack is a container that holds the argument value and its descriptor packed.
     /// The packed arguments are trasported across threads keeping the lifetime of the values.
-    struct MOX_API ArgumentPack : protected std::vector<Variant>
+    struct MOX_API ArgumentPack : protected ArgumentsBase
     {
-        /// Argument base type.
-        typedef std::vector<Variant> ArgumentsBase;
-
         ArgumentPack() = default;
 
-        /// Packs the \a arguments passed.
+        /// Constructs an argument pack by catenating an instance and an other argument
+        /// pack.
+        template <class Instance>
+        ArgumentPack(Instance instance, const ArgumentPack& other);
+
+        /// Packs the \a arguments.
         template <typename... Args>
         ArgumentPack(Args... arguments);
-
-        /// Adds an argument \a value of a \e Type.
-        /// \param value The argument value to pass.
-        /// \return This argument object.
-        template <typename Type>
-        ArgumentPack& add(const Type& value);
-
-        /// Sets the instance\a value to the argument pack.
-        /// \param value The instance value to set to the argument pack.
-        /// \return This argument object.
-        template <typename Type>
-        ArgumentPack& setInstance(Type value);
 
         /// Returns the argument from a given \a index that is less than the count().
         /// \param index The index of the argument requested.
         /// \return The argument value.
         /// \throws std::bad_any_cast if the argument at \a index is of a different type.
-        /// \throws Callable::invalid_argument if the argument \a index is out of bounds.
+        /// \throws invalid_argument if the argument \a index is out of bounds.
         template <typename Type>
         Type get(size_t index) const;
 
-        /// Returns the number of argument values from the container.
-        /// \return The number of argument values.
-        size_t count() const;
-
-        /// Repacks the argument package into a tuple.
+        /// Repacks the argument pack into a tuple.
         template <typename Function>
         auto toTuple() const;
-
-        ArgumentPack& operator +=(const ArgumentPack& other);
     };
 
     /// Invoker function type.
@@ -155,14 +141,6 @@ public:
     /// for the callable.
     /// \throws bad_conversion if the arguments mismatch.
     Variant apply(const ArgumentPack& args) const;
-
-    template <class Class>
-    Variant apply(Class& instance, const ArgumentPack& args) const
-    {
-        ArgumentPack thisArgs(args);
-        thisArgs.setInstance(&instance);
-        return apply(thisArgs);
-    }
 
     /// Resets the callable.
     void reset();

@@ -48,25 +48,20 @@ struct MetaValueToTuple
 
 } // noname
 
+template <class Instance>
+Callable::ArgumentPack::ArgumentPack(Instance instance, const ArgumentPack& other)
+{
+    reserve(other.size() + 1);
+    emplace_back(Variant(instance));
+    insert(end(), other.begin(), other.end());
+}
+
 template <typename... Args>
 Callable::ArgumentPack::ArgumentPack(Args... arguments)
 {
     std::array<Variant, sizeof... (Args)> aa = {{Variant(arguments)...}};
-    insert(begin(), aa.begin(), aa.end());
-}
-
-template <typename Type>
-Callable::ArgumentPack& Callable::ArgumentPack::add(const Type& value)
-{
-    emplace_back(Variant(value));
-    return *this;
-}
-
-template <typename Type>
-Callable::ArgumentPack& Callable::ArgumentPack::setInstance(Type value)
-{
-    emplace(begin(), Variant(value));
-    return *this;
+    reserve(aa.size());
+    insert(end(), aa.begin(), aa.end());
 }
 
 template <typename Type>
@@ -74,7 +69,7 @@ Type Callable::ArgumentPack::get(size_t index) const
 {
     if (index >= size())
     {
-        throw Callable::invalid_argument();
+        throw invalid_argument();
     }
     return at(index);
 }

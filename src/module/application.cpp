@@ -111,6 +111,11 @@ void Application::exit(int exitCode)
     m_mainThread->thread()->exit(exitCode);
 }
 
+void Application::quit()
+{
+    exit(0);
+}
+
 }
 
 #endif // APPLICATION_CPP

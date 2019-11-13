@@ -25,7 +25,7 @@ namespace mox
 // One for the application.
 static ThreadData* mainThreadData = nullptr;
 // One for each thread.
-static __thread ThreadData* ltsThreadData = nullptr;
+static thread_local ThreadData* ltsThreadData = nullptr;
 
 /******************************************************************************
  *

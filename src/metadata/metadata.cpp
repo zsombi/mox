@@ -28,6 +28,12 @@ namespace mox
 MetaData MetaData::globalMetaData;
 MetaData *MetaData::globalMetaDataPtr = nullptr;
 
+TUuid nextUuid()
+{
+    static TUuid uuidPool = 0u;
+    return ++uuidPool;
+}
+
 MetaData::MetaData()
 {
     globalMetaDataPtr = this;

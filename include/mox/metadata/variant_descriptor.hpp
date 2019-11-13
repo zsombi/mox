@@ -99,6 +99,18 @@ public:
         return VariantDescriptorContainer(aa.begin(), aa.end());
     }
 
+    /// Ensure the arguments are registered in the metatype system, and retrieve the
+    /// container with the descriptors.
+    template <typename... Arguments>
+    static VariantDescriptorContainer ensure()
+    {
+        const std::array<Metatype, sizeof...(Arguments)> meta = {{registerMetaType<Arguments>()...}};
+        UNUSED(meta);
+        const std::array<VariantDescriptor, sizeof... (Arguments)> aa = {{ VariantDescriptor::get<Arguments>()... }};
+        return VariantDescriptorContainer(aa.begin(), aa.end());
+    }
+
+
     /// Tests whether the variant descriptors are compatible with the descriptors from
     /// the \a other container. A variant is compatible with an other if there is a
     /// callable with the argument as formal parameter, that is invocable with the other

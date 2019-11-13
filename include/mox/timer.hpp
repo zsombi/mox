@@ -20,7 +20,6 @@
 #define TIMER_HPP
 
 #include <mox/signal/signal.hpp>
-#include <mox/signal/signal_host.hpp>
 #include <mox/event_handling/event_dispatcher.hpp>
 
 namespace mox
@@ -34,14 +33,14 @@ using TimerPtr = std::shared_ptr<Timer>;
 /// using createRepeating() or repeating() methods.
 ///
 /// When the timer expires, the expired signal is emitted.
-class MOX_API Timer : public SignalHost<ObjectLock>, public std::enable_shared_from_this<Timer>
+class MOX_API Timer : public ObjectLock, public std::enable_shared_from_this<Timer>
 {
 public:
     /// Expired signal descriptor. The signal's argument contains the timer object that is
     /// expired when the signal is emitted.
-    static inline SignalDescriptor<Timer*> const SigExpired;
+    static inline SignalTypeDecl<Timer*> SigExpired;
     /// Expired signal emitted when the timer expires.
-    Signal expired{*this, SigExpired};
+    SignalDecl<Timer*> expired{*this, SigExpired};
 
     /// Specifies the type of the timer.
     enum class Type

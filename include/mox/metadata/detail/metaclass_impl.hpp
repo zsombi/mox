@@ -31,6 +31,17 @@ MetaClass::Method::Method(MetaClass& metaClass, Function fn, std::string_view na
     m_ownerClass.addMethod(*this);
 }
 
+template <class SenderObject, typename... Arguments>
+int MetaClass::Signal::emit(SenderObject& sender, Arguments... args) const
+{
+    if (!isInvocableWith(VariantDescriptorContainer::get<Arguments...>()))
+    {
+        return -1;
+    }
+    return activate(reinterpret_cast<intptr_t>(&sender), Callable::ArgumentPack(args...));
+}
+
+
 template <class Class, typename... Arguments>
 std::optional<Variant> MetaClass::invoke(Class& instance, const Method& method, Arguments... arguments) const
 {
@@ -41,11 +52,10 @@ std::optional<Variant> MetaClass::invoke(Class& instance, const Method& method, 
 
     try
     {
-        Callable::ArgumentPack argPack(arguments...);
-        if (method.type() == FunctionType::Method)
-        {
-            argPack.setInstance(&instance);
-        }
+        auto argPack = (method.type() == FunctionType::Method)
+                ? Callable::ArgumentPack(&instance, arguments...)
+                : Callable::ArgumentPack(arguments...);
+
         auto result = method.apply(argPack);
         return std::make_optional(result);
     }
@@ -53,17 +63,6 @@ std::optional<Variant> MetaClass::invoke(Class& instance, const Method& method, 
     {
         return std::nullopt;
     }
-}
-
-template <typename Class, typename... Arguments>
-int MetaClass::emit(Class& instance, const Signal& signal, Arguments... arguments) const
-{
-    if (!signal.isInvocableWith(VariantDescriptorContainer(arguments...)))
-    {
-        return -1;
-    }
-    Callable::ArgumentPack argPack(arguments...);
-    return instance.activate(signal.descriptor(), argPack);
 }
 
 /******************************************************************************
@@ -199,7 +198,7 @@ int emit(Class& instance, std::string_view signalName, Arguments... arguments)
     const MetaClass::Signal* signal = metaClass->visitSignals(signalVisitor);
     if (signal)
     {
-        return const_cast<MetaClass*>(metaClass)->emit(instance, *signal, arguments...);
+        return signal->activate(reinterpret_cast<intptr_t>(&instance), Callable::ArgumentPack(arguments...));
     }
 
     return -1;

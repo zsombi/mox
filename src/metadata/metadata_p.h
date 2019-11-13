@@ -22,6 +22,7 @@
 #include <vector>
 #include <string>
 #include <functional>
+#include <mox/config/deftypes.hpp>
 #include <mox/utils/flat_map.hpp>
 #include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
@@ -62,6 +63,8 @@ struct MetaData : public ObjectLock
 
 void registerAtomicTypes(MetaData& metaData);
 void registerConverters(MetaData& metaData);
+
+TUuid nextUuid();
 
 } // namespace mox
 

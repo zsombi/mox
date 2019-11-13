@@ -18,6 +18,7 @@
 
 set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/platform_config.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/deftypes.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/pimpl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/thread.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/platforms/adaptation.hpp
@@ -48,7 +49,6 @@ set(HEADERS
     # Signal handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/detail/signal_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal_host.hpp
 
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event.hpp

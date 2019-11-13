@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2018 bitWelder
+ * Copyright (C) 2017-2019 bitWelder
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -16,26 +16,35 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/mox_module.hpp>
-#include <mox/metadata/metaobject.hpp>
-#include <mox/signal/signal.hpp>
-#include <mox/event_handling/socket_notifier.hpp>
-#include <mox/object.hpp>
-#include <mox/module/application.hpp>
-#include <mox/module/thread_loop.hpp>
+#ifndef DEFTYPES_HPP
+#define DEFTYPES_HPP
 
-#include <vector>
+#include <mox/config/platform_config.hpp>
+// Standard integer types
+#include <inttypes.h>
+#include <chrono>
+#include <string_view>
+
+using namespace std::literals::string_view_literals;
+
+using byte = int8_t;
+using long_t = long int;
+using ulong_t = unsigned long int;
+
+
+#ifdef ANDROID
+
+typedef long intptr_t_;
+
+#endif
 
 namespace mox
 {
 
-void MoxModule::registerModule()
-{
-    registerMetaType<SocketNotifierSharedPtr>();
-    registerMetaClass<MetaObject>("MetaObject");
-    registerMetaClass<Object>("Object");
-    registerMetaClass<ThreadLoop>("ThreadLoop");
-    registerMetaClass<Application>("Application");
-}
+using Timestamp = std::chrono::system_clock::time_point;
+
+typedef int64_t TUuid;
 
 }
+
+#endif // DEFTYPES_HPP

@@ -21,7 +21,6 @@
 
 #include <mox/event_handling/event_dispatcher.hpp>
 #include <mox/signal/signal.hpp>
-#include <mox/signal/signal_host.hpp>
 #include <mox/event_handling/event_handling_declarations.hpp>
 
 namespace mox
@@ -29,7 +28,7 @@ namespace mox
 
 /// The SocketNotifier class provides notifications on events occurring on a socket descriptor.
 /// The socket descriptor is either a file handler or a normal socket handler.
-class MOX_API SocketNotifier : public SignalHost<ObjectLock>, public std::enable_shared_from_this<SocketNotifier>
+class MOX_API SocketNotifier : public ObjectLock, public std::enable_shared_from_this<SocketNotifier>
 {
 public:
     /// The type of the handler.
@@ -49,10 +48,11 @@ public:
         Error = 0x08
     };
 
-    /// Activation signal descriptor.
-    static inline SignalDescriptor<SocketNotifierSharedPtr, Modes> ActivatedDescriptor;
+    /// Activation signal type descriptor.
+    static inline SignalTypeDecl<SocketNotifierSharedPtr, Modes> ActivatedSignalType;
+
     /// Activation signal, emitted when the operation on the socket is notified.
-    Signal activated{*this, ActivatedDescriptor};
+    SignalDecl<SocketNotifierSharedPtr, Modes> activated{*this, ActivatedSignalType};
 
     /// Creates a socket notifier on a \a socket with notification \a modes.
     static SocketNotifierSharedPtr create(Handler socket, Modes modes);

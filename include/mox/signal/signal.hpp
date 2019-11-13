@@ -23,9 +23,11 @@
 #include <memory>
 #include <type_traits>
 #include <vector>
+#include <mox/config/deftypes.hpp>
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/containers.hpp>
+#include <mox/utils/flat_map.hpp>
 #include <mox/metadata/callable.hpp>
 #include <mox/metadata/metaclass.hpp>
 
@@ -34,106 +36,111 @@
 namespace mox
 {
 
+/******************************************************************************
+ *
+ */
 class Signal;
-class SignalHostConcept;
 
-/// SignalDescriptorBase is the base descriptor class of mox signal types. The signal
-/// descriptor holds the argument signatures (descriptors) of a signal, and a unique identifier
-/// associated to the signal type.
+/// SignalType declares the type of the signal. Holds the argument signatures (descriptors)
+/// of a signal type, and the instances of the signal.
 ///
-/// You can have mox signals in your class if:
-/// - you declare a signal descriptor for the signal as static inline const member,
-/// - you derive your class from SignalHostConcept or from a class that derives from SignalHostConcept.
-struct MOX_API SignalDescriptorBase
-{
-    typedef int64_t TUuid;
-
-    /// Holds the signal argument descriptors.
-    const VariantDescriptorContainer arguments;
-    /// Holds the unique identifier of the signal.
-    const TUuid uuid = 0u;
-
-    // Comparison operator.
-    bool operator==(const SignalDescriptorBase& other) const;
-
-protected:
-    /// Construct the signal descriptor with the argument container passed.
-    SignalDescriptorBase(const VariantDescriptorContainer& arguments);
-};
-
-/// Signal is the concept of the Mox signals.
+/// You must declare the signal type before using signals in Mox. To declare the signal type
+/// put a static member in your class using SignalTypeDecl<> template.
 ///
-/// You can connect a signal to a method, a metamethod, a function, a functor or a lambda using the specialized
-/// connect() functions. The functions connected to a signal are called slots. The slots must have arguments no
-/// more than the signal has, and must be of the same type or at least convertible to the slot arguments. If the
-/// conditions are not met, the connection fails.
+/// To declare a signal which takes an \e int as argument:
+/// \code static inline SignalTypeDecl<int> IntSignalType.
 ///
-/// Optionally, a slot can have the first argument of type Signal::ConnectionSharedPtr. When so, the connection
-/// object is passed to the slot when the signal is activated. The slot can use the connection object to disconnect
-/// the slot from the signal.
-///
-/// Every mox signal is registered to a host. When the host is destroyed, all the signal connections are also
-/// disconnected and deferred.
-class MOX_API Signal : public SharedLock<ObjectLock>
+/// To declare a signal with no arguments:
+/// \code static inline SignalTypeDecl<> SimpleSignalType;
+class MOX_API SignalType : public ObjectLock
 {
 public:
+    /// Destructor.
+    ~SignalType() = default;
 
-    /// This class holds the data that identifies a signal.
-    class SignalId : public SharedLock<ObjectLock>
+    /// Activates the signal on an instance.
+    /// \param sender The signal sender instance in \e intptr_t format.
+    /// \param args The arguments to pass to the signal packed for metainvocation.
+    /// \return The activation count, the number of times the signal was activated.
+    /// If the signal is not activable with the arguments, or the sender has no
+    /// signal with this type, returns -1.
+    int activate(intptr_t sender, const Callable::ArgumentPack& args) const;
+
+    /// Checks if a signal type is compatible with the \a other. Two signal types
+    /// are compatible if their arguments are compatible. Two argument sets are
+    /// compatible if the caller (\a other) signal arguments are the same amount
+    /// or more than the callee (this) argument count, and the arguments are convertible
+    /// between each other.
+    /// \param other The other signal type to test.
+    /// return If this signal is callable by the \a other, returns \e true, otherwise \e false.
+    bool isCompatible(const SignalType& other) const;
+
+    /// Returns the argument descriptors of the signal type.
+    /// \return The argument descriptors of the signal type.
+    const VariantDescriptorContainer& getArguments() const;
+
+    /// Adds a signal instance to the signal type.
+    /// \param signal The signal instance to add.
+    void addSignalInstance(Signal& signal);
+
+    /// Removes a signal instance from the signal type.
+    /// \param signal The signal instance to remove.
+    void removeSignalInstance(Signal& signal);
+
+protected:
+    /// Constructor.
+    SignalType(VariantDescriptorContainer&& args);
+
+    /// The instances of the signal type.
+    FlatMap<intptr_t, Signal*> m_instances;
+    /// Holds the argument descriptors of the signal type.
+    VariantDescriptorContainer m_argumentDescriptors;
+};
+
+/// Signal type declarator template. Use this template to declare your signal types
+/// in your class.
+template <typename... Arguments>
+class SignalTypeDecl : public SignalType
+{
+public:
+    /// Constructor.
+    SignalTypeDecl()
+        : SignalType(VariantDescriptorContainer::ensure<Arguments...>())
     {
-        friend class SignalHostConcept;
-        /// The signal host address.
-        SignalHostConcept& m_host;
-        /// The signal.
-        Signal* m_signal = nullptr;
-        /// The signal descriptor.
-        const SignalDescriptorBase& m_descriptor;
+    }
+};
 
-    public:
-        /// Constructor.
-        explicit SignalId(SignalHostConcept& host, Signal& signal, const SignalDescriptorBase& descriptor);
-        /// Destructor.
-        ~SignalId();
+/// Signal defines the signals in your class, and holds the connections made against the
+/// signal. You can connect a signal to a method, a metamethod, a function, a functor or
+/// a lambda using the specialized connect() functions. The functions connected to a signal
+/// are called slots. The slots must have arguments no more than the signal has, and must
+/// be of the same type or at least convertible to the slot arguments. If these conditions
+/// are not met, the connection fails.
+///
+/// A signal that is connected to an object from an other thread is marked for asynchrnous
+/// processing. This requires that the thread the slot belongs to must have an event loop
+/// to schedule the deferred slot processing.
+///
+/// When the object to which the signal belongs is destroyed, all the signal connections are
+/// also disconnected. All asynchronous connections are marked as invalid, so when scheduled,
+/// those will not get processed.
+///
+/// Use SignalDecl<> template to declare your signals with specialized arguments.
+class MOX_API Signal : public SharedLock<ObjectLock>
+{
+    friend class SignalType;
 
-        /// Returns the owning signal.
-        Signal& getSignal() const;
+public:
+    class Connection;
+    /// The connection type.
+    using ConnectionSharedPtr = std::shared_ptr<Connection>;
 
-        /// Returns the signal descriptor.
-        const SignalDescriptorBase& descriptor() const
-        {
-            return m_descriptor;
-        }
-
-        /// Checks if the signal is valid.
-        /// \return If the signal identifier is valid, returns \e true, otherwise \e false.
-        bool isValid() const;
-
-        /// Test whether the descriptor identifies this signal.
-        /// \param descriptor The descriptor to check.
-        /// \return If the descriptor idenifies this signal, returns \e true, otherwise \e false.
-        bool isA(const SignalDescriptorBase& descriptor) const;
-    };
-
-    /// The class represents a connection to a signal. The connection is a token which holds the
-    /// signal connected, and the function, method, metamethod, functor or lambda the signal is
-    /// connected to. This function is called slot.
+    /// The class represents a connection to a signal. The connection is a token which holds
+    /// the signal connected, and the slot the signal is connected to. The slot is a function,
+    /// a method, a metamethod, a functor or a lambda.
     class MOX_API Connection : public std::enable_shared_from_this<Connection>
     {
     public:
-        /// The type of the connection.
-        enum class Type
-        {
-            /// The connection is deferred, either the sender or the receiver is deferred.
-            Deferred,
-            /// The signal is connected to a function, a functor or a lambda.
-            ConnectedToCallable,
-            /// The signal is connected to a method.
-            ConnectedToMethod,
-            /// The signal is connected to a metamethod.
-            ConnectedToMetaMethod,
-            /// The signal is connected to an other signal.
-            ConnectedToSignal
-        };
         /// Destructor.
         virtual ~Connection() = default;
 
@@ -150,48 +157,45 @@ public:
         /// \return If the disconnect succeeds, \e true. If the disconnect fails, \e false.
         bool disconnect();
 
+        /// Returns the active connection that activated your slot. You should call this method
+        /// to access the connection and its properties.
+        /// \return The active connection object.
+        static ConnectionSharedPtr getActiveConnection();
+
     protected:
         /// Constructs a connection attached to the \a signal.
         explicit Connection(Signal& signal);
 
         /// Activates the connection by calling the slot of the connection.
         /// \param args The arguments to pass to the slot.
-        virtual void activate(Callable::ArgumentPack& args) = 0;
+        virtual void activate(const Callable::ArgumentPack& args) = 0;
 
         /// Resets the connection.
         virtual void reset();
 
+        /// Internal disconnect method, to disconnect a connection specific receiver.
+        /// \return If the connection's receiver matches the one passed as argument,
+        /// return tru, otherwise false.
+        virtual bool disconnect(Variant receiver, const Callable& callable) = 0;
+
         /// The signal the connection is attached to.
         Signal* m_signal = nullptr;
-        /// The type of the connection.
-        Type m_connectionType = Type::Deferred;
-        /// Pass the connection object to the slot.
-        bool m_passConnectionObject = false;
 
         friend class Signal;
         friend class DeferredSignalEvent;
     };
 
-    /// The connection type.
-    typedef std::shared_ptr<Connection> ConnectionSharedPtr;
-
-    /// Returns the signal identifier within a signal host.
-    /// \return The signal identifier.
-    const SignalId& id() const;
+    /// Returns the signal type.
+    /// \return The signal type.
+    SignalType* getType();
+    const SignalType* getType() const;
 
     /// Activates the connections of the signal by invoking the slots from each connection passing
     /// the \a arguments to the slots. Connections created during the activation are not invoked
     /// in the same activation cicle.
     /// \param arguments The arguments to pass to the slots, being the arguments passed to the signal.
     /// \return The number of connections activated.
-    int activate(Callable::ArgumentPack& arguments);
-
-    /// Signal emitter. Packs the \a arguments into a Callable::ArgumentPack pack and activates
-    /// the signal connections.
-    /// \param arguments... The variadic arguments passed.
-    /// \return The number of connections activated.
-    template <typename... Args>
-    int operator()(Args... arguments);
+    int activate(const Callable::ArgumentPack& arguments);
 
     /// Creates a connection between a signal and a \a metaMethod of a \a receiver.
     /// \param receiver The receiver hosting the metamethod.
@@ -203,6 +207,11 @@ public:
     /// \param signal The receiver signal connected to this signal.
     /// \return The connection shared object.
     ConnectionSharedPtr connect(const Signal& signal);
+    /// Disconnects a \a signal from this signal.
+    /// \param signal The signal to disconnect.
+    /// \return If the \a signal was connected, and the disconnect succeeded, returns \e true.
+    /// Otherwise returns \e false.
+    bool disconnect(const Signal& signal);
 
     /// Connects a metamethod with \a methodName. The metamethod must be registered in the \a receiver's
     /// static or dynamic metaclass.
@@ -212,24 +221,6 @@ public:
     /// fails, returns \e nullptr.
     template <class Receiver>
     ConnectionSharedPtr connect(const Receiver& receiver, const char* methodName);
-
-    /// Connects a \a method of a \a receiver thos this signal.
-    /// \param receiver The receiver of the connection.
-    /// \param method The method to connect.
-    /// \return If the connection succeeds, returns the shared pointer to the connection. If the connection
-    /// fails, returns \e nullptr.
-    template <typename SlotFunction>
-    std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, ConnectionSharedPtr>
-    connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method);
-
-    /// Connects a \a function, or a lambda to this signal.
-    /// \param function The function, functor or lambda to connect.
-    /// \return If the connection succeeds, returns the shared pointer to the connection. If the connection
-    /// fails, returns \e nullptr.
-    template <typename Function>
-    std::enable_if_t<!std::is_base_of_v<mox::Signal, Function>, ConnectionSharedPtr>
-    connect(const Function& function);
-
     /// Disconnects a metamethod with \a methodName. The metamethod must be registered in the \a receiver's
     /// static or dynamic metaclass.
     /// \param receiver The receiver of the connection.
@@ -239,6 +230,14 @@ public:
     template <typename Receiver>
     bool disconnect(const Receiver& receiver, const char* methodName);
 
+    /// Connects a \a method of a \a receiver thos this signal.
+    /// \param receiver The receiver of the connection.
+    /// \param method The method to connect.
+    /// \return If the connection succeeds, returns the shared pointer to the connection. If the connection
+    /// fails, returns \e nullptr.
+    template <typename SlotFunction>
+    std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, ConnectionSharedPtr>
+    connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method);
     /// Disconnects a \a method that is a method of the \a receiver.
     /// \param receiver The receiver of the connection.
     /// \param methodName The name of the metamethod to connect.
@@ -248,32 +247,30 @@ public:
     std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, bool>
     disconnect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method);
 
+    /// Connects a \a function, or a lambda to this signal.
+    /// \param slot The function, functor or lambda to connect.
+    /// \return If the connection succeeds, returns the shared pointer to the connection. If the connection
+    /// fails, returns \e nullptr.
+    template <typename Function>
+    std::enable_if_t<!std::is_base_of_v<mox::Signal, Function>, ConnectionSharedPtr>
+    connect(const Function& slot);
     /// Disonnects a \a function, functor or a lambda from this signal.
     /// \param function The function, functor or lambda to disconnect.
     /// \return If the \a function, functor or lambda was connected, and the disconnect succeeded,
     /// returns \e true. Otherwise returns \e false.
-    template <typename SlotFunction>
-    std::enable_if_t<!std::is_base_of_v<Signal, SlotFunction>, bool>
-    disconnect(const SlotFunction& slot);
+    template <typename Function>
+    std::enable_if_t<!std::is_base_of_v<Signal, Function>, bool>
+    disconnect(const Function& slot);
 
-    /// Disconnects a \a signal from this signal.
-    /// \param signal The signal to disconnect.
-    /// \return If the \a signal was connected, and the disconnect succeeded, returns \e true.
-    /// Otherwise returns \e false.
-    bool disconnect(const Signal& signal);
-
-    template <class SignalOwner>
-    explicit Signal(SignalOwner& owner, const SignalDescriptorBase& des)
-        : SharedLock<ObjectLock>(owner)
-        , m_id(owner, *this, des)
-    {
-    }
     /// Destructor.
     virtual ~Signal();
 
 protected:
     Signal() = delete;
     DISABLE_COPY(Signal)
+
+    /// Construct the
+    explicit Signal(intptr_t owner, SignalType& signalType);
 
     /// Adds a \a connection to the signal.
     void addConnection(ConnectionSharedPtr connection);
@@ -289,29 +286,35 @@ protected:
     bool disconnectImpl(Variant receiver, const Callable& callable);
 
 
-    /// The signal identifier.
-    SignalId m_id;
     /// The collection of active connections.
-    SharedVector<ConnectionSharedPtr> m_connections;
+    using ConnectionContainer = SharedVector<ConnectionSharedPtr>;
+    ConnectionContainer m_connections;
+    /// The signal type.
+    SignalType* m_signalType = nullptr;
+    /// The signal owner.
+    intptr_t m_owner = 0;
     /// Triggering flag. Locks the signal from recursive triggering.
     bool m_triggering = false;
 };
 
 template <typename... Arguments>
-struct SignalDescriptor : SignalDescriptorBase
+class SignalDecl : public Signal
 {
-private:
-    auto registerArguments()
-    {
-        std::array<Metatype, sizeof...(Arguments)> dummy = {{registerMetaType<Arguments>()...}};
-        UNUSED(dummy);
-        return VariantDescriptorContainer::get<Arguments...>();
-    }
 public:
-    SignalDescriptor()
-        : SignalDescriptorBase(registerArguments())
+    template <class SignalOwner>
+    explicit SignalDecl(SignalOwner& owner, SignalType& type)
+        : Signal(reinterpret_cast<intptr_t>(&owner), type)
     {
+        // Signal arguments must match with the signal type.
+        auto signalArgs = VariantDescriptorContainer::get<Arguments...>();
+        FATAL(type.getArguments() == signalArgs, "Signal arguments and signal type arguments mismatch")
     }
+
+    /// Signal emitter. Packs the \a arguments into a Callable::ArgumentPack pack and activates
+    /// the signal connections.
+    /// \param arguments... The variadic arguments passed.
+    /// \return The number of connections activated.
+    int operator()(Arguments... arguments);
 };
 
 } // mox

@@ -124,8 +124,7 @@ TEST_F(Callables, test_apply_callable_function_no_args_with_args)
     Callable callable(testFunc);
 
     invoked = false;
-    Callable::ArgumentPack args;
-    args.add(10).add(20.0f).add(std::string_view("30"));
+    Callable::ArgumentPack args(10, 20.0f, "30"sv);
     callable.apply(args);
     EXPECT_TRUE(invoked);
 }
@@ -133,8 +132,7 @@ TEST_F(Callables, test_apply_callable_function_no_args_with_args)
 TEST_F(Callables, test_apply_callable_function_one_arg)
 {
     Callable callable(testFunc2);
-    Callable::ArgumentPack args;
-    args.add(10);
+    Callable::ArgumentPack args(10);
     callable.apply(args);
     EXPECT_TRUE(invoked);
 }
@@ -142,8 +140,7 @@ TEST_F(Callables, test_apply_callable_function_one_arg)
 TEST_F(Callables, test_apply_function_one_arg_with_multiple_params)
 {
     Callable callable(testFunc2);
-    Callable::ArgumentPack args;
-    args.add(10).add(std::string_view("alma"));
+    Callable::ArgumentPack args(10, "alma"sv);
     callable.apply(args);
     EXPECT_TRUE(invoked);
 }
@@ -152,15 +149,14 @@ TEST_F(Callables, test_invoke_callable_with_args_using_no_arg_fails)
 {
     Callable callable(factorial);
 
-    EXPECT_THROW(callable.apply(Callable::ArgumentPack()), mox::Callable::invalid_argument);
+    EXPECT_THROW(callable.apply(Callable::ArgumentPack()), mox::invalid_argument);
 }
 
 TEST_F(Callables, test_apply_callable_function_with_args_and_ret)
 {
     Callable callable(factorial);
 
-    Callable::ArgumentPack args;
-    args.add(5);
+    Callable::ArgumentPack args(5);
     int ret = callable.apply(args);
     EXPECT_EQ(120, ret);
 }
@@ -244,8 +240,7 @@ TEST_F(Callables, test_apply_method_no_arg)
     TestFunctor functor;
     Callable callable(&TestFunctor::voidMethod);
 
-    Callable::ArgumentPack args;
-    callable.apply(functor, args);
+    callable.apply(Callable::ArgumentPack(&functor));
     EXPECT_TRUE(functor.invoked);
 }
 
@@ -254,8 +249,7 @@ TEST_F(Callables, test_apply_method_one_arg)
     TestFunctor functor;
     Callable callable(&TestFunctor::voidMethod2);
 
-    Callable::ArgumentPack args(101);
-    callable.apply(functor, args);
+    callable.apply(Callable::ArgumentPack(&functor, 101));
     EXPECT_TRUE(functor.invoked);
 }
 
@@ -264,7 +258,7 @@ TEST_F(Callables, test_apply_method_no_arg_ret)
     TestFunctor functor;
     Callable callable(&TestFunctor::retMethod);
 
-    auto result = callable.apply(functor, Callable::ArgumentPack());
+    auto result = callable.apply(Callable::ArgumentPack(&functor));
     EXPECT_EQ(1010, result);
 }
 
@@ -274,8 +268,7 @@ TEST_F(Callables, test_apply_method_default_arg_ret)
     Callable callable(&TestFunctor::retMethodWithDefArg);
 
     // This fails as the formal arguments are not the same as the actual ones.
-    Callable::ArgumentPack args(100);
-    auto result = callable.apply(functor, args);
+    auto result = callable.apply(Callable::ArgumentPack(&functor, 100));
     EXPECT_EQ(1000, result);
 }
 
@@ -284,10 +277,10 @@ TEST_F(Callables, test_apply_method_constret)
     TestFunctor functor;
     Callable callable(&TestFunctor::constRet);
 
-    auto result = callable.apply(functor, Callable::ArgumentPack());
+    auto result = callable.apply(Callable::ArgumentPack(&functor));
     EXPECT_EQ(101, result);
 
-    result = callable.apply(functor, Callable::ArgumentPack(std::string_view("monkey")));
+    result = callable.apply(Callable::ArgumentPack(&functor, "monkey"sv));
     EXPECT_EQ(101, result);
 }
 
@@ -312,11 +305,9 @@ TEST_F(Callables, test_lambda_with_args)
     Callable callable(lambda);
     EXPECT_FALSE(invoked);
 
-    Callable::ArgumentPack args;
-    EXPECT_THROW(callable.apply(args), mox::Callable::invalid_argument);
+    EXPECT_THROW(callable.apply(Callable::ArgumentPack()), mox::invalid_argument);
 
-    args.add(10).add(std::string("alma"));
-    callable.apply(args);
+    callable.apply(Callable::ArgumentPack(10, "alma"sv));
     EXPECT_TRUE(invoked);
 }
 
@@ -329,7 +320,7 @@ TEST_F(Callables, test_lambda_with_convertible_args)
     Callable callable(lambda);
     EXPECT_FALSE(invoked);
 
-    callable.apply(Callable::ArgumentPack().add(10).add(std::string_view("10")));
+    callable.apply(Callable::ArgumentPack(10, "10"sv));
     EXPECT_TRUE(invoked);
 }
 
@@ -340,7 +331,7 @@ TEST_F(Callables, test_lambda_with_ret)
         return v * s.length();
     };
     Callable callable(lambda);
-    auto result = callable.apply(Callable::ArgumentPack().add(10).add(std::string("alma")));
+    auto result = callable.apply(Callable::ArgumentPack(10, "alma"sv));
     EXPECT_EQ(40u, result);
 }
 
@@ -349,7 +340,7 @@ TEST_F(Callables, test_callable_apply_instance_with_function)
     Callable callable(factorial);
     TestFunctor f;
 
-    EXPECT_THROW(callable.apply(Callable::ArgumentPack().add(f)), mox::bad_conversion);
+    EXPECT_THROW(callable.apply(Callable::ArgumentPack(f)), mox::bad_conversion);
 }
 
 struct AnyClass
@@ -364,7 +355,7 @@ TEST_F(Callables, test_apply_with_other_instance)
     mox::registerMetaType<AnyClass>();
     mox::registerMetaType<AnyClass*>();
 
-    EXPECT_THROW(callable.apply(Callable::ArgumentPack().add(any).add(10)), mox::bad_conversion);
+    EXPECT_THROW(callable.apply(Callable::ArgumentPack(any, 10)), mox::bad_conversion);
 }
 
 
@@ -404,6 +395,6 @@ TEST_F(Callables, test_superclass_callable_applied_with_derived_instance)
     Callable callableL1(&TestFunctor::voidMethod);
     Callable callableL2(&SecondLevel::voidMethod);
 
-    EXPECT_THROW(callableL1.apply(Callable::ArgumentPack().add(l2)), mox::bad_conversion);
-    EXPECT_THROW(callableL2.apply(Callable::ArgumentPack().add(l2)), mox::bad_conversion);
+    EXPECT_THROW(callableL1.apply(Callable::ArgumentPack(l2)), mox::bad_conversion);
+    EXPECT_THROW(callableL2.apply(Callable::ArgumentPack(l2)), mox::bad_conversion);
 }

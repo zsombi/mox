@@ -22,19 +22,7 @@
 namespace mox
 {
 
-size_t Callable::ArgumentPack::count() const
-{
-    return size();
-}
-
-Callable::ArgumentPack& Callable::ArgumentPack::operator+=(const ArgumentPack &other)
-{
-    insert(end(), other.begin(), other.end());
-    return *this;
-}
-
-/// String representation of the exception.
-const char* Callable::invalid_argument::what() const EXCEPTION_NOEXCEPT
+const char* invalid_argument::what() const EXCEPTION_NOEXCEPT
 {
     return "invalid argument type applied";
 }
@@ -95,7 +83,7 @@ const VariantDescriptor& Callable::argumentType(size_t index) const
     size_t count = argumentCount();
     if (index >= count)
     {
-        throw Callable::invalid_argument();
+        throw invalid_argument();
     }
     return m_args[index];
 }

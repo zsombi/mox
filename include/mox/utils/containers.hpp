@@ -126,6 +126,16 @@ public:
             callback(*it);
         }
     }
+
+    template <typename Callback>
+    void forEach(Callback callback) const
+    {
+        auto end = m_container.cend();
+        for (auto it = m_container.cbegin(); it != end; ++it)
+        {
+            callback(*it);
+        }
+    }
 };
 
 }

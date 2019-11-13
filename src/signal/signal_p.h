@@ -41,15 +41,9 @@ public:
     {
     }
 
-    Callable::ArgumentPack prepareActivation(Callable::ArgumentPack& args)
+    Callable::ArgumentPack prepareActivation(const Callable::ArgumentPack& args)
     {
-        Callable::ArgumentPack copy;
-        if (m_passConnectionObject)
-        {
-            copy.add(shared_from_this());
-        }
-        copy += args;
-        return copy;
+        return args;
     }
 };
 
@@ -64,13 +58,13 @@ protected:
 public:
     FunctionConnection(Signal& signal, Callable&& callable);
 
-    bool compare(const Callable& callable) const;
+    bool disconnect(Variant receiver, const Callable& callable) override;
     bool isConnected() const override
     {
         return m_slot.type() != FunctionType::Invalid;
     }
 
-    void activate(Callable::ArgumentPack& args) override;
+    void activate(const Callable::ArgumentPack& args) override;
     void reset() override;
 };
 
@@ -81,8 +75,8 @@ class MethodConnection : public FunctionConnection
 public:
     MethodConnection(Signal& signal, Variant receiver, Callable&& callable);
 
-    bool compare(Variant receiver, const Callable& callable) const;
-    void activate(Callable::ArgumentPack& args) override;
+    bool disconnect(Variant receiver, const Callable& callable) override;
+    void activate(const Callable::ArgumentPack& args) override;
     void reset() override;
 };
 
@@ -105,8 +99,8 @@ public:
     {
         return m_slot && (m_slot->type() != FunctionType::Invalid);
     }
-    bool compare(Variant receiver, const Callable& callable) const;
-    void activate(Callable::ArgumentPack& args) override;
+    bool disconnect(Variant receiver, const Callable& callable) override;
+    void activate(const Callable::ArgumentPack& args) override;
     void reset() override;
 };
 typedef std::shared_ptr<MetaMethodConnection> MetaMethodConnectionSharedPtr;
@@ -126,9 +120,10 @@ public:
 
     bool isConnected() const override
     {
-        return m_receiverSignal && m_receiverSignal->id().isValid();
+        return m_receiverSignal && (m_receiverSignal->getType() != nullptr);
     }
-    void activate(Callable::ArgumentPack& args) override;
+    bool disconnect(Variant receiver, const Callable& callable) override;
+    void activate(const Callable::ArgumentPack& args) override;
     void reset() override;
 };
 typedef std::shared_ptr<SignalConnection> SignalConnectionSharedPtr;

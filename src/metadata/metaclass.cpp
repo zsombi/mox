@@ -29,9 +29,9 @@ std::string MetaClass::Method::name() const
 }
 
 
-MetaClass::Signal::Signal(MetaClass& metaClass, const SignalDescriptorBase& descriptor, std::string_view name)
+MetaClass::Signal::Signal(MetaClass& metaClass, const SignalType& type, std::string_view name)
     : m_ownerClass(metaClass)
-    , m_descriptor(descriptor)
+    , m_type(type)
     , m_name(name)
 {
     m_ownerClass.addSignal(*this);
@@ -42,14 +42,19 @@ std::string MetaClass::Signal::name() const
     return m_name;
 }
 
-const SignalDescriptorBase& MetaClass::Signal::descriptor() const
+const SignalType& MetaClass::Signal::type() const
 {
-    return m_descriptor;
+    return m_type;
+}
+
+int MetaClass::Signal::activate(intptr_t sender, const Callable::ArgumentPack &arguments) const
+{
+    return m_type.activate(sender, arguments);
 }
 
 bool MetaClass::Signal::isInvocableWith(const VariantDescriptorContainer &arguments) const
 {
-    return m_descriptor.arguments.isInvocableWith(arguments);
+    return m_type.getArguments().isInvocableWith(arguments);
 }
 
 void MetaClass::addMethod(const Method &method)

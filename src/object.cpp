@@ -140,7 +140,7 @@ size_t Object::childIndex(const Object& child)
     if (child.parent() != this)
     {
         TRACE("Object is not a child of the object!");
-        throw Callable::invalid_argument();
+        throw invalid_argument();
     }
 
     OrderedLock lock(this, const_cast<Object*>(&child));
@@ -152,7 +152,7 @@ size_t Object::childIndex(const Object& child)
         }
     }
 
-    throw Callable::invalid_argument();
+    throw invalid_argument();
 }
 
 ObjectSharedPtr Object::childAt(size_t index)

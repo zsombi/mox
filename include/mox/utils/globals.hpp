@@ -25,23 +25,7 @@
 #include <vector>
 #include <algorithm>
 
-// Standard integer types
-#include <inttypes.h>
-
 #include <mox/config/platform_config.hpp>
-
-using byte = int8_t;
-using long_t = long int;
-using ulong_t = unsigned long int;
-
-
-#ifdef ANDROID
-
-typedef long intptr_t_;
-
-#endif
-
-using Timestamp = std::chrono::system_clock::time_point;
 
 #define FALLTHROUGH     [[fallthrough]]
 

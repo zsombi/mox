@@ -244,15 +244,16 @@ private:
 
 /// Range erase free function specialized on FlatMap.
 /// \tparam KeyType
+/// \tparam T
 /// \tparam Comparator
 /// \tparam Allocator
-/// \tparam ValueType
-/// \param set The flat set from where you want to erase a value.
-/// \param value The value to erase.
+/// \tparam U
+/// \param map The flat map from where you want to erase a value.
+/// \param valuePair The value to erase.
 template <typename KeyType, typename T, typename Comparator, typename Allocator, typename U>
-void erase(FlatMap<KeyType, T, Comparator, Allocator>& map, const U& key)
+void erase(FlatMap<KeyType, T, Comparator, Allocator>& map, const U& valuePair)
 {
-    map.erase(std::remove(map.begin(), map.end(), std::make_pair(key, T())), map.end());
+    map.erase(std::remove(map.begin(), map.end(), valuePair), map.end());
 }
 
 } // namespace mox

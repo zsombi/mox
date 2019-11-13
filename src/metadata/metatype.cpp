@@ -16,6 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
+#include <mox/config/deftypes.hpp>
 #include <mox/metadata/metatype.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <string.h>
