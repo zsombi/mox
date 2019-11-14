@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../cmake.modules" CACHE STRING "module-path")
 
 include(configure-platform)
@@ -27,9 +27,9 @@ endif()
 
 # platform specific packages
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-    include(FindPkgConfig)
-    pkg_check_modules(LIBGLIB REQUIRED glib-2.0)
-    INCLUDE_DIRECTORIES(${LIBGLIB_INCLUDE_DIRS})
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(deps REQUIRED IMPORTED_TARGET glib-2.0)
+    target_link_libraries(mox PkgConfig::deps)
 endif()
 
 # MacOS stuff

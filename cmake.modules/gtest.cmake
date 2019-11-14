@@ -16,7 +16,7 @@
 # <http://www.gnu.org/licenses/>
 #
 
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
 
 # Do we have google test already downloaded?
 find_path(GTEST_PATH googletest-download/CMakeLists.txt
@@ -42,9 +42,13 @@ if (NOT GTEST_PATH)
         message(FATAL_ERROR "Build step for googletest failed: ${result}")
     endif()
 
+    find_path(GTEST_PATH googletest-download/CMakeLists.txt PATHS ${MOX_BUILD_PATH})
+
+    message(STATUS "Downloaded Google test to " ${GTEST_PATH})
+
 else()
 
-    message(STATUS "Downloaded Google test found")
+    message(STATUS "Downloaded Google test found at " ${GTEST_PATH})
 
 endif()
 

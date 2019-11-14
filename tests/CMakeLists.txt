@@ -16,9 +16,10 @@
 # <http://www.gnu.org/licenses/>
 #
 
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../cmake.modules" CACHE STRING "module-path")
 
+include(configure-platform)
 include(gtest)
 
 set(SOURCES
@@ -39,7 +40,7 @@ set(SOURCES
     test_threads.cpp
     )
 add_executable(unittest ${SOURCES})
-target_link_libraries(unittest gtest_main mox)
+target_link_libraries(unittest mox gtest_main)
 
 add_test(NAME unittest COMMAND unittest "--gtest_output=xml:unittest.xml"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
