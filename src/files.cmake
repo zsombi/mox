@@ -19,6 +19,7 @@
 set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/platform_config.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/deftypes.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/error.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/pimpl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/thread.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/platforms/adaptation.hpp
@@ -47,8 +48,15 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metadata_impl.hpp
 
     # Signal handling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal_type.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/detail/signal_impl.hpp
+
+    # Property handling
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_decl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_type.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_value_provider.hpp
 
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event.hpp
@@ -73,17 +81,28 @@ set(HEADERS
     )
 
 set(SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metadata.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metadata_p.h
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metatype.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/converters.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/meta_property.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaclass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaobject.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/variant.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metadata/callable.cpp
+
     # Signal
     ${CMAKE_CURRENT_SOURCE_DIR}/signal/signal_p.h
     ${CMAKE_CURRENT_SOURCE_DIR}/signal/signal.cpp
+
+    # Property handling
+    ${CMAKE_CURRENT_SOURCE_DIR}/property/property.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/property/property_type.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/property/property_value_provider.cpp
+
     # Event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_handler.cpp

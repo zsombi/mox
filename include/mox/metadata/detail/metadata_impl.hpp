@@ -22,6 +22,7 @@
 #include <mox/utils/type_traits.hpp>
 #include <string>
 #include <mox/utils/globals.hpp>
+#include <mox/config/error.hpp>
 
 namespace mox
 {
@@ -120,10 +121,7 @@ Metatype metaType()
 {
     static_assert (!is_cstring<Type>::value, "Use std::string_view in reflections instead of cstrings");
     Metatype type = metadata::findMetatype(metadata::remove_cv<Type>());
-    if (type == Metatype::Invalid)
-    {
-        throw type_not_registered(metadata::remove_cv<Type>());
-    }
+    throwIf<ExceptionType::MetatypeNotRegistered>(type == Metatype::Invalid);
     return type;
 }
 

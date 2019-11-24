@@ -38,45 +38,44 @@ using ThreadLoopSharedPtr = std::shared_ptr<ThreadLoop>;
 /// The ThreadLoop class provides event loop functionality on threads. Use this class to
 /// create threads that have event dispatching. Objects parented to this instance, as well
 /// as the objects created during the lifetime of the thread are owned by the thread.
+///
+/// Note that despite the thread handler object is owned by the thread, you can use it from
+/// outside the thread to communicate with the thread, and for example to join the thread.
+/// You cannot join the thread within the thread.
 class MOX_API ThreadLoop : public Object, public Module
 {
 public:
-    static inline SignalTypeDecl<ThreadLoop*> StartedSignalType{};
-    static inline SignalTypeDecl<ThreadLoop*> StoppedSignalType{};
     /// The thread status.
     enum class Status
     {
         /// The thread is inactive, its loop has not been started yet.
         Inactive,
+        /// The thread is started, but the event loop is not running yet.
+        StartingUp,
         /// The thread's event loop is running.
         Running,
         /// The thread is stopped.
-        Stopped
+        Stopped,
+        /// The thread is deferred, it is in a post-joined state.
+        PostMortem
     };
 
     /// Return the status of the thread loop.
     Status getStatus() const;
 
-    /// Starts the thread. If the thread object has no parent set, the thread is started as detached.
-    /// \param detached If set to \e true, the thread starts detached. Otherwise starts as joinable.
-    /// If the thread object is a parentless object, this argument is ingored.
-    virtual void start(bool detached = false);
+    /// Starts the thread. If the thread object has no parent set, the thread gets automatically
+    /// parented to the application's root object at latest when started.
+    virtual void start();
 
     /// Exit a running thread. The thread's loop is stopped and the exit code is passed.
     /// You can call this method both from within and or from outside of the thread.
     /// \param exitCode The exit code of the thread.
     void exit(int exitCode = 0);
 
-    /// Joins the thread. The call completes when the thread is finished. If the thread
-    /// is detached, and \a force is \e false, the call returns immediately without waiting
-    /// for the thread completion. You must call this function from outside of the running
-    /// thread this thread object handles. Calling this method from within the running thread
-    /// has no effect, and return \e false.
-    /// \param force If true, the call waits even if the thread is detached.
-    /// \return If the join succeeded, returns \e true. If the join is called from within
-    /// the running thread, or if the thread is detached, and you call join not forced,
-    /// return \e false.
-    bool join(bool force = true);
+    /// Joins the thread. The call completes when the thread is finished. You must call this
+    /// function from outside of the running thread this thread object handles. Calling this
+    /// method from within the running thread throws Exception(ExceptionType::AttempThreadJoinWithin).
+    void join();
 
     /// Returns the running state of the thread.
     /// \return If the thread is running, returns \e true, otherwise \e false.
@@ -85,8 +84,7 @@ public:
     /// Exit a running thread, and blocks the current thread till the other thread is completed.
     /// You must call the method from outside of the thread you want to exit.
     /// \param exitCode The exit code.
-    /// \return If the operation succeeds, returns \e true, otherwise \e false.
-    bool exitAndJoin(int exitCode = 0);
+    void exitAndJoin(int exitCode = 0);
 
     /// Creates a thread object. You can start the thread by calling start() method.
     /// \param parent The parent object to which this thread is parented, nullptr if the thread
@@ -103,14 +101,18 @@ public:
     /// The static metaclass of the thread loop.
     struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, ThreadLoop, Object>
     {
+        static inline SignalTypeDecl<ThreadLoop*> StartedSignalType{};
+        static inline SignalTypeDecl<ThreadLoop*> StoppedSignalType{};
         Signal started{*this, StartedSignalType, "started"};
         Signal stopped{*this, StoppedSignalType, "stopped"};
+
+        MetaClassDefs()
     };
 
     /// Signal emitted when the thread starts the event loop.
-    SignalDecl<ThreadLoop*> started{*this, StartedSignalType};
+    SignalDecl<ThreadLoop*> started{*this, StaticMetaClass::StartedSignalType};
     /// Signal emitted right before the thread stops its execution.
-    SignalDecl<ThreadLoop*> stopped{*this, StoppedSignalType};
+    SignalDecl<ThreadLoop*> stopped{*this, StaticMetaClass::StoppedSignalType};
     /// \}
 
 protected:

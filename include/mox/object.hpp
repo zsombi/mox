@@ -22,6 +22,7 @@
 #include <mox/utils/globals.hpp>
 #include <mox/metadata/metaobject.hpp>
 #include <mox/event_handling/event_handler.hpp>
+#include <mox/property/property.hpp>
 #include <mox/config/thread.hpp>
 #include <mox/module/thread_data.hpp>
 
@@ -45,7 +46,12 @@ public:
     /// The static metaclass of Object.
     struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Object, MetaObject>
     {
+        MetaClassDefs()
+        static inline PropertyTypeDecl<std::string, PropertyAccess::ReadWrite> ObjectNameProperty;
+        Property objectName{*this, ObjectNameProperty, "objectName"};
     };
+
+    PropertyDecl<std::string> objectName{*this, StaticMetaClass::ObjectNameProperty, ""};
 
     /// Creates a shared pointer with Object. If a \a parent is specified, the object you create
     /// is added to this object as child. You can also add the created object to any object as

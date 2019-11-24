@@ -53,6 +53,21 @@ const VariantDescriptor& Variant::descriptor() const
     return m_data->m_typeDescriptor;
 }
 
+bool operator==(const Variant &var1, const Variant &var2)
+{
+    if (var1.isValid() && var2.isValid() && (var1.m_data->m_typeDescriptor == var2.m_data->m_typeDescriptor))
+    {
+        return var1.m_data->m_isEqual(*var2.m_data);
+    }
+
+    return false;
+}
+
+bool operator!=(const Variant &var1, const Variant &var2)
+{
+    return !operator==(var1, var2);
+}
+
 
 VariantDescriptor::VariantDescriptor(Metatype type, bool ref, bool c)
     : type(type)

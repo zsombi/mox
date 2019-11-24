@@ -335,28 +335,6 @@ TEST_F(Callables, test_lambda_with_ret)
     EXPECT_EQ(40u, result);
 }
 
-TEST_F(Callables, test_callable_apply_instance_with_function)
-{
-    Callable callable(factorial);
-    TestFunctor f;
-
-    EXPECT_THROW(callable.apply(Callable::ArgumentPack(f)), mox::bad_conversion);
-}
-
-struct AnyClass
-{
-};
-
-TEST_F(Callables, test_apply_with_other_instance)
-{
-    Callable callable(&TestFunctor::voidMethod);
-    AnyClass any;
-
-    mox::registerMetaType<AnyClass>();
-    mox::registerMetaType<AnyClass*>();
-
-    EXPECT_THROW(callable.apply(Callable::ArgumentPack(any, 10)), mox::bad_conversion);
-}
 
 
 TEST_F(Callables, test_lambda_callables)
@@ -395,6 +373,6 @@ TEST_F(Callables, test_superclass_callable_applied_with_derived_instance)
     Callable callableL1(&TestFunctor::voidMethod);
     Callable callableL2(&SecondLevel::voidMethod);
 
-    EXPECT_THROW(callableL1.apply(Callable::ArgumentPack(l2)), mox::bad_conversion);
-    EXPECT_THROW(callableL2.apply(Callable::ArgumentPack(l2)), mox::bad_conversion);
+    EXPECT_THROW(callableL1.apply(Callable::ArgumentPack(&l2)), mox::Exception);
+    EXPECT_THROW(callableL2.apply(Callable::ArgumentPack(&l2)), mox::Exception);
 }

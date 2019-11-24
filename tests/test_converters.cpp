@@ -69,6 +69,7 @@ public:
 
     struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Derived, mox::MetaObject>
     {
+        MetaClassDefs()
     };
 };
 

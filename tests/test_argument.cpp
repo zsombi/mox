@@ -108,7 +108,7 @@ TEST(Variant, test_string_casts)
     EXPECT_TRUE(b);
 
     // conversion fails
-    EXPECT_THROW(i = v, mox::bad_conversion);
+    EXPECT_THROW(i = v, mox::Exception);
 
     v = std::string("10");
     i = v;
@@ -157,7 +157,7 @@ TEST(Variant, test_bad_string_to_number_throws)
 {
     mox::Variant v(std::string("fadabec"));
     int i = 0;
-    EXPECT_THROW(i = v, mox::bad_conversion);
+    EXPECT_THROW(i = v, mox::Exception);
     UNUSED(i);
 }
 
@@ -165,7 +165,7 @@ TEST(Variant, test_bad_literal_to_number_throws)
 {
     mox::Variant v(std::string_view("fadabec"));
     int i = 0;
-    EXPECT_THROW(i = v, mox::bad_conversion);
+    EXPECT_THROW(i = v, mox::Exception);
     UNUSED(i);
 }
 

@@ -72,6 +72,8 @@ public:
     struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Quitter, mox::Object>
     {
         Method quit{*this, &Quitter::quit, "quit"};
+
+        MetaClassDefs()
     };
 
     static std::shared_ptr<Quitter> create(mox::Object* parent = nullptr)
@@ -101,12 +103,13 @@ protected:
 
 TEST_F(Threads, test_thread_basics)
 {
-    mox::Application mainThread;
+    TestApp app;
 
     auto test = mox::ThreadLoop::create();
     test->start();
 
     EXPECT_NE(test->threadData(), mox::ThreadData::thisThreadData());
+    EXPECT_TRUE(test->isRunning());
 
     // event handler to stop the thread
     auto exiter = [](mox::Event&)
@@ -115,11 +118,22 @@ TEST_F(Threads, test_thread_basics)
     };
     test->addEventHandler(mox::EventType::Base, exiter);
 
+    // exit wait
+    Notifier ping;
+    auto wait = ping.get_future();
+    auto onStopped = [&ping]()
+    {
+        ping.set_value();
+    };
+    test->stopped.connect(onStopped);
+
     // Post a message to the thread to quit the thread
     EXPECT_TRUE(mox::postEvent<mox::Event>(mox::EventType::Base, test));
 
     test->join();
-    EXPECT_EQ(mox::ThreadLoop::Status::Stopped, test->getStatus());
+    wait.wait();
+    EXPECT_EQ(mox::ThreadLoop::Status::PostMortem, test->getStatus());
+    app.runOnce();
 }
 
 TEST_F(Threads, test_parented_thread_deletes_before_quiting)
@@ -143,7 +157,7 @@ TEST_F(Threads, test_parented_thread_deletes_before_quiting)
 TEST_F(Threads, DISABLED_test_parented_detached_thread_deletes_before_quiting)
 {
     //FLAKY!!!
-    mox::Application mainThread;
+    TestApp app;
     auto root = mox::Object::create();
 
     Notifier notify;
@@ -158,13 +172,14 @@ TEST_F(Threads, DISABLED_test_parented_detached_thread_deletes_before_quiting)
             notify.set_value();
         };
         thread->stopped.connect(slot);
-        thread->start(true);
+        thread->start();
     }
     EXPECT_EQ(1, TestThread::threadCount);
     root.reset();
     notifyWait.wait();
     watchDeath.wait();
     EXPECT_EQ(0, TestThread::threadCount);
+    app.runOnce();
 }
 
 TEST_F(Threads, test_quit_application_from_thread_kills_thread)
@@ -196,15 +211,20 @@ TEST_F(Threads, test_threads2)
         auto c2 = mox::Object::create(thread.get());
         mox::Object::create(c2.get());
 
-        thread->start(true);
+        thread->start();
 
         auto mainExit = []()
         {
-            mox::ThreadData::mainThread()->thread()->exit(101);
+            mox::Application::instance().exit(101);
         };
         thread->stopped.connect(mainExit);
 
-        mox::postEvent<mox::Event>(evQuit, thread);
+        auto onIdle = [thread]()
+        {
+            mox::postEvent<mox::Event>(evQuit, thread);
+            return true;
+        };
+        mainThread.addIdleTask(onIdle);
     }
 
     EXPECT_EQ(101, mainThread.run());
@@ -232,10 +252,15 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
         };
         thread->addEventHandler(evQuit, quitEventHandler);
 
-        thread->start(true);
+        thread->start();
         EXPECT_EQ(1, TestThread::threadCount);
 
-        mox::postEvent<mox::Event>(evQuit, thread);
+        auto onIdle = [thread]()
+        {
+            mox::postEvent<mox::Event>(evQuit, thread);
+            return true;
+        };
+        mainThread.addIdleTask(onIdle);
     }
 
     EXPECT_EQ(10, mainThread.run());
@@ -254,19 +279,15 @@ TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
         auto thread = TestThread::create(std::move(notifyDeath));
         thread->stopped.connect(*mainThread.castRootObject<Quitter>(), "quit");
 
-        auto quitEventHandler = [](mox::Event& event)
-        {
-            if (event.type() == evQuit)
-            {
-                mox::ThreadData::thisThreadData()->thread()->exit(0);
-            }
-        };
-        thread->addEventHandler(evQuit, quitEventHandler);
-
-        thread->start(true);
+        thread->start();
         EXPECT_EQ(1, TestThread::threadCount);
 
-        mox::postEvent<mox::Event>(evQuit, thread);
+        auto onIdle = [thread]()
+        {
+            mox::postEvent<mox::QuitEvent>(thread);
+            return true;
+        };
+        mainThread.addIdleTask(onIdle);
     }
 
     EXPECT_EQ(10, mainThread.run());

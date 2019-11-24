@@ -47,6 +47,8 @@ public:
     {
         static inline SignalTypeDecl<> VoidSignalType;
         Signal voidSig{*this, VoidSignalType, "voidSig"};
+
+        MetaClassDefs()
     };
 
     static inline SignalTypeDecl<std::string_view> StringSignalType;
@@ -74,6 +76,8 @@ public:
         Signal sigB{*this, SignBDes, "sigB"};
         Signal sig2{*this, Sign2Des, "sig2"};
         Signal sig3{*this, Sign3Des, "sig3"};
+
+        MetaClassDefs()
     };
 };
 
@@ -86,6 +90,8 @@ public:
     struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, DerivedEmitter, SignalTestClass>
     {
         Signal sigV{*this, SignVDes, "sigV"};
+
+        MetaClassDefs()
     };
 };
 
@@ -109,8 +115,11 @@ public:
         Method autoDisconnect1{*this, &BaseType::autoDisconnect1, "autoDisconnect1"};
         Method autoDisconnect2{*this, &BaseType::autoDisconnect2, "autoDisconnect2"};
         Signal sig{*this, SigDes, "sig"};
+
+        MetaClassDefs()
     };
 
+    virtual ~SlotHolder() = default;
 
     void method1()
     {
@@ -176,6 +185,8 @@ public:
     {
         Method derivedMethod1{*this, &BaseType::derivedMethod1, "derivedMethod1"};
         Method derivedMethod2{*this, &BaseType::derivedMethod2, "derivedMethod2"};
+
+        MetaClassDefs()
     };
 
     void derivedMethod1()

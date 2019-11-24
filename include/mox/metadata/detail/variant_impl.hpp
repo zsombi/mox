@@ -18,6 +18,8 @@
 #ifndef ARGUMENT_IMPL_HPP
 #define ARGUMENT_IMPL_HPP
 
+#include <mox/config/error.hpp>
+
 namespace mox
 {
 
@@ -78,6 +80,13 @@ Variant::Data::Data(T value)
             return reinterpret_cast<void*>(ret);
         };
     }
+
+    m_isEqual = [this](const Data& other)
+    {
+        T otherValue = std::any_cast<T>(other.m_value);
+        T thisValue = std::any_cast<T>(m_value);
+        return otherValue == thisValue;
+    };
 }
 
 template <typename T>
@@ -92,18 +101,12 @@ T Variant::Data::get()
     Metatype sourceType = m_typeDescriptor.type;
     Metatype destinationType = mox::metaType<T>();
     MetatypeConverter* converter = metadata::findConverter(sourceType, destinationType);
-    if (!converter)
-    {
-        throw bad_conversion(sourceType, destinationType);
-    }
+    throwIf<ExceptionType::BadTypeConversion>(!converter);
 
     void* sourceValue = m_getter();
     MetaValue tmp = converter->convert(*converter, sourceValue);
     value = std::any_cast<T>(&tmp);
-    if (!value)
-    {
-        throw bad_conversion(sourceType, destinationType);
-    }
+    throwIf<ExceptionType::BadTypeConversion>(!value);
 
     return *value;
 }

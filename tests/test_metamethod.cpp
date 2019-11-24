@@ -36,6 +36,8 @@ public:
         Method testFunc2{*this, &BaseType::testFunc2, "testFunc2"};
         Method staticFunc{*this, &BaseType::staticFunc, "staticFunc"};
         Method lambda{*this, [](TestMixin* instance) { instance->invoked = true; }, "lambda"};
+
+        MetaClassDefs()
     };
 
     void testFunc1()
@@ -63,6 +65,8 @@ public:
     struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestSecond>
     {
         Method testFunc1{*this, &BaseType::testFunc1, "testFunc1"};
+
+        MetaClassDefs()
     };
 
     int testFunc1()
@@ -77,6 +81,7 @@ public:
 
     struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Mixin, TestMixin, TestSecond>
     {
+        MetaClassDefs()
     };
 
     explicit Mixin()

@@ -31,156 +31,25 @@
 namespace mox
 {
 
-#if defined(MOX_SINGLE_THREADED)
-
-class ObjectLock
-{
-public:
-    ~ObjectLock() = default;
-
-    void lock()
-    {
-        FATAL(!m_locked, "Object already locked!")
-        m_locked = true;
-    }
-
-    void unlock()
-    {
-        FATAL(m_locked, "Object already unlocked!")
-        m_locked = false;
-    }
-
-    bool try_lock()
-    {
-        if (m_locked)
-        {
-            return false;
-        }
-        lock();
-        return m_locked;
-    }
-private:
-    bool m_locked = false;
-};
-
-template<typename LockType>
-class lock_guard
-{
-public:
-    explicit lock_guard(LockType& lock)
-        : m_lock(lock)
-    {
-        m_lock.lock();
-    }
-    ~lock_guard()
-    {
-        m_lock.unlock();
-    }
-
-private:
-    lock_guard(const lock_guard&) = delete;
-    lock_guard& operator=(const lock_guard&) = delete;
-
-    LockType&  m_lock;
-};
-
-// Emulate atomic.
-template <typename T>
-class atomic
-{
-public:
-    T load() const
-    {
-        return m_value;
-    }
-    T load() const volatile
-    {
-        return m_value;
-    }
-
-    void store(T value)
-    {
-        m_value = value;
-    }
-    void store(T value) volatile
-    {
-        m_value = value;
-    }
-
-    T operator=(T value)
-    {
-        store(value);
-    }
-    T operator=(T value) volatile
-    {
-        store(value);
-    }
-
-    operator T()
-    {
-        return load();
-    }
-    operator T() volatile
-    {
-        return load();
-    }
-
-    explicit atomic() = default;
-    explicit atomic(T value)
-        : m_value(value)
-    {
-    }
-
-    DISABLE_COPY(atomic)
-    DISABLE_MOVE(atomic)
-
-private:
-    T m_value;
-};
-
-#else
-
 using std::atomic;
 using atomic_bool = std::atomic_bool;
 using atomic_int32_t = std::atomic_int32_t;
 using std::lock_guard;
-//using ObjectLock = std::mutex;
 
-class ObjectLock
+class MOX_API ObjectLock
 {
     mutable std::mutex m_mutex;
-    atomic<bool> m_isLocked = {false};
+    mutable atomic_int32_t m_lockCount;
 public:
-    explicit ObjectLock() = default;
-    virtual ~ObjectLock()
-    {
-        FATAL(!m_isLocked.load(), "Destroying unlocked object!")
-    }
+    explicit ObjectLock();
+    virtual ~ObjectLock();
 
-    void lock()
-    {
-        m_mutex.lock();
-        m_isLocked.store(true);
-    }
+    void lock();
 
-    void unlock()
-    {
-        m_mutex.unlock();
-        m_isLocked.store(false);
-    }
+    void unlock();
 
-    bool try_lock()
-    {
-        auto result = m_mutex.try_lock();
-        if (result)
-        {
-            m_isLocked.store(result);
-        }
-        return result;
-    }
+    bool try_lock();
 };
-
-#endif // MOX_SINGLE_THREADED
 
 template <typename LockType>
 class SharedLock
@@ -358,30 +227,6 @@ struct FlagScope
 
 private:
     bool& m_flag;
-};
-
-template <typename Type>
-struct ValueScope
-{
-    using CleanupFunc = std::function<void()>;
-
-    explicit ValueScope(Type& value, CleanupFunc cleanup = nullptr)
-        : m_value(value)
-        , m_cleanup(cleanup)
-    {
-        ++m_value;
-    }
-    ~ValueScope()
-    {
-        --m_value;
-        if (m_value <= 0 && m_cleanup)
-        {
-            m_cleanup();
-        }
-    }
-private:
-    Type& m_value;
-    CleanupFunc m_cleanup;
 };
 
 }

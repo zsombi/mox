@@ -56,7 +56,7 @@ SignalType::SignalType(VariantDescriptorContainer&& args)
 
 int SignalType::activate(intptr_t instance, const Callable::ArgumentPack &args) const
 {
-    lock_guard{const_cast<SignalType&>(*this)};
+    lock_guard lock(const_cast<SignalType&>(*this));
     auto it = m_instances.find(instance);
     if (it != m_instances.cend())
     {
@@ -77,16 +77,22 @@ const VariantDescriptorContainer& SignalType::getArguments() const
 
 void SignalType::addSignalInstance(Signal& signal)
 {
-    lock_guard{*this};
+    lock_guard lock(*this);
     auto it = m_instances.insert(std::make_pair(signal.m_owner, &signal));
     FATAL(it != m_instances.end(), "The SignalType is already in use for signal " << typeid(m_instances.find(signal.m_owner)->second).name())
 }
 
 void SignalType::removeSignalInstance(Signal& signal)
 {
-    lock_guard{*this};
+    lock_guard lock(*this);
+#if 1
     auto pv = std::make_pair(signal.m_owner, &signal);
     mox::erase(m_instances, pv);
+#else
+    const auto it = m_instances.find(signal.m_owner);
+    FATAL(it != m_instances.cend(), "Signal corrupted or not in host!")
+    m_instances.erase(it, it);
+#endif
     signal.m_signalType = nullptr;
 }
 
@@ -287,7 +293,10 @@ Signal::Signal(intptr_t owner, SignalType& signalType)
 Signal::~Signal()
 {
     m_connections.forEach([](ConnectionSharedPtr& connection) { if (connection) connection->m_signal = nullptr; });
-    m_signalType->removeSignalInstance(*this);
+    if (m_signalType)
+    {
+        m_signalType->removeSignalInstance(*this);
+    }
 }
 
 void Signal::addConnection(ConnectionSharedPtr connection)

@@ -16,37 +16,45 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#ifndef DEFTYPES_HPP
-#define DEFTYPES_HPP
-
-#include <mox/config/platform_config.hpp>
-// Standard integer types
-#include <inttypes.h>
-#include <chrono>
-#include <string>
-#include <string_view>
-
-using namespace std::literals::string_view_literals;
-using namespace std::literals::string_literals;
-
-using byte = int8_t;
-using long_t = long int;
-using ulong_t = unsigned long int;
-
-
-#ifdef ANDROID
-
-typedef long intptr_t_;
-
-#endif
+#include <mox/utils/locks.hpp>
 
 namespace mox
 {
 
-using Timestamp = std::chrono::system_clock::time_point;
-
-typedef int64_t TUuid;
-
+ObjectLock::ObjectLock()
+{
+    m_lockCount.store(0);
 }
 
-#endif // DEFTYPES_HPP
+ObjectLock::~ObjectLock()
+{
+    FATAL(m_lockCount.load() == 0, "Destroying unlocked object! LockCount is " << m_lockCount.load())
+}
+
+void ObjectLock::lock()
+{
+//    m_mutex.lock();
+    if (!try_lock())
+    {
+        FATAL(false, "Already locked ObjectLock! LockCount is " << m_lockCount)
+    }
+}
+
+void ObjectLock::unlock()
+{
+    FATAL(m_lockCount > 0, "Cannot unlock ObjectLock if not locked! LockCount is " << m_lockCount)
+    m_mutex.unlock();
+    m_lockCount--;
+}
+
+bool ObjectLock::try_lock()
+{
+    auto result = m_mutex.try_lock();
+    if (result)
+    {
+        m_lockCount++;
+    }
+    return result;
+}
+
+}

@@ -20,9 +20,12 @@
 #define SIGNAL_P_H
 
 #include <mox/signal/signal.hpp>
+#include <mox/signal/signal_type.hpp>
 
 namespace mox
 {
+
+TUuid nextUuid();
 
 /******************************************************************************
  * Connect concept

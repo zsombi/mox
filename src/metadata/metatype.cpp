@@ -32,17 +32,17 @@ namespace mox
 {
 
 
-type_not_registered::type_not_registered(const std::type_info& rtti)
-{
-    int status = 0;
-    char* abiName = abi::__cxa_demangle(rtti.name(), nullptr, nullptr, &status);
-    m_message = "Type '" + std::string(abiName) + "' not registered as metatype.";
-    free(abiName);
-}
-const char* type_not_registered::what() const EXCEPTION_NOEXCEPT
-{
-    return m_message.c_str();
-}
+//type_not_registered::type_not_registered(const std::type_info& rtti)
+//{
+//    int status = 0;
+//    char* abiName = abi::__cxa_demangle(rtti.name(), nullptr, nullptr, &status);
+//    m_message = "Type '" + std::string(abiName) + "' not registered as metatype.";
+//    free(abiName);
+//}
+//const char* type_not_registered::what() const EXCEPTION_NOEXCEPT
+//{
+//    return m_message.c_str();
+//}
 
 
 MetatypeDescriptor::MetatypeDescriptor(std::string_view name, int id, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer)

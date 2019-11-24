@@ -78,9 +78,11 @@ private:
     struct Data
     {
         typedef std::function<void*()> GetterFunction;
+        typedef std::function<bool(const Data&)> EqualFunction;
 
         MetaValue m_value;
         mutable GetterFunction m_getter;
+        mutable EqualFunction m_isEqual;
         VariantDescriptor m_typeDescriptor;
 
         template <typename T>
@@ -91,6 +93,7 @@ private:
     };
 
     std::shared_ptr<Data> m_data;
+    friend bool operator==(const Variant &var1, const Variant &var2);
 };
 
 template <typename T>
@@ -120,6 +123,12 @@ bool operator!=(const Variant& arg, T const& value)
     const T v = arg;
     return value != v;
 }
+
+/// Compares two variants' equality. The variants must have the same type and value. No conversion is involved.
+bool MOX_API operator==(const Variant &var1, const Variant &var2);
+
+/// Compares two variants' inequality. No conversion is involved.
+bool MOX_API operator!=(const Variant &var1, const Variant &var2);
 
 } // namespace mox
 

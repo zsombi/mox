@@ -19,6 +19,7 @@
 #include <mox/module/thread_loop.hpp>
 #include <mox/event_handling/event_dispatcher.hpp>
 #include <mox/event_handling/event_loop.hpp>
+#include <mox/module/application.hpp>
 
 #include <future>
 
@@ -72,7 +73,7 @@ ThreadLoop::Status ThreadLoop::getStatus() const
 bool ThreadLoop::isRunning() const
 {
     lock_guard lock(const_cast<ThreadLoop&>(*this));
-    return (m_status.load() == Status::Running);
+    return (m_status.load() == Status::StartingUp || m_status.load() == Status::Running);
 }
 
 void ThreadLoop::threadMain(std::promise<void> notifier)
@@ -82,8 +83,14 @@ void ThreadLoop::threadMain(std::promise<void> notifier)
     ThreadDataSharedPtr threadData = ThreadData::create();
     threadData->m_thread = std::static_pointer_cast<ThreadLoop>(shared_from_this());
     unlock();
+
+    if (!threadData->m_thread->parent())
+    {
+        Application::instance().getRootObject()->addChild(*this);
+    }
     moveToThread();
 
+    m_status.store(Status::StartingUp);
     started(this);
 
     // Notify caller thread that this thread is ready to receive messages.
@@ -103,11 +110,12 @@ void ThreadLoop::threadMain(std::promise<void> notifier)
     };
     traverseChildren(cleaner, TraverseOrder::InversePostOrder);
     stopped(this);
+
     threadData->m_thread.reset();
     m_threadData.reset();
 }
 
-void ThreadLoop::start(bool detached)
+void ThreadLoop::start()
 {
     Notifier notifier;
     Waiter notifierLock = notifier.get_future();
@@ -115,10 +123,6 @@ void ThreadLoop::start(bool detached)
 
     // Wait till future gets signalled.
     notifierLock.wait();
-    if (detached)
-    {
-        m_thread.detach();
-    }
 }
 
 void ThreadLoop::exit(int exitCode)
@@ -131,46 +135,32 @@ void ThreadLoop::exit(int exitCode)
     postEvent<QuitEvent>(shared_from_this(), exitCode);
 }
 
-bool ThreadLoop::join(bool force)
+void ThreadLoop::join()
 {
+    if (m_status.load() == Status::PostMortem)
+    {
+        // The thread was already joined, exit.
+        return;
+    }
     if (ThreadData::thisThreadData() == m_threadData)
     {
-        std::cerr << "Cannot join a thead from within the running thread!" << std::endl;
-        return false;
+        throw Exception(ExceptionType::AttempThreadJoinWithin);
     }
-    if (!m_thread.joinable() && !force)
+    if (!m_thread.joinable())
     {
-        std::cerr << "Detached thread must join forced." << std::endl;
-        return false;
+        throw Exception(ExceptionType::DetachedThread);
     }
 
-    if (m_thread.joinable())
-    {
-        TRACE("Joining thread")
-        m_thread.join();
-        TRACE("Thread joined with success")
-    }
-    else if (force)
-    {
-        TRACE("Waiting detached thread to stop")
-        std::promise<void> notifyer;
-        auto notifyerWait = notifyer.get_future();
-        auto watchThreadDown =[&notifyer]()
-        {
-            notifyer.set_value();
-        };
-        stopped.connect(watchThreadDown);
-        notifyerWait.wait();
-        TRACE("Detached thread stop noticed")
-    }
-
-    return true;
+    TRACE("Joining thread")
+    m_thread.join();
+    m_status.store(Status::PostMortem);
+    TRACE("Thread joined with success")
 }
 
-bool ThreadLoop::exitAndJoin(int exitCode)
+void ThreadLoop::exitAndJoin(int exitCode)
 {
     exit(exitCode);
-    return join(true);
+    join();
 }
 
 int ThreadLoop::run()

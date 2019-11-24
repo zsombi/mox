@@ -20,15 +20,39 @@
 #define TEST_FRAMEWORK_H
 
 #include <gtest/gtest.h>
+#include <mox/config/deftypes.hpp>
+#include <mox/event_handling/event_dispatcher.hpp>
 #include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/module/application.hpp>
+#include <mox/config/error.hpp>
 
 class UnitTest : public ::testing::Test
 {
 protected:
     void SetUp() override;
     void TearDown() override;
+};
+
+class TestApp : public mox::Application
+{
+public:
+    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestApp, mox::Application>
+    {
+        MetaClassDefs()
+    };
+
+    explicit TestApp() = default;
+    int runOnce()
+    {
+        auto idleTask = []()
+        {
+            Application::instance().quit();
+            return true;
+        };
+        threadData()->eventDispatcher()->addIdleTask(idleTask);
+        return run();
+    }
 };
 
 #define SLEEP(msec)             std::this_thread::sleep_for(std::chrono::milliseconds(msec))

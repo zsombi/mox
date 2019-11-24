@@ -101,10 +101,7 @@ To stringToNumber(String value)
             istream >> std::dec;
             istream >> result;
         }
-        if (istream.fail())
-        {
-            throw bad_conversion(metaType<String>(), metaType<To>());
-        }
+        throwIf<ExceptionType::BadTypeConversion>(istream.fail());
     }
     return result;
 }
@@ -128,21 +125,6 @@ void registerStringConverter(MetaData& metaData)
 std::string literalToString(std::string_view value)
 {
     return value.data();
-}
-
-bad_conversion::bad_conversion(Metatype from, Metatype to)
-{
-    std::ostringstream ss;
-    ss << "No converter found to convert from "
-       << MetatypeDescriptor::get(from).name()
-       << " to "
-       << MetatypeDescriptor::get(to).name();
-    m_message = ss.str();
-}
-
-const char* bad_conversion::what() const EXCEPTION_NOEXCEPT
-{
-    return m_message.data();
 }
 
 // Registrar function

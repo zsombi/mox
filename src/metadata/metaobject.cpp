@@ -17,6 +17,7 @@
  */
 
 #include "metadata_p.h"
+#include <mox/config/error.hpp>
 #include <mox/metadata/metaobject.hpp>
 
 namespace mox
@@ -33,10 +34,7 @@ MetaObject::~MetaObject()
 const MetatypeDescriptor& get(const std::type_info& rtti)
 {
     MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(rtti);
-    if (!descriptor)
-    {
-        throw type_not_registered(rtti);
-    }
+    throwIf<ExceptionType::MetatypeNotRegistered>(!descriptor);
     return *descriptor;
 }
 

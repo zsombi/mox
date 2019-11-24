@@ -138,7 +138,7 @@ void MetaData::addMetaClass(const MetaClass& metaClass)
 
     lock_guard locker(globalMetaData);
     auto it = globalMetaData.metaClasses.find(name);
-    FATAL(it == globalMetaData.metaClasses.cend(), name + " MetaClass already registered!")
+    FATAL(it == globalMetaData.metaClasses.cend(), "Static metaclass for '" + name + "' already registered!")
 
     globalMetaData.metaClassRegister.insert({metaClass.metaType(), &metaClass});
     globalMetaData.metaClasses.insert({name, &metaClass});

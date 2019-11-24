@@ -29,24 +29,6 @@
 namespace mox
 {
 
-class thread_differs : public std::exception
-{
-public:
-    const char* what() const EXCEPTION_NOEXCEPT override
-    {
-        return "Object cannot be parented to a different thread";
-    }
-};
-
-class thread_data_set : public std::exception
-{
-public:
-    const char* what() const EXCEPTION_NOEXCEPT override
-    {
-        return "ThreadLoop is already set on this thread";
-    }
-};
-
 }
 
 #endif // THREAD_HPP

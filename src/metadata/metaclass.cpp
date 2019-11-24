@@ -67,6 +67,11 @@ void MetaClass::addSignal(const Signal &signal)
     m_signals.push_back(&signal);
 }
 
+void MetaClass::addProperty(const Property &property)
+{
+    m_properties.push_back(&property);
+}
+
 MetaClass::MetaClass(const MetatypeDescriptor& type)
     : m_type(type)
 {
@@ -151,9 +156,27 @@ const MetaClass::Signal* MetaClass::visitSignals(const SignalVisitor& visitor) c
         return std::make_tuple(Continue, MetaValue());
     };
 
-    VisitorResultType result = visit(MetaClassVisitor(tester));
-    MetaValue signal = std::get<1>(result);
+    auto result = visit(MetaClassVisitor(tester));
+    auto signal = std::get<1>(result);
     return (std::get<0>(result) == Abort) ? std::any_cast<const MetaClass::Signal*>(signal) : nullptr;
+}
+
+const MetaClass::Property* MetaClass::visitProperties(const PropertyVisitor& visitor) const
+{
+    auto tester = [&visitor](const MetaClass& mc) -> VisitorResultType
+    {
+        for (const auto property : mc.m_properties)
+        {
+            if (visitor(property))
+            {
+                return std::make_tuple(Abort, property);
+            }
+        }
+        return std::make_tuple(Continue, MetaValue());
+    };
+    auto result = visit(tester);
+    auto property = std::get<1>(result);
+    return (std::get<0>(result) == Abort) ? std::any_cast<const MetaClass::Property*>(property) : nullptr;
 }
 
 } // namespace mox

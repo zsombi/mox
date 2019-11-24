@@ -94,7 +94,7 @@ void Object::addChild(Object& child)
     {
         if (oldParent->threadData() != m_threadData)
         {
-            throw thread_differs();
+            throw Exception(ExceptionType::InvalidThreadOwnershipChange);
         }
         ScopeRelock relock(*oldParent);
         oldParent->removeChild(child);

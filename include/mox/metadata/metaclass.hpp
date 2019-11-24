@@ -33,6 +33,7 @@ namespace mox
 
 class MetaObject;
 class SignalType;
+class PropertyType;
 
 /// MetaClass represents the type reflection or metadata of a managed structure or class. The metadata consists
 /// of factory functions, methods, properties and signals.
@@ -100,8 +101,45 @@ public:
         const SignalType& m_type;
         std::string m_name;
 
-        Signal(Signal const&) = delete;
-        Signal(Signal&&) = delete;
+        DISABLE_COPY(Signal)
+        DISABLE_MOVE(Signal)
+    };
+
+    /// Meta-properties provide the metatype for the properties declared in a metadata enabled class.
+    class MOX_API Property
+    {
+    public:
+        /// Constructor.
+        explicit Property(MetaClass& metaClass, PropertyType& type, std::string_view name);
+
+        /// Returns the name of the metaproperty.
+        /// \return The name of the metaproperty.
+        std::string name() const;
+
+        /// Returns the metaproeprty type.
+        const PropertyType& type() const;
+
+        /// Metaproperty getter, returns the value of a property associated to the metaproperty
+        /// and an instance.
+        /// \param instance The instance that holds this property.
+        /// \return The property value in variant. If the instance does not contain the property,
+        /// returns an invalid variant.
+        Variant get(intptr_t instance) const;
+
+        /// Metaproperty setter, sets the value of a proeprty on an instance with a given value.
+        /// \param instance The instance that holds this property.
+        /// \param value The value to set.
+        /// \return If the property is defined on the instance, and the value is set with success,
+        /// returns \e true, otherwise \e false.
+        bool set(intptr_t instance, const Variant& value) const;
+
+    private:
+        DISABLE_COPY(Property)
+        DISABLE_MOVE(Property)
+
+        MetaClass& m_ownerClass;
+        PropertyType& m_type;
+        std::string m_name;
     };
 
     /// Invokes a metamethod on an \a instance with the given \a arguments.
@@ -123,13 +161,15 @@ public:
         Abort
     };
 
-    typedef std::tuple<VisitorResult, MetaValue> VisitorResultType;
+    using VisitorResultType = std::tuple<VisitorResult, MetaValue>;
     /// Method visitor function.
-    typedef std::function<bool(const Method*)> MethodVisitor;
+    using MethodVisitor = std::function<bool(const Method*)>;
     /// Signal visitor function.
-    typedef std::function<bool(const Signal*)> SignalVisitor;
+    using SignalVisitor = std::function<bool(const Signal*)>;
+    /// Property visitor function.
+    using PropertyVisitor = std::function<bool(const Property*)>;
     /// Metaclass visitor function.
-    typedef std::function<VisitorResultType(const MetaClass&)> MetaClassVisitor;
+    using MetaClassVisitor = std::function<VisitorResultType(const MetaClass&)>;
 
     /// Visits a metaclass and its superclasses. The superclasses are visited if the \a visitor
     /// tells to continue visiting..
@@ -162,8 +202,14 @@ public:
     /// Visits the metaclass passing the signals to the \a visitor.
     /// \param visitor The visitor.
     /// \return The meta signal for which the visitor returns \e true, \e nullptr if
-    /// no method is identified by the visitor.
+    /// no signal is identified by the visitor.
     const Signal* visitSignals(const SignalVisitor& visitor) const;
+
+    /// Visits the metaclass passing the properties to the \a visitor.
+    /// \param visitor The visitor.
+    /// \return The meta-property for which the visitor returns \e true, \e nullptr if
+    /// no property is identified by the visitor.
+    const Property* visitProperties(const PropertyVisitor& visitor) const;
 
     /// Returns the Metatype of the MetaClass.
     Metatype metaType() const
@@ -180,15 +226,18 @@ public:
 protected:
     typedef std::vector<const Method*> MethodContainer;
     typedef std::vector<const Signal*> SignalContainer;
+    using PropertyContainer = std::vector<const Property*>;
 
     void addMethod(const Method& method);
     void addSignal(const Signal& signal);
+    void addProperty(const Property& property);
 
     /// Creates a metaclass with a registered MetatypeDescriptor identifier.
     explicit MetaClass(const MetatypeDescriptor& type);
 
     MethodContainer m_methods;
     SignalContainer m_signals;
+    PropertyContainer m_properties;
     const MetatypeDescriptor& m_type;
 };
 
@@ -201,13 +250,8 @@ protected:
     VisitorResultType visitSuperClasses(const MetaClassVisitor& visitor) const override;
 
 public:
+    using DeclaredMetaClass = MetaClassDecl;
     using BaseType = BaseClass;
-
-    static const MetaClassDecl* get()
-    {
-        static MetaClassDecl metaClass;
-        return &metaClass;
-    }
 
     explicit StaticMetaClass();
 
@@ -217,6 +261,13 @@ public:
     /// Checks whether the \a metaObject is derived from this interface.
     bool isClassOf(const MetaObject& metaObject) const override;
 };
+
+#define MetaClassDefs()                             \
+    static const DeclaredMetaClass* get()           \
+    {                                               \
+        static DeclaredMetaClass _staticMetaClass;  \
+        return &_staticMetaClass;                   \
+    }
 
 template <class ClassType>
 Metatype registerMetaClass(std::string_view name = "");
@@ -239,6 +290,39 @@ std::optional<Variant> invoke(Class& instance, std::string_view methodName, Argu
 /// \returns Returns emit count, or -1 if the signal is not defined on the instance.
 template <class Class, typename... Arguments>
 int emit(Class& instance, std::string_view signalName, Arguments... arguments);
+
+template <typename ValueType, class Class>
+std::pair<ValueType, bool> property(Class& instance, std::string_view name)
+{
+    const MetaClass* metaClass = Class::StaticMetaClass::get();
+    auto finder = [&name](const MetaClass::Property* property)
+    {
+        return property->name() == name;
+    };
+    auto property = metaClass->visitProperties(finder);
+    if (property)
+    {
+        ValueType value = property->get(intptr_t(&instance));
+        return std::make_pair(value, true);
+    }
+    return std::make_pair(ValueType(), false);
+}
+
+template <typename ValueType, class Class>
+bool setProperty(Class& instance, std::string_view name, ValueType value)
+{
+    const MetaClass* metaClass = Class::StaticMetaClass::get();
+    auto finder = [&name](const MetaClass::Property* property)
+    {
+        return property->name() == name;
+    };
+    auto property = metaClass->visitProperties(finder);
+    if (property)
+    {
+        return property->set(intptr_t(&instance), Variant(value));
+    }
+    return false;
+}
 
 } // namespace mox
 

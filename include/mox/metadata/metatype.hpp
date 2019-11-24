@@ -81,30 +81,6 @@ typedef std::unique_ptr<MetatypeConverter> MetatypeConverterPtr;
 
 /// \}
 
-/// Exceptions
-/// \{
-/// Exception thrown when a type is not registered in the metadata.
-class MOX_API type_not_registered : public std::exception
-{
-public:
-    explicit type_not_registered(const std::type_info& rtti);
-    const char* what() const EXCEPTION_NOEXCEPT override;
-private:
-    std::string m_message;
-};
-
-/// Exception thrown when a converter fails to convert a value from one metatype to other.
-class MOX_API bad_conversion : public std::exception
-{
-public:
-    explicit bad_conversion(Metatype from, Metatype to);
-    const char* what() const EXCEPTION_NOEXCEPT override;
-private:
-    std::string m_message;
-};
-
-/// \}
-
 } // mox
 
 #endif // METATYPE_HPP

@@ -16,37 +16,38 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#ifndef DEFTYPES_HPP
-#define DEFTYPES_HPP
-
-#include <mox/config/platform_config.hpp>
-// Standard integer types
-#include <inttypes.h>
-#include <chrono>
-#include <string>
-#include <string_view>
-
-using namespace std::literals::string_view_literals;
-using namespace std::literals::string_literals;
-
-using byte = int8_t;
-using long_t = long int;
-using ulong_t = unsigned long int;
-
-
-#ifdef ANDROID
-
-typedef long intptr_t_;
-
-#endif
+#include <mox/metadata/metaclass.hpp>
+#include <mox/property/property_type.hpp>
 
 namespace mox
 {
 
-using Timestamp = std::chrono::system_clock::time_point;
-
-typedef int64_t TUuid;
-
+MetaClass::Property::Property(MetaClass& metaClass, PropertyType& type, std::string_view name)
+    : m_ownerClass(metaClass)
+    , m_type(type)
+    , m_name(name)
+{
+    m_ownerClass.addProperty(*this);
 }
 
-#endif // DEFTYPES_HPP
+std::string MetaClass::Property::name() const
+{
+    return m_name;
+}
+
+const PropertyType& MetaClass::Property::type() const
+{
+    return m_type;
+}
+
+Variant MetaClass::Property::get(intptr_t instance) const
+{
+    return m_type.get(instance);
+}
+
+bool MetaClass::Property::set(intptr_t instance, const Variant& value) const
+{
+    return m_type.set(instance, value);
+}
+
+} // namespace mox

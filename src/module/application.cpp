@@ -40,7 +40,7 @@ public:
         m_status.store(Status::Stopped);
     }
 
-    void start(bool) final
+    void start() final
     {
     }
 
@@ -114,6 +114,11 @@ void Application::exit(int exitCode)
 void Application::quit()
 {
     exit(0);
+}
+
+void Application::addIdleTask(EventDispatcher::IdleFunction&& task)
+{
+    m_mainThread->eventDispatcher()->addIdleTask(std::forward<decltype(task)>(task));
 }
 
 }

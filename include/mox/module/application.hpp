@@ -21,6 +21,7 @@
 
 #include <mox/mox_module.hpp>
 #include <mox/object.hpp>
+#include <mox/event_handling/event_dispatcher.hpp>
 
 namespace mox
 {
@@ -39,6 +40,8 @@ public:
         Signal started{*this, StartedSignalType, "started"};
         Signal stopped{*this, StoppedSignalType, "stopped"};
         Method quit{*this, &Application::quit, "quit"};
+
+        MetaClassDefs()
     };
 
     /// Signal is emitted when the application's event loop is started.
@@ -88,6 +91,9 @@ public:
 
     /// Quits the application.
     void quit();
+
+    /// Adds an idle task to the application's dispatcher.
+    void addIdleTask(EventDispatcher::IdleFunction&& task);
 
 private:
     ThreadDataSharedPtr m_mainThread;
