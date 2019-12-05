@@ -30,18 +30,6 @@ namespace mox
 namespace
 {
 
-template <typename T>
-struct naked_type
-{
-    typedef typename std::remove_cv<typename std::remove_pointer<typename std::remove_reference<T>::type>::type>::type type;
-};
-
-template <typename T>
-struct naked_cptype
-{
-    typedef std::remove_const_t<std::remove_reference_t<T>> type;
-};
-
 /**********************************************************
  * Converters
  */
@@ -104,23 +92,11 @@ struct EmbeddedConverter : MetatypeConverter
 
 } // noname
 
-namespace metadata
-{
-
-template <typename T>
-const std::type_info& remove_cv()
-{
-    typedef typename naked_cptype<T>::type NakedType;
-    return typeid(NakedType);
-}
-
-} // namespace metadata
-
 template <typename Type>
 Metatype metaType()
 {
     static_assert (!is_cstring<Type>::value, "Use std::string_view in reflections instead of cstrings");
-    Metatype type = metadata::findMetatype(metadata::remove_cv<Type>());
+    Metatype type = metadata::findMetatype(remove_cv<Type>());
     throwIf<ExceptionType::MetatypeNotRegistered>(type == Metatype::Invalid);
     return type;
 }
@@ -128,24 +104,34 @@ Metatype metaType()
 template <typename Type>
 const MetatypeDescriptor& metatypeDescriptor()
 {
-    const MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(metadata::remove_cv<Type>());
-    FATAL(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + metadata::remove_cv<Type>().name());
+    const MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(remove_cv<Type>());
+    FATAL(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + remove_cv<Type>().name());
     return *descriptor;
 }
 
 template <typename Type>
 Metatype registerMetaType(std::string_view name)
 {
-    Metatype newType = metadata::findMetatype(metadata::remove_cv<Type>());
+    Metatype newType = metadata::findMetatype(remove_cv<Type>());
     if (newType != Metatype::Invalid)
     {
         return newType;
     }
 
-    newType = metadata::tryRegisterMetatype(metadata::remove_cv<Type>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
+    newType = metadata::tryRegisterMetatype(remove_cv<Type>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
 
     return newType;
 }
+
+template <class Class>
+std::pair<Metatype, Metatype> registerClassMetaTypes(std::string_view name)
+{
+    using PtrClass = std::add_pointer_t<Class>;
+    auto staticType = registerMetaType<Class>(name);
+    auto pointerType = registerMetaType<PtrClass>(name.empty() ? "" : std::string(name) + "*");
+    return std::make_pair(staticType, pointerType);
+}
+
 
 template <typename From, typename To, typename Function>
 bool registerConverter(Function function)

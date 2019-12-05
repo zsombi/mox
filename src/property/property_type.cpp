@@ -22,11 +22,29 @@
 namespace mox
 {
 
-PropertyType::PropertyType(VariantDescriptor&& typeDes, SignalType& signalType, PropertyAccess access)
-    : m_typeDescriptor(std::forward<VariantDescriptor>(typeDes))
-    , m_changedSignal(signalType)
+PropertyType::PropertyType(VariantDescriptor&& typeDes, PropertyAccess access, std::string_view name)
+    : AbstractMetaInfo(name)
+    , m_typeDescriptor(typeDes)
     , m_access(access)
 {
+}
+
+PropertyType::PropertyType(PropertyAccess access, std::string_view name)
+    : AbstractMetaInfo(name)
+    , m_access(access)
+{
+}
+
+std::string PropertyType::signature() const
+{
+    return name() + '<' + MetatypeDescriptor::get(m_typeDescriptor.getType()).name() + '>';
+}
+
+PropertyType::~PropertyType()
+{
+    VariantDescriptor invalid;
+//    m_typeDescriptor.swap(invalid);
+    m_typeDescriptor = invalid;
 }
 
 PropertyAccess PropertyType::getAccess() const
@@ -34,9 +52,9 @@ PropertyAccess PropertyType::getAccess() const
     return m_access;
 }
 
-SignalType& PropertyType::getChangedSignalType()
+const VariantDescriptor& PropertyType::getValueType() const
 {
-    return m_changedSignal;
+    return m_typeDescriptor;
 }
 
 void PropertyType::addPropertyInstance(Property& property)
@@ -65,12 +83,12 @@ Variant PropertyType::get(intptr_t instance) const
     return Variant();
 }
 
-bool PropertyType::set(intptr_t instance, const Variant& value)
+bool PropertyType::set(intptr_t instance, const Variant& value) const
 {
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(m_access == PropertyAccess::ReadOnly);
 
     auto it = m_instances.find(instance);
-    if (it != m_instances.end())
+    if (it != m_instances.cend())
     {
         it->second->set(value);
         return true;

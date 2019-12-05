@@ -71,7 +71,7 @@ struct function_traits<TRet(TObject::*)(Args...)>
 
     static VariantDescriptorContainer argument_descriptors()
     {
-        return VariantDescriptorContainer::get<Args...>();
+        return VariantDescriptorContainer::getArgs<Args...>();
     }
 };
 
@@ -96,7 +96,7 @@ struct function_traits<TRet(TObject::*)(Args...) const>
 
     static VariantDescriptorContainer argument_descriptors()
     {
-        return VariantDescriptorContainer::get<Args...>();
+        return VariantDescriptorContainer::getArgs<Args...>();
     }
 };
 
@@ -120,7 +120,7 @@ struct function_traits<TRet(*)(Args...)>
 
     static VariantDescriptorContainer argument_descriptors()
     {
-        return VariantDescriptorContainer::get<Args...>();
+        return VariantDescriptorContainer::getArgs<Args...>();
     }
 };
 

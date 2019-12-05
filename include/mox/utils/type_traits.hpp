@@ -20,6 +20,7 @@
 #define TYPE_TRAITS_HPP
 
 #include <type_traits>
+#include <typeinfo>
 #include <mox/utils/type_traits/enum_operators.hpp>
 
 namespace mox
@@ -49,6 +50,19 @@ template <int N>
 struct is_cstring<char[N]> : public std::true_type
 {
 };
+
+template <typename T>
+struct naked_cptype
+{
+    typedef std::remove_const_t<std::remove_reference_t<T>> type;
+};
+
+template <typename T>
+const std::type_info& remove_cv()
+{
+    typedef typename naked_cptype<T>::type NakedType;
+    return typeid(NakedType);
+}
 
 
 template <typename T, typename U>

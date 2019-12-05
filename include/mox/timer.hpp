@@ -38,7 +38,7 @@ class MOX_API Timer : public ObjectLock, public std::enable_shared_from_this<Tim
 public:
     /// Expired signal descriptor. The signal's argument contains the timer object that is
     /// expired when the signal is emitted.
-    static inline SignalTypeDecl<Timer*> SigExpired;
+    static inline SignalTypeDecl<Timer, Timer*> SigExpired;
     /// Expired signal emitted when the timer expires.
     SignalDecl<Timer*> expired{*this, SigExpired};
 

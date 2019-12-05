@@ -44,7 +44,7 @@ void Variant::reset()
 Metatype Variant::metaType() const
 {
     FATAL(m_data, "Variant is not initialized.")
-    return m_data->m_typeDescriptor.type;
+    return m_data->m_typeDescriptor.getType();
 }
 
 const VariantDescriptor& Variant::descriptor() const
@@ -70,84 +70,87 @@ bool operator!=(const Variant &var1, const Variant &var2)
 
 
 VariantDescriptor::VariantDescriptor(Metatype type, bool ref, bool c)
-    : type(type)
-    , isReference(ref)
-    , isConst(c)
+    : m_type(type)
+    , m_isReference(ref)
+    , m_isConst(c)
 {
 }
 
 bool VariantDescriptor::invocableWith(const VariantDescriptor& other) const
 {
-//    const bool typeIsSame = (other.type == type);
-//    const bool typeIsConvertible = typeIsSame || metadata::findConverter(other.type, type);
+#if 1
+    const bool typeIsSame = (other.m_type == m_type);
+    const bool typeIsConvertible = typeIsSame || metadata::findConverter(other.m_type, m_type);
 
-//    if (isReference && other.isReference)
-//    {
-//        // Both are refs.
-//        if (isConst == other.isConst)
-//        {
-//            if (isConst)
-//            {
-//                // Both are const, type conversion is allowed.
-//                return typeIsConvertible;
-//            }
-//            else
-//            {
-//                // Neither is const, type must match.
-//                return typeIsSame;
-//            }
-//        }
-//        else
-//        {
-//            // Only one is const. The invocation is allowed if this is const, and other is not.
-//            // Type conversion is allowed.
-//            return (isConst && typeIsConvertible);
-//        }
-//    }
-//    else if (isReference)
-//    {
-//        // Only this is ref typed. An invoke is doabnle only if oth this and other are const,
-//        // and the type is convertible.
+    if (m_isReference && other.m_isReference)
+    {
+        // Both are refs.
+        if (m_isConst == other.m_isConst)
+        {
+            if (m_isConst)
+            {
+                // Both are const, type conversion is allowed.
+                return typeIsConvertible;
+            }
+            else
+            {
+                // Neither is const, type must match.
+                return typeIsSame;
+            }
+        }
+        else
+        {
+            // Only one is const. The invocation is allowed if this is const, and other is not.
+            // Type conversion is allowed.
+            return (m_isConst && typeIsConvertible);
+        }
+    }
+    else if (m_isReference)
+    {
+        // Only this is ref typed. An invoke is doabnle only if oth this and other are const,
+        // and the type is convertible.
 
-//        return (isConst && other.isConst && typeIsConvertible);
-//    }
-//    else if (other.isReference)
-//    {
-//        // The other si reference type, this is not. Call is doable only if the other is const,
-//        // and the type is convertible.
-//        return other.isConst && typeIsConvertible;
-//    }
-//    else
-//    {
-//        // Neither is ref type. Call is doable if the type is convertible. Const is ignored.
-//        return typeIsConvertible;
-//    }
-    return ((other.type == type) || metadata::findConverter(other.type, type)) &&
-            other.isReference == isReference &&
-            other.isConst == isConst;
+        return (m_isConst && other.m_isConst && typeIsConvertible);
+    }
+    else if (other.m_isReference)
+    {
+        // The other si reference type, this is not. Call is doable only if the other is const,
+        // and the type is convertible.
+        return other.m_isConst && typeIsConvertible;
+    }
+    else
+    {
+        // Neither is ref type. Call is doable if the type is convertible. Const is ignored.
+        return typeIsConvertible;
+    }
+#else
+    return ((other.m_type == m_type) || metadata::findConverter(other.m_type, m_type)) &&
+            other.m_isReference == m_isReference &&
+            other.m_isConst == m_isConst;
+#endif
 }
 
 bool VariantDescriptor::operator==(const VariantDescriptor& other) const
 {
-    return (other.type == type) &&
-            other.isReference == isReference &&
-            other.isConst == isConst;
+    return (other.m_type == m_type) &&
+            other.m_isReference == m_isReference &&
+            other.m_isConst == m_isConst;
 }
 
 void VariantDescriptor::swap(VariantDescriptor& other)
 {
-    std::swap(const_cast<Metatype&>(type), const_cast<Metatype&>(other.type));
-    std::swap(const_cast<bool&>(isReference), const_cast<bool&>(other.isReference));
-    std::swap(const_cast<bool&>(isConst), const_cast<bool&>(other.isConst));
+    std::swap(m_type, other.m_type);
+    std::swap(m_isReference, other.m_isReference);
+    std::swap(m_isConst, other.m_isConst);
 }
 
 bool VariantDescriptorContainer::isInvocableWith(const VariantDescriptorContainer &other) const
 {
-    auto callableStart = begin();
-    auto callableEnd = cend();
+    auto callableStart = m_container.begin();
+    auto callableEnd = m_container.cend();
 
-    auto paramStart = other.cbegin();
-    auto paramEnd = other.cend();
+    auto paramStart = other.m_container.cbegin();
+    auto paramEnd = other.m_container.cend();
 
     while (callableStart != callableEnd && paramStart != paramEnd && callableStart->invocableWith(*paramStart))
     {

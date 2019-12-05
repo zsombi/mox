@@ -99,14 +99,10 @@ public:
     /// \name Metadata
     /// \{
     /// The static metaclass of the thread loop.
-    struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, ThreadLoop, Object>
+    ClassMetaData(ThreadLoop, Object)
     {
-        static inline SignalTypeDecl<ThreadLoop*> StartedSignalType{};
-        static inline SignalTypeDecl<ThreadLoop*> StoppedSignalType{};
-        Signal started{*this, StartedSignalType, "started"};
-        Signal stopped{*this, StoppedSignalType, "stopped"};
-
-        MetaClassDefs()
+        static inline SignalTypeDecl<ThreadLoop, ThreadLoop*> StartedSignalType{"started"};
+        static inline SignalTypeDecl<ThreadLoop, ThreadLoop*> StoppedSignalType{"stopped"};
     };
 
     /// Signal emitted when the thread starts the event loop.

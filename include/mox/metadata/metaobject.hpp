@@ -34,14 +34,8 @@ public:
     /// Destructor.
     virtual ~MetaObject();
 
-    struct MOX_API StaticMetaClass : mox::MetaClass
+    ClassMetaData(MetaObject)
     {
-        StaticMetaClass();
-
-        static const StaticMetaClass* get();
-
-        bool isAbstract() const override;
-        bool isClassOf(const MetaObject &) const override;
     };
 };
 

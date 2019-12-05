@@ -31,8 +31,8 @@ class TestEmitterNoMetaClass : public ObjectLock
 public:
     explicit TestEmitterNoMetaClass() = default;
 
-    static inline SignalTypeDecl<> VoidSignalType;
-    static inline SignalTypeDecl<int> IntSignalType;
+    static inline SignalTypeDecl<TestEmitterNoMetaClass> VoidSignalType;
+    static inline SignalTypeDecl<TestEmitterNoMetaClass, int> IntSignalType;
 
     SignalDecl<> voidSig{*this, VoidSignalType};
     SignalDecl<int> intSig{*this, IntSignalType};
@@ -43,15 +43,12 @@ class TestEmitterWithMetaClass : public ObjectLock
 public:
     explicit TestEmitterWithMetaClass() = default;
 
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestEmitterWithMetaClass>
+    ClassMetaData(TestEmitterWithMetaClass)
     {
-        static inline SignalTypeDecl<> VoidSignalType;
-        Signal voidSig{*this, VoidSignalType, "voidSig"};
-
-        MetaClassDefs()
+        static inline SignalTypeDecl<TestEmitterWithMetaClass> VoidSignalType{"voidSig"};
     };
 
-    static inline SignalTypeDecl<std::string_view> StringSignalType;
+    static inline SignalTypeDecl<TestEmitterWithMetaClass, std::string_view> StringSignalType;
 
     SignalDecl<std::string_view> string{*this, StringSignalType};
     SignalDecl<> voidSig{*this, StaticMetaClass::VoidSignalType};
@@ -60,38 +57,28 @@ public:
 class SignalTestClass : public MetaObject
 {
 public:
-    static inline SignalTypeDecl<> Sign1Des;
-    static inline SignalTypeDecl<> SignBDes;
-    static inline SignalTypeDecl<int32_t> Sign2Des;
-    static inline SignalTypeDecl<int32_t, std::string> Sign3Des;
+    SignalDecl<> sig1{*this, StaticMetaClass::Sign1Des};
+    SignalDecl<int32_t> sig2{*this, StaticMetaClass::Sign2Des};
+    SignalDecl<int32_t, std::string> sig3{*this, StaticMetaClass::Sign3Des};
+    SignalDecl<> sigB{*this, StaticMetaClass::SignBDes};
 
-    SignalDecl<> sig1{*this, Sign1Des};
-    SignalDecl<int32_t> sig2{*this, Sign2Des};
-    SignalDecl<int32_t, std::string> sig3{*this, Sign3Des};
-    SignalDecl<> sigB{*this, SignBDes};
-
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SignalTestClass, MetaObject>
+    ClassMetaData(SignalTestClass, MetaObject)
     {
-        Signal sig1{*this, Sign1Des, "sig1"};
-        Signal sigB{*this, SignBDes, "sigB"};
-        Signal sig2{*this, Sign2Des, "sig2"};
-        Signal sig3{*this, Sign3Des, "sig3"};
-
-        MetaClassDefs()
+        static inline SignalTypeDecl<SignalTestClass> Sign1Des{"sig1"};
+        static inline SignalTypeDecl<SignalTestClass> SignBDes{"sigB"};
+        static inline SignalTypeDecl<SignalTestClass, int32_t> Sign2Des{"sig2"};
+        static inline SignalTypeDecl<SignalTestClass, int32_t, std::string> Sign3Des{"sig3"};
     };
 };
 
 class DerivedEmitter : public SignalTestClass
 {
 public:
-    static inline SignalTypeDecl<std::vector<int32_t>> SignVDes;
-    SignalDecl<std::vector<int32_t>> sigV{*this, SignVDes};
+    SignalDecl<std::vector<int32_t>> sigV{*this, StaticMetaClass::SignVDes};
 
-    struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, DerivedEmitter, SignalTestClass>
+    ClassMetaData(DerivedEmitter, SignalTestClass)
     {
-        Signal sigV{*this, SignVDes, "sigV"};
-
-        MetaClassDefs()
+        static inline SignalTypeDecl<DerivedEmitter, std::vector<int32_t>> SignVDes{"sigV"};
     };
 };
 
@@ -103,21 +90,7 @@ class  SlotHolder : public ObjectLock
     int slot4Call = 0;
 
 public:
-    static inline SignalTypeDecl<int> SigDes;
-    SignalDecl<int> sig{*this, SigDes};
-
-    struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SlotHolder>
-    {
-        Method method1{*this, &BaseType::method1, "method1"};
-        Method method2{*this, &BaseType::method2, "method2"};
-        Method method3{*this, &BaseType::method3, "method3"};
-        Method method4{*this, &BaseType::method4, "method4"};
-        Method autoDisconnect1{*this, &BaseType::autoDisconnect1, "autoDisconnect1"};
-        Method autoDisconnect2{*this, &BaseType::autoDisconnect2, "autoDisconnect2"};
-        Signal sig{*this, SigDes, "sig"};
-
-        MetaClassDefs()
-    };
+    SignalDecl<int> sig{*this, StaticMetaClass::SigDes};
 
     virtual ~SlotHolder() = default;
 
@@ -174,6 +147,17 @@ public:
             Signal::Connection::getActiveConnection()->disconnect();
         }
     }
+
+    ClassMetaData(SlotHolder)
+    {
+        static inline MethodTypeDecl<SlotHolder> method1{&BaseType::method1, "method1"};
+        static inline MethodTypeDecl<SlotHolder>method2{&BaseType::method2, "method2"};
+        static inline MethodTypeDecl<SlotHolder>method3{&BaseType::method3, "method3"};
+        static inline MethodTypeDecl<SlotHolder>method4{&BaseType::method4, "method4"};
+        static inline MethodTypeDecl<SlotHolder>autoDisconnect1{&BaseType::autoDisconnect1, "autoDisconnect1"};
+        static inline MethodTypeDecl<SlotHolder>autoDisconnect2{&BaseType::autoDisconnect2, "autoDisconnect2"};
+        static inline SignalTypeDecl<SlotHolder, int> SigDes{"sig"};
+    };
 };
 
 class DerivedHolder : public SlotHolder
@@ -181,14 +165,6 @@ class DerivedHolder : public SlotHolder
     int derived1Call = 0;
     int derived2Call = 0;
 public:
-    struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, DerivedHolder, SlotHolder>
-    {
-        Method derivedMethod1{*this, &BaseType::derivedMethod1, "derivedMethod1"};
-        Method derivedMethod2{*this, &BaseType::derivedMethod2, "derivedMethod2"};
-
-        MetaClassDefs()
-    };
-
     void derivedMethod1()
     {
         derived1Call++;
@@ -206,6 +182,12 @@ public:
     {
         return derived2Call;
     }
+
+    ClassMetaData(DerivedHolder, SlotHolder)
+    {
+        static inline MethodTypeDecl<DerivedHolder> derivedMethod1{&BaseType::derivedMethod1, "derivedMethod1"};
+        static inline MethodTypeDecl<DerivedHolder> derivedMethod2{&BaseType::derivedMethod2, "derivedMethod2"};
+    };
 };
 
 void slotFunction1()
@@ -222,7 +204,7 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-        registerMetaType<std::vector<int32_t>>();
+        registerMetaType<std::vector<int32_t>>("std::vector<int32>");
         registerMetaType<TestEmitterNoMetaClass>();
         registerMetaType<TestEmitterNoMetaClass*>();
         registerMetaClass<TestEmitterWithMetaClass>();
@@ -644,11 +626,11 @@ TEST_F(SignalTest, test_metaclass_invoke_metasignals)
     SignalTestClass sender;
     const SignalTestClass::StaticMetaClass* mc = SignalTestClass::StaticMetaClass::get();
 
-    EXPECT_EQ(0, mc->sig1.emit(sender));
+    EXPECT_EQ(0, mc->Sign1Des.emit(sender));
 
     // Invoke with convertible arguments.
-    EXPECT_EQ(0, mc->sig2.emit(sender, std::string_view("10")));
+    EXPECT_EQ(0, mc->Sign2Des.emit(sender, "10"sv));
 
     // Invoke with not enough arguments.
-    EXPECT_EQ(-1, mc->sig2.emit(sender));
+    EXPECT_EQ(-1, mc->Sign2Des.emit(sender));
 }

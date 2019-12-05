@@ -9,9 +9,11 @@
  */
 void UnitTest::SetUp()
 {
+    ::testing::Test::SetUp();
 }
 void UnitTest::TearDown()
 {
+    ::testing::Test::TearDown();
 }
 /******************************************************************************
  *

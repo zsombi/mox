@@ -21,6 +21,7 @@
 
 #include <mox/signal/signal.hpp>
 #include <mox/signal/signal_type.hpp>
+#include <mox/metadata/method_type.hpp>
 
 namespace mox
 {
@@ -88,15 +89,15 @@ class MetaMethodConnection : public ConnectionPrivates<MetaMethodConnection>
     using BaseClass = ConnectionPrivates<MetaMethodConnection>;
 
     Variant m_receiver;
-    const MetaClass::Method* m_slot;
+    const MethodType* m_slot;
 
 public:
-    const MetaClass::Method* method() const
+    const MethodType* method() const
     {
         return m_slot;
     }
 
-    MetaMethodConnection(Signal& signal, Variant receiver, const MetaClass::Method& slot);
+    MetaMethodConnection(Signal& signal, Variant receiver, const MethodType& slot);
 
     bool isConnected() const override
     {

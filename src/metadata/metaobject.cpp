@@ -31,32 +31,4 @@ MetaObject::~MetaObject()
 {
 }
 
-const MetatypeDescriptor& get(const std::type_info& rtti)
-{
-    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(rtti);
-    throwIf<ExceptionType::MetatypeNotRegistered>(!descriptor);
-    return *descriptor;
-}
-
-MetaObject::StaticMetaClass::StaticMetaClass()
-    : MetaClass(mox::get(typeid(MetaObject)))
-{
-}
-
-const MetaObject::StaticMetaClass* MetaObject::StaticMetaClass::get()
-{
-    static MetaObject::StaticMetaClass staticMetaClass;
-    return &staticMetaClass;
-}
-
-bool MetaObject::StaticMetaClass::isAbstract() const
-{
-    return false;
-}
-
-bool MetaObject::StaticMetaClass::isClassOf(const MetaObject &) const
-{
-    return true;
-}
-
 } // namespace mox

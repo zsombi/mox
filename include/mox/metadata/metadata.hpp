@@ -31,6 +31,7 @@
 namespace mox {
 
 struct MetatypeDescriptor;
+struct MetaClass;
 
 /// Returns the metatype identifier of the given type. The function asserts if
 /// the type is not registered in the metatype system.
@@ -38,6 +39,8 @@ struct MetatypeDescriptor;
 /// \code
 /// Metatype type = metaType<int*>();
 /// \endcode
+/// \throws mox::Exception with ExceptionType::MetatypeNotRegistered if the type is not registered
+/// as metatype
 template <typename Type>
 Metatype metaType();
 
@@ -48,9 +51,20 @@ const MetatypeDescriptor& metatypeDescriptor();
 
 /// Registers a Type into the Mox metatype subsystem. The function returns the
 /// Metatype identifier registered.
+/// \tparam Type The type to register as metatype.
+/// \param name The optional name to override the deducted type name from RTTI.
 /// \return The Metatype handler of the Type.
 template <typename Type>
 Metatype registerMetaType(std::string_view name = "");
+
+/// Registers a Class with both static and pointer type into the Mox metatype subsystem.
+/// The function returns the pair of Metatype identifiers registered, where the first is
+/// the static metatype and the second is the pointer metatype.
+/// \tparam Class The type to register as static and pointer metatype.
+/// \param name The optional name to override the deducted type name from RTTI.
+/// \return The pair of Metatype handlers of the Class and Class* types.
+template <class Class>
+std::pair<Metatype, Metatype> registerClassMetaTypes(std::string_view name = "");
 
 /// Registers a converter function that converts a value between two distinct types.
 /// Returns \e true if the converter is registered with success, \e false otherwise.
@@ -68,6 +82,16 @@ bool registerConverter(To (From::*function)() const);
 namespace metadata
 {
 
+/// Scans metatypes and returns the metatype for which the \a predicate returns \e true.
+/// \param predicate The predicate to test a metatype descriptor.
+/// \return The pointer to the MetatypeDescruptor found, nullptr if the predicate didn't find a match.
+MOX_API const MetatypeDescriptor* scanMetatypes(std::function<bool(const MetatypeDescriptor&)> predicate);
+
+/// Scans metaclasses and returns the metaclass for which the \a predicate returns \e true.
+/// \param predicate The predicate to test a metaclass descriptor.
+/// \return The pointer to the MetaClass found, nullptr if the predicate didn't find a match.
+MOX_API const MetaClass* scanMetaClasses(std::function<bool(const MetaClass&)> predicate);
+
 /// Finds a MetatypeDescriptor associated to the \a rtti.
 /// \return nullptr if the \e rtti does not have any associated MetatypeDescriptor registered.
 MOX_API MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti);
@@ -84,9 +108,6 @@ MOX_API Metatype findMetatype(const std::type_info& rtti);
 /// \param name Optional, the name of the metatype to override the default RTTI type name.
 /// \return the MetatypeDescriptor associated to the \e rtti.
 MOX_API Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name);
-
-template <typename T>
-const std::type_info& remove_cv();
 
 /// Registers a \a converter that converts a value from \a fromType to \a toType.
 MOX_API bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType);

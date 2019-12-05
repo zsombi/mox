@@ -30,16 +30,6 @@ public:
 
     virtual ~TestMixin() = default;
 
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestMixin>
-    {
-        Method testFunc1{*this, &BaseType::testFunc1, "testFunc1"};
-        Method testFunc2{*this, &BaseType::testFunc2, "testFunc2"};
-        Method staticFunc{*this, &BaseType::staticFunc, "staticFunc"};
-        Method lambda{*this, [](TestMixin* instance) { instance->invoked = true; }, "lambda"};
-
-        MetaClassDefs()
-    };
-
     void testFunc1()
     {
         invoked = true;
@@ -54,7 +44,16 @@ public:
     {
         return value;
     }
+
+    ClassMetaData(TestMixin)
+    {
+        static inline MethodTypeDecl<TestMixin> testFunc1{&BaseType::testFunc1, "testFunc1"};
+        static inline MethodTypeDecl<TestMixin> testFunc2{&BaseType::testFunc2, "testFunc2"};
+        static inline MethodTypeDecl<TestMixin> staticFunc{&BaseType::staticFunc, "staticFunc"};
+        static MethodTypeDecl<TestMixin> lambda;
+    };
 };
+MethodTypeDecl<TestMixin> TestMixin::StaticMetaClass::lambda([](TestMixin* instance) { instance->invoked = true; }, "lambda");
 
 class TestSecond
 {
@@ -62,26 +61,23 @@ public:
 
     virtual ~TestSecond() = default;
 
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestSecond>
-    {
-        Method testFunc1{*this, &BaseType::testFunc1, "testFunc1"};
-
-        MetaClassDefs()
-    };
-
     int testFunc1()
     {
         return 987;
     }
+
+    ClassMetaData(TestSecond)
+    {
+        static inline MethodTypeDecl<TestSecond> testFunc1{&BaseType::testFunc1, "testFunc1"};
+    };
 };
 
 class Mixin : public TestMixin, public TestSecond
 {
 public:
 
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Mixin, TestMixin, TestSecond>
+    ClassMetaData(Mixin, TestMixin, TestSecond)
     {
-        MetaClassDefs()
     };
 
     explicit Mixin()
@@ -104,14 +100,14 @@ protected:
 TEST_F(MetaMethods, test_mixin_methods)
 {
     const MetaClass* mc = TestMixin::StaticMetaClass::get();
-    auto visitor = [](const MetaClass::Method* method) -> bool
+    auto visitor = [](const auto method) -> bool
     {
         return method->name() == "testFunc1";
     };
-    const MetaClass::Method* method = mc->visitMethods(visitor);
+    auto method = mc->visitMethods(visitor);
     EXPECT_TRUE(method != nullptr);
 
-    method = mc->visitMethods([](const MetaClass::Method* method) -> bool { return method->name() == "whatever"; });
+    method = mc->visitMethods([](const auto method) -> bool { return method->name() == "whatever"; });
     EXPECT_TRUE(method == nullptr);
 }
 
@@ -128,7 +124,7 @@ TEST_F(MetaMethods, test_mixin_method_invoke_directly)
     const TestMixin::StaticMetaClass* metaClass = dynamic_cast<const TestMixin::StaticMetaClass*>(TestMixin::StaticMetaClass::get());
     EXPECT_NOT_NULL(metaClass);
 
-    metaClass->invoke(mixin, metaClass->testFunc1);
+//    metaClass->invoke(mixin, metaClass->testFunc1);
 }
 
 TEST_F(MetaMethods, test_mixin_method_invoke_by_method_name)

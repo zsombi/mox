@@ -32,10 +32,10 @@ namespace mox
 void MoxModule::registerModule()
 {
     registerMetaType<SocketNotifierSharedPtr>();
-    registerMetaClass<MetaObject>("MetaObject");
-    registerMetaClass<Object>("Object");
-    registerMetaClass<ThreadLoop>("ThreadLoop");
-    registerMetaClass<Application>("Application");
+    registerMetaClass<MetaObject>();
+    registerMetaClass<Object>();
+    registerMetaClass<ThreadLoop>();
+    registerMetaClass<Application>();
 }
 
 }

@@ -67,9 +67,8 @@ class Derived : public mox::MetaObject
 public:
     explicit Derived() = default;
 
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Derived, mox::MetaObject>
+    ClassMetaData(Derived, mox::MetaObject)
     {
-        MetaClassDefs()
     };
 };
 

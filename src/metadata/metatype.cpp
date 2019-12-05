@@ -91,10 +91,10 @@ bool MetatypeDescriptor::isSupertypeOf(const MetatypeDescriptor& type) const
     }
 
     const MetaClass* thisClass = MetaData::getMetaClass(m_id);
-    FATAL(thisClass, "No MetaClass for the class type.");
+    FATAL(thisClass, "No MetaClass for the class type.")
 
     const MetaClass* typeClass = MetaData::getMetaClass(type.id());
-    FATAL(typeClass, "No MetaClass for the class type.");
+    FATAL(typeClass, "No MetaClass for the class type.")
     return thisClass->isSuperClassOf(*typeClass);
 }
 

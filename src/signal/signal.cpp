@@ -49,9 +49,29 @@ struct ConnectionScope
 /******************************************************************************
  * SignalType
  */
-SignalType::SignalType(VariantDescriptorContainer&& args)
-    : m_argumentDescriptors(std::forward<VariantDescriptorContainer>(args))
+SignalType::SignalType(VariantDescriptorContainer&& args, std::string_view name)
+    : AbstractMetaInfo(name)
+    , m_argumentDescriptors(std::forward<VariantDescriptorContainer>(args))
 {
+}
+
+std::string SignalType::signature() const
+{
+    std::string sign = name() + '(';
+    for (auto& des : m_argumentDescriptors)
+    {
+        sign += MetatypeDescriptor::get(des.getType()).name();
+        sign += ',';
+    }
+    if (!m_argumentDescriptors.empty())
+    {
+        sign.back() = ')';
+    }
+    else
+    {
+        sign += ')';
+    }
+    return sign;
 }
 
 int SignalType::activate(intptr_t instance, const Callable::ArgumentPack &args) const
@@ -209,7 +229,7 @@ void MethodConnection::reset()
 /******************************************************************************
  *
  */
-MetaMethodConnection::MetaMethodConnection(Signal& signal, Variant receiver, const MetaClass::Method& slot)
+MetaMethodConnection::MetaMethodConnection(Signal& signal, Variant receiver, const MethodType& slot)
     : BaseClass(signal)
     , m_receiver(receiver)
     , m_slot(&slot)
@@ -334,7 +354,7 @@ const SignalType* Signal::getType() const
     return m_signalType;
 }
 
-Signal::ConnectionSharedPtr Signal::connect(Variant receiver, const MetaClass::Method& metaMethod)
+Signal::ConnectionSharedPtr Signal::connect(Variant receiver, const MethodType& metaMethod)
 {
     FATAL(m_signalType, "Invalid signal")
     ConnectionSharedPtr connection = make_polymorphic_shared<Connection, MetaMethodConnection>(*this, receiver, metaMethod);

@@ -25,6 +25,7 @@
 #include <mox/utils/containers.hpp>
 #include <mox/utils/flat_map.hpp>
 #include <mox/metadata/callable.hpp>
+#include <mox/metadata/metaclass.hpp>
 
 namespace mox
 {
@@ -42,11 +43,13 @@ class Signal;
 ///
 /// To declare a signal with no arguments:
 /// \code static inline SignalTypeDecl<> SimpleSignalType;
-class MOX_API SignalType : public ObjectLock
+class MOX_API SignalType : public ObjectLock, public AbstractMetaInfo
 {
 public:
     /// Destructor.
     ~SignalType() = default;
+
+    std::string signature() const override;
 
     /// Activates the signal on an instance.
     /// \param sender The signal sender instance in \e intptr_t format.
@@ -55,6 +58,16 @@ public:
     /// If the signal is not activable with the arguments, or the sender has no
     /// signal with this type, returns -1.
     int activate(intptr_t sender, const Callable::ArgumentPack& args) const;
+
+    template <class SenderObject, typename... Arguments>
+    int emit(SenderObject& sender, Arguments... args) const
+    {
+        if (!m_argumentDescriptors.isInvocableWith(VariantDescriptorContainer::getArgs<Arguments...>()))
+        {
+            return -1;
+        }
+        return activate(reinterpret_cast<intptr_t>(&sender), Callable::ArgumentPack(args...));
+    }
 
     /// Checks if a signal type is compatible with the \a other. Two signal types
     /// are compatible if their arguments are compatible. Two argument sets are
@@ -79,7 +92,7 @@ public:
 
 protected:
     /// Constructor.
-    SignalType(VariantDescriptorContainer&& args);
+    SignalType(VariantDescriptorContainer&& args, std::string_view name);
 
     /// The instances of the signal type.
     FlatMap<intptr_t, Signal*> m_instances;
@@ -89,16 +102,48 @@ protected:
 
 /// Signal type declarator template. Use this template to declare your signal types
 /// in your class.
-template <typename... Arguments>
+template <class HostClass, typename... Arguments>
 class SignalTypeDecl : public SignalType
 {
 public:
     /// Constructor.
-    SignalTypeDecl()
-        : SignalType(VariantDescriptorContainer::ensure<Arguments...>())
+    SignalTypeDecl(std::string_view name = "")
+        : SignalType(VariantDescriptorContainer::ensure<Arguments...>(), name)
     {
+        if constexpr (has_static_metaclass_v<HostClass>)
+        {
+            registerMetaClass<HostClass>();
+            HostClass::__getStaticMetaClass()->addMetaSignal(*this);
+        }
     }
 };
+
+/// Invokes a signal on an \a instance identified by \a signalName, passing the given \a arguments.
+/// The instance must have a metaclass defined. Returns the number of times the signal connections
+/// were invoked, or -1 if there was no signal defined on the instance with the given name.
+/// \param instance The instance of the class.
+/// \param signalName The name of the metasignal to invoke.
+/// \param args The arguments to pass. If the signal has no arguments, pass nothing.
+/// \returns Returns emit count, or -1 if the signal is not defined on the instance.
+template <class Class, typename... Arguments>
+int emit(Class& instance, std::string_view signalName, Arguments... arguments)
+{
+    const MetaClass* metaClass = Class::StaticMetaClass::get();
+    VariantDescriptorContainer descriptors(arguments...);
+    // Metasignal lookup.
+    auto signalVisitor = [signalName, &descriptors](const SignalType* signal) -> bool
+    {
+        return (signal->name() == signalName) && signal->getArguments().isInvocableWith(descriptors);
+    };
+    auto signal = metaClass->visitSignals(signalVisitor);
+    if (signal)
+    {
+        return signal->activate(reinterpret_cast<intptr_t>(&instance), Callable::ArgumentPack(arguments...));
+    }
+
+    return -1;
+}
+
 
 } // namespace mox
 

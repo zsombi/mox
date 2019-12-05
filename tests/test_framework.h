@@ -37,9 +37,8 @@ protected:
 class TestApp : public mox::Application
 {
 public:
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TestApp, mox::Application>
+    ClassMetaData(TestApp, mox::Application)
     {
-        MetaClassDefs()
     };
 
     explicit TestApp() = default;

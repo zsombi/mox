@@ -17,6 +17,7 @@
  */
 
 #include <mox/config/error.hpp>
+#include <mox/config/deftypes.hpp>
 
 namespace mox
 {
@@ -54,6 +55,16 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "The property value provider is already attached.";
     }
     return nullptr;
+}
+
+AbstractMetaInfo::AbstractMetaInfo(std::string_view name)
+    : m_name(name)
+{
+}
+
+std::string AbstractMetaInfo::name() const
+{
+    return m_name;
 }
 
 }

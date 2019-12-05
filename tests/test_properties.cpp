@@ -29,9 +29,9 @@ class PropertyTest : public ObjectLock
     PropertyDecl<bool>::PropertyDefaultValueProviderSharedPtr statusVP = std::make_shared<StatusVPType>(true);
 public:
 
-    static inline PropertyTypeDecl<bool, PropertyAccess::ReadWrite> BoolPropertyType;
-    static inline PropertyTypeDecl<bool, PropertyAccess::ReadOnly> ReadOnlyBoolPropertyType;
-    static inline PropertyTypeDecl<int, PropertyAccess::ReadWrite> StateChangedPropertyType;
+    static inline PropertyTypeDecl<PropertyTest, bool, PropertyAccess::ReadWrite> BoolPropertyType{"boolValue"};
+    static inline PropertyTypeDecl<PropertyTest, bool, PropertyAccess::ReadOnly> ReadOnlyBoolPropertyType{"status"};
+    static inline PropertyTypeDecl<PropertyTest, int, PropertyAccess::ReadWrite> StateChangedPropertyType{"driver"};
 
     PropertyDecl<bool> boolValue{*this, BoolPropertyType, true};
     PropertyDecl<bool> status{*this, ReadOnlyBoolPropertyType, statusVP};
@@ -60,17 +60,11 @@ public:
         return createObject<PropertyMetatypeTest>(new PropertyMetatypeTest, parent);
     }
 
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, PropertyMetatypeTest, Object>
+    ClassMetaData(PropertyMetatypeTest, Object)
     {
-        static inline PropertyTypeDecl<int, PropertyAccess::ReadWrite> IntPropertyType;
-        static inline PropertyTypeDecl<bool, PropertyAccess::ReadOnly> ReadOnlyBoolPropertyType;
-        static inline PropertyTypeDecl<std::string, PropertyAccess::ReadWrite> StringPropertyType;
-
-        Property intValue{*this, IntPropertyType, "intValue"};
-        Property enabled{*this, ReadOnlyBoolPropertyType, "enabled"};
-        Property stringValue{*this, StringPropertyType, "stringValue"};
-
-        MetaClassDefs()
+        static inline PropertyTypeDecl<PropertyMetatypeTest, int, PropertyAccess::ReadWrite> IntPropertyType{"intValue"};
+        static inline PropertyTypeDecl<PropertyMetatypeTest, bool, PropertyAccess::ReadOnly> ReadOnlyBoolPropertyType{"enabled"};
+        static inline PropertyTypeDecl<PropertyMetatypeTest, std::string, PropertyAccess::ReadWrite> StringPropertyType{"stringValue"};
     };
 
     PropertyDecl<int> intValue{*this, StaticMetaClass::IntPropertyType, -1};
@@ -91,6 +85,13 @@ protected:
         MetaObject::StaticMetaClass::get();
     }
 };
+
+TEST_F(Properties, test_property_type)
+{
+    EXPECT_EQ(Metatype::String, Object::StaticMetaClass::ObjectNameProperty.getValueType().getType());
+    EXPECT_EQ(Metatype::Bool, PropertyTest::BoolPropertyType.getValueType().getType());
+    EXPECT_EQ(Metatype::Int32, PropertyTest::StateChangedPropertyType.getValueType().getType());
+}
 
 TEST_F(Properties, test_properties_no_metatype)
 {
@@ -413,11 +414,10 @@ TEST_F(Properties, test_reactivate_inactive_value_providers)
 TEST_F(Properties, test_metaproperty)
 {
     PropertyMetatypeTest test;
-    auto mc = PropertyMetatypeTest::StaticMetaClass::get();
 
-    EXPECT_EQ(-1, mc->intValue.get(intptr_t(&test)));
-    EXPECT_EQ(true, mc->enabled.get(intptr_t(&test)));
-    EXPECT_EQ("alpha"s, mc->stringValue.get(intptr_t(&test)));
+    EXPECT_EQ(-1, PropertyMetatypeTest::StaticMetaClass::IntPropertyType.get(intptr_t(&test)));
+    EXPECT_EQ(true, PropertyMetatypeTest::StaticMetaClass::ReadOnlyBoolPropertyType.get(intptr_t(&test)));
+    EXPECT_EQ("alpha"s, PropertyMetatypeTest::StaticMetaClass::StringPropertyType.get(intptr_t(&test)));
 }
 
 TEST_F(Properties, test_metaproperty_get)
@@ -426,9 +426,9 @@ TEST_F(Properties, test_metaproperty_get)
     auto mc = PropertyMetatypeTest::StaticMetaClass::get();
     test.objectName = "testObject";
 
-    EXPECT_EQ(-1, mc->intValue.get(intptr_t(&test)));
-    EXPECT_EQ(true, mc->enabled.get(intptr_t(&test)));
-    EXPECT_EQ("alpha"s, mc->stringValue.get(intptr_t(&test)));
+    EXPECT_EQ(-1, mc->IntPropertyType.get(intptr_t(&test)));
+    EXPECT_EQ(true, mc->ReadOnlyBoolPropertyType.get(intptr_t(&test)));
+    EXPECT_EQ("alpha"s, mc->StringPropertyType.get(intptr_t(&test)));
 
     EXPECT_EQ(std::make_pair(-1, true), property<int>(test, "intValue"));
     EXPECT_EQ(std::make_pair(true, true), property<bool>(test, "enabled"));
@@ -442,9 +442,9 @@ TEST_F(Properties, test_metaproperty_set)
     PropertyMetatypeTest test;
     auto mc = PropertyMetatypeTest::StaticMetaClass::get();
 
-    EXPECT_TRUE(mc->intValue.set(intptr_t(&test), Variant(2)));
-    EXPECT_THROW(mc->enabled.set(intptr_t(&test), Variant(true)), mox::Exception);
-    EXPECT_TRUE(mc->stringValue.set(intptr_t(&test), Variant("stew"s)));
+    EXPECT_TRUE(mc->IntPropertyType.set(intptr_t(&test), Variant(2)));
+    EXPECT_THROW(mc->ReadOnlyBoolPropertyType.set(intptr_t(&test), Variant(true)), mox::Exception);
+    EXPECT_TRUE(mc->StringPropertyType.set(intptr_t(&test), Variant("stew"s)));
 
     EXPECT_TRUE(setProperty(test, "intValue", 20));
     EXPECT_THROW(setProperty(test, "enabled", true), mox::Exception);

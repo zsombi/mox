@@ -128,7 +128,7 @@ public:
     /// \param receiver The receiver hosting the metamethod.
     /// \param metaMethod The metamethod to connect to.
     /// \return The connection shared object.
-    ConnectionSharedPtr connect(Variant receiver, const MetaClass::Method& metaMethod);
+    ConnectionSharedPtr connect(Variant receiver, const MethodType& metaMethod);
 
     /// Creates a connection between this signal and a receiver \a signal.
     /// \param signal The receiver signal connected to this signal.
@@ -233,7 +233,7 @@ public:
         : Signal(reinterpret_cast<intptr_t>(&owner), type)
     {
         // Signal arguments must match with the signal type.
-        auto signalArgs = VariantDescriptorContainer::get<Arguments...>();
+        auto signalArgs = VariantDescriptorContainer::getArgs<Arguments...>();
         FATAL(type.getArguments() == signalArgs, "Signal arguments and signal type arguments mismatch")
     }
 

@@ -49,7 +49,7 @@ public:
     };
 
     /// Activation signal type descriptor.
-    static inline SignalTypeDecl<SocketNotifierSharedPtr, Modes> ActivatedSignalType;
+    static inline SignalTypeDecl<SocketNotifier, SocketNotifierSharedPtr, Modes> ActivatedSignalType;
 
     /// Activation signal, emitted when the operation on the socket is notified.
     SignalDecl<SocketNotifierSharedPtr, Modes> activated{*this, ActivatedSignalType};

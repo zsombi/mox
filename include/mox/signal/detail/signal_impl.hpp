@@ -19,6 +19,7 @@
 #ifndef SIGNAL_IMPL_HPP
 #define SIGNAL_IMPL_HPP
 
+#include <mox/metadata/method_type.hpp>
 namespace mox
 {
 
@@ -32,12 +33,12 @@ mox::Signal::ConnectionSharedPtr Signal::connect(const Receiver& receiver, const
     {
         return nullptr;
     }
-    const MetaClass* metaClass = Receiver::StaticMetaClass::get();
-    auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaClass::Method* method) -> bool
+    const auto* metaClass = Receiver::StaticMetaClass::get();
+    auto visitor = [name = std::forward<std::string_view>(methodName), this](const auto method) -> bool
     {
         return (method->name() == name) && method->isInvocableWith(this->getType()->getArguments());
     };
-    const MetaClass::Method* metaMethod = metaClass->visitMethods(visitor);
+    const auto metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
     {
         return nullptr;
@@ -53,12 +54,12 @@ bool Signal::disconnect(const Receiver& receiver, const char* methodName)
     {
         return false;
     }
-    const MetaClass* metaClass = Receiver::StaticMetaClass::get();
-    auto visitor = [name = std::forward<std::string_view>(methodName), this](const MetaClass::Method* method) -> bool
+    const auto metaClass = Receiver::StaticMetaClass::get();
+    auto visitor = [name = std::forward<std::string_view>(methodName), this](const auto method) -> bool
     {
         return (method->name() == name) && method->isInvocableWith(this->getType()->getArguments());
     };
-    const MetaClass::Method* metaMethod = metaClass->visitMethods(visitor);
+    const auto metaMethod = metaClass->visitMethods(visitor);
     if (!metaMethod)
     {
         return false;

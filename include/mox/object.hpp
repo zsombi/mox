@@ -44,11 +44,9 @@ class MOX_API Object : public MetaObject, public EventHandlingProvider, public s
 {
 public:
     /// The static metaclass of Object.
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Object, MetaObject>
+    ClassMetaData(Object, MetaObject)
     {
-        MetaClassDefs()
-        static inline PropertyTypeDecl<std::string, PropertyAccess::ReadWrite> ObjectNameProperty;
-        Property objectName{*this, ObjectNameProperty, "objectName"};
+        static inline PropertyTypeDecl<Object, std::string, PropertyAccess::ReadWrite> ObjectNameProperty{"objectName"};
     };
 
     PropertyDecl<std::string> objectName{*this, StaticMetaClass::ObjectNameProperty, ""};

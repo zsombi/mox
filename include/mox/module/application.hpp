@@ -19,6 +19,7 @@
 #ifndef APPLICATION_HPP
 #define APPLICATION_HPP
 
+#include <mox/metadata/metaclass.hpp>
 #include <mox/mox_module.hpp>
 #include <mox/object.hpp>
 #include <mox/event_handling/event_dispatcher.hpp>
@@ -30,24 +31,12 @@ namespace mox
 /// one instance of this class in your application.
 class MOX_API Application : public MetaObject, public MoxModule
 {
-    static inline SignalTypeDecl<> StartedSignalType;
-    static inline SignalTypeDecl<> StoppedSignalType;
-
 public:
     /// The static metaclass of the Application class.
-    struct MOX_API StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, Application, MetaObject>
-    {
-        Signal started{*this, StartedSignalType, "started"};
-        Signal stopped{*this, StoppedSignalType, "stopped"};
-        Method quit{*this, &Application::quit, "quit"};
-
-        MetaClassDefs()
-    };
-
     /// Signal is emitted when the application's event loop is started.
-    SignalDecl<> started{*this, StartedSignalType};
+    SignalDecl<> started{*this, StaticMetaClass::StartedSignalType};
     /// Signal emitted when the application's event loop exits.
-    SignalDecl<> stopped{*this, StoppedSignalType};
+    SignalDecl<> stopped{*this, StaticMetaClass::StoppedSignalType};
 
     /// Constructor, creates an application object. You can have only one application object in your
     /// application.
@@ -95,6 +84,12 @@ public:
     /// Adds an idle task to the application's dispatcher.
     void addIdleTask(EventDispatcher::IdleFunction&& task);
 
+    ClassMetaData(Application, MetaObject)
+    {
+        static inline SignalTypeDecl<Application> StartedSignalType{"started"};
+        static inline SignalTypeDecl<Application> StoppedSignalType{"stopped"};
+        static inline MethodTypeDecl<Application> QuitMethod{&Application::quit, "quit"};
+    };
 private:
     ThreadDataSharedPtr m_mainThread;
     ObjectSharedPtr m_rootObject;

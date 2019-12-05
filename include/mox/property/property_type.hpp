@@ -24,6 +24,7 @@
 #include <mox/utils/flat_map.hpp>
 #include <mox/metadata/variant.hpp>
 #include <mox/signal/signal_type.hpp>
+#include <mox/metadata/metaclass.hpp>
 
 namespace mox
 {
@@ -41,21 +42,24 @@ enum class PropertyAccess
 
 /// PropertyType declares the type identification of a property. Holds the metatype of the
 /// property data, the change signal type and the instances of the property.
-class MOX_API PropertyType : public ObjectLock
+class MOX_API PropertyType : public ObjectLock, public AbstractMetaInfo
 {
 public:
     /// Destructor.
-    ~PropertyType() = default;
+    ~PropertyType();
 
     /// Returns the change signal type of the property. Both read-only and read-write properties
     /// have change signals.
     /// \return The reference to the signal type.
-    SignalType& getChangedSignalType();
+    virtual SignalType& getChangedSignalType() = 0;
 
     /// Returns the access type of the property.
     /// \return The access type of the property.
     /// \see PropertyAccess
     PropertyAccess getAccess() const;
+
+    /// Returns the type of the property.
+    const VariantDescriptor& getValueType() const;
 
     /// Adds the instance of the property to track.
     void addPropertyInstance(Property& property);
@@ -63,43 +67,91 @@ public:
     void removePropertyInstance(Property& property);
 
     Variant get(intptr_t instance) const;
-    bool set(intptr_t instance, const Variant& value);
+    bool set(intptr_t instance, const Variant& value) const;
+
+    std::string signature() const override;
 
 protected:
     /// Constructor, creates a property type.
     /// \param typeDes The variant type descriptor of the type.
     /// \param signalType The reference to the signal type defining the change signal of the property.
     /// \param access The access type of the property.
-    PropertyType(VariantDescriptor&& typeDes, SignalType& signalType, PropertyAccess access);
+    PropertyType(VariantDescriptor&& typeDes, PropertyAccess access, std::string_view name);
+    PropertyType(PropertyAccess access, std::string_view name);
 
     /// Map of the property instances.
     FlatMap<intptr_t, Property*> m_instances;
     /// The type descriptor of the property.
     VariantDescriptor m_typeDescriptor;
-    /// The reference to the change signal type.
-    SignalType& m_changedSignal;
     /// The property access type.
-    PropertyAccess m_access;
+    PropertyAccess m_access = PropertyAccess::ReadWrite;
 };
 
 /// Property declarator template. Use this to define the property types.
 /// \tparam ValueType The value type of the property.
 /// \tparam access The access value of the property.
-template <typename ValueType, PropertyAccess access>
+template <class HostClass, typename ValueType, PropertyAccess access>
 class PropertyTypeDecl : public PropertyType
 {
     DISABLE_COPY(PropertyTypeDecl)
 
 public:
     /// The change signal type.
-    SignalTypeDecl<ValueType> ChangedSignalType;
+    SignalTypeDecl<HostClass, ValueType> ChangedSignalType;
 
     /// Constructor.
-    PropertyTypeDecl()
-        : PropertyType(VariantDescriptor::get<ValueType>(), ChangedSignalType, access)
+    explicit PropertyTypeDecl(std::string_view name)
+        : PropertyType(/*VariantDescriptor::get<ValueType>(), */access, name)
+        , ChangedSignalType(std::string(name) + "Changed")
     {
+        auto type(VariantDescriptor::get<ValueType>());
+        m_typeDescriptor.swap(type);
+
+        if constexpr (has_static_metaclass_v<HostClass>)
+        {
+            registerMetaClass<HostClass>();
+            HostClass::__getStaticMetaClass()->addMetaProperty(*this);
+        }
+    }
+
+    SignalType & getChangedSignalType() override
+    {
+        return ChangedSignalType;
     }
 };
+
+template <typename ValueType, class Class>
+std::pair<ValueType, bool> property(Class& instance, std::string_view name)
+{
+    const MetaClass* metaClass = Class::StaticMetaClass::get();
+    auto finder = [&name](const PropertyType* property)
+    {
+        return property->name() == name;
+    };
+    auto property = metaClass->visitProperties(finder);
+    if (property)
+    {
+        ValueType value = property->get(intptr_t(&instance));
+        return std::make_pair(value, true);
+    }
+    return std::make_pair(ValueType(), false);
+}
+
+template <typename ValueType, class Class>
+bool setProperty(Class& instance, std::string_view name, ValueType value)
+{
+    const MetaClass* metaClass = Class::StaticMetaClass::get();
+    auto finder = [&name](const PropertyType* property)
+    {
+        return property->name() == name;
+    };
+    auto property = metaClass->visitProperties(finder);
+    if (property)
+    {
+        return property->set(intptr_t(&instance), Variant(value));
+    }
+    return false;
+}
 
 } //namespace mox
 

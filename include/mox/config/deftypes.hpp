@@ -47,6 +47,28 @@ using Timestamp = std::chrono::system_clock::time_point;
 
 typedef int64_t TUuid;
 
+
+/// Base class for types with meta information.
+class MOX_API AbstractMetaInfo
+{
+public:
+    virtual ~AbstractMetaInfo() = default;
+
+    /// Returns the name of the metainfo.
+    /// \return The name of the metainfo.
+    std::string name() const;
+
+    /// Returns the signature of the metainfo.
+    virtual std::string signature() const = 0;
+
+protected:
+    /// Constructor.
+    explicit AbstractMetaInfo(std::string_view name);
+
+private:
+    std::string m_name;
+};
+
 }
 
 #endif // DEFTYPES_HPP

@@ -41,7 +41,7 @@ MetaData::MetaData()
     registerAtomicTypes(*this);
 
     // Register converters.
-    registerConverters(*this);
+    registerConverters();
 
     initialized = true;
     TRACE("Metadata initialized")
@@ -64,6 +64,46 @@ const MetatypeDescriptor& MetaData::addMetaType(const char* name, const std::typ
 
 namespace metadata
 {
+
+const MetatypeDescriptor* scanMetatypes(std::function<bool(const MetatypeDescriptor&)> predicate)
+{
+    if (!MetaData::globalMetaDataPtr)
+    {
+        std::cerr << "Warning: metatype lookup attempt after mox backend went down.\n";
+        return nullptr;
+    }
+    lock_guard locker(MetaData::globalMetaData);
+
+    for (auto& type : MetaData::globalMetaData.metaTypes)
+    {
+        if (predicate(*type))
+        {
+            return type.get();
+        }
+    }
+    return nullptr;
+}
+
+const MetaClass* scanMetaClasses(std::function<bool(const MetaClass&)> predicate)
+{
+    if (!MetaData::globalMetaDataPtr)
+    {
+        std::cerr << "Warning: metaclass lookup attempt after mox backend went down.\n";
+        return nullptr;
+    }
+    lock_guard locker(MetaData::globalMetaData);
+
+    for (auto& metaclass : MetaData::globalMetaData.metaClasses)
+    {
+        ScopeRelock relock(MetaData::globalMetaData);
+        if (predicate(*metaclass.second))
+        {
+            return metaclass.second;
+        }
+    }
+    return nullptr;
+}
+
 
 MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti)
 {
@@ -134,13 +174,13 @@ MetatypeDescriptor& MetaData::getMetaType(Metatype type)
 void MetaData::addMetaClass(const MetaClass& metaClass)
 {
     FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
+    std::string name = MetatypeDescriptor::get(metaClass.getMetaTypes().first).name();
 
     lock_guard locker(globalMetaData);
     auto it = globalMetaData.metaClasses.find(name);
     FATAL(it == globalMetaData.metaClasses.cend(), "Static metaclass for '" + name + "' already registered!")
 
-    globalMetaData.metaClassRegister.insert({metaClass.metaType(), &metaClass});
+    globalMetaData.metaClassRegister.insert({metaClass.getMetaTypes().first, &metaClass});
     globalMetaData.metaClasses.insert({name, &metaClass});
 
     TRACE("MetaClass added: " << name)
@@ -153,7 +193,7 @@ void MetaData::removeMetaClass(const MetaClass& metaClass)
         std::cerr << "Warning: MetaClass removal attempt after mox backend went down.\n";
         return;
     }
-    std::string name = MetatypeDescriptor::get(metaClass.metaType()).name();
+    std::string name = MetatypeDescriptor::get(metaClass.getMetaTypes().first).name();
 
     lock_guard locker(globalMetaData);
     auto it = globalMetaData.metaClasses.find(name);
@@ -161,7 +201,7 @@ void MetaData::removeMetaClass(const MetaClass& metaClass)
     {
         globalMetaData.metaClasses.erase(it, it);
     }
-    auto cit = globalMetaData.metaClassRegister.find(metaClass.metaType());
+    auto cit = globalMetaData.metaClassRegister.find(metaClass.getMetaTypes().first);
     if (cit != globalMetaData.metaClassRegister.cend())
     {
         globalMetaData.metaClassRegister.erase(cit, cit);

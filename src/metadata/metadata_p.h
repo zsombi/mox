@@ -62,7 +62,7 @@ struct MetaData : public ObjectLock
 };
 
 void registerAtomicTypes(MetaData& metaData);
-void registerConverters(MetaData& metaData);
+void registerConverters();
 
 TUuid nextUuid();
 

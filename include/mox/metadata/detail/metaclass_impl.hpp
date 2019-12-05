@@ -22,49 +22,6 @@
 namespace mox
 {
 
-template <typename Function>
-MetaClass::Method::Method(MetaClass& metaClass, Function fn, std::string_view name)
-    : Callable(fn)
-    , m_ownerClass(metaClass)
-    , m_name(name)
-{
-    m_ownerClass.addMethod(*this);
-}
-
-template <class SenderObject, typename... Arguments>
-int MetaClass::Signal::emit(SenderObject& sender, Arguments... args) const
-{
-    if (!isInvocableWith(VariantDescriptorContainer::get<Arguments...>()))
-    {
-        return -1;
-    }
-    return activate(reinterpret_cast<intptr_t>(&sender), Callable::ArgumentPack(args...));
-}
-
-
-template <class Class, typename... Arguments>
-std::optional<Variant> MetaClass::invoke(Class& instance, const Method& method, Arguments... arguments) const
-{
-    if (!method.isInvocableWith(VariantDescriptorContainer(arguments...)))
-    {
-        return std::nullopt;
-    }
-
-    try
-    {
-        auto argPack = (method.type() == FunctionType::Method)
-                ? Callable::ArgumentPack(&instance, arguments...)
-                : Callable::ArgumentPack(arguments...);
-
-        auto result = method.apply(argPack);
-        return std::make_optional(result);
-    }
-    catch (...)
-    {
-        return std::nullopt;
-    }
-}
-
 /******************************************************************************
  * StaticMetaClass
  */
@@ -91,7 +48,7 @@ struct Caster : MetatypeConverter
 
 template <class MetaClassDecl, class BaseClass, class... SuperClasses>
 StaticMetaClass<MetaClassDecl, BaseClass, SuperClasses...>::StaticMetaClass()
-    : mox::MetaClass(metatypeDescriptor<BaseClass>())
+    : mox::MetaClass({mox::metaType<BaseClass>(), mox::metaType<BaseClass*>()})
 {
     struct Element
     {
@@ -102,8 +59,8 @@ StaticMetaClass<MetaClassDecl, BaseClass, SuperClasses...>::StaticMetaClass()
 
     std::array<Element, 2 * sizeof...(SuperClasses)> casters =
     {{
-        Element{new Caster<SuperClasses, BaseClass>(), mox::metaType<SuperClasses*>(), mox::metaType<BaseClass*>()}...,
-        Element{new Caster<BaseClass, SuperClasses>(), mox::metaType<BaseClass*>(), mox::metaType<SuperClasses*>()}...
+        Element{new Caster<BaseClass, SuperClasses>(), getMetaTypes().second, mox::registerClassMetaTypes<SuperClasses>().second}...,
+        Element{new Caster<SuperClasses, BaseClass>(), mox::metaType<SuperClasses*>(), getMetaTypes().second}...
     }};
     for (auto& caster : casters)
     {
@@ -140,68 +97,21 @@ bool StaticMetaClass<MetaClassDecl, BaseClass, SuperClasses...>::isClassOf(const
     return casted != nullptr;
 }
 
+template <class MetaClassDecl, class BaseClass, class... SuperClasses>
+const typename StaticMetaClass<MetaClassDecl, BaseClass, SuperClasses...>::DeclaredMetaClass* StaticMetaClass<MetaClassDecl, BaseClass, SuperClasses...>::get()
+{
+    return BaseClass::__getStaticMetaClass();
+}
+
 /******************************************************************************
  * helpers
  */
 template <class ClassType>
-Metatype registerMetaClass(std::string_view name)
+std::pair<Metatype, Metatype> registerMetaClass(std::string_view name)
 {
-    Metatype type = metadata::findMetatype(metadata::remove_cv<ClassType>());
-    if (type != Metatype::Invalid)
-    {
-        ClassType::StaticMetaClass::get();
-        return type;
-    }
-
-    type = registerMetaType<ClassType>(name);
-    typedef std::add_pointer_t<ClassType> PtrClassType;
-    std::string pname(name);
-    if (!pname.empty())
-    {
-        pname += "*";
-    }
-    registerMetaType<PtrClassType>(pname);
+    auto typePair = registerClassMetaTypes<ClassType>(name);
     ClassType::StaticMetaClass::get();
-    return type;
-}
-
-template <class Class, typename... Arguments>
-std::optional<Variant> invoke(Class& instance, std::string_view methodName, Arguments... arguments)
-{
-    const MetaClass* metaClass = Class::StaticMetaClass::get();
-    VariantDescriptorContainer descriptors(arguments...);
-
-    // Metamethod lookup.
-    auto methodVisitor = [methodName, &descriptors](const MetaClass::Method* method) -> bool
-    {
-        return (method->name() == methodName) && method->isInvocableWith(descriptors);
-    };
-    const MetaClass::Method* metaMethod = metaClass->visitMethods(methodVisitor);
-    if (metaMethod)
-    {
-        return metaClass->invoke(instance, *metaMethod, arguments...);
-    }
-
-    return std::nullopt;
-}
-
-template <class Class, typename... Arguments>
-int emit(Class& instance, std::string_view signalName, Arguments... arguments)
-{
-    const MetaClass* metaClass = Class::StaticMetaClass::get();
-    VariantDescriptorContainer descriptors(arguments...);
-    // Metasignal lookup.
-    auto signalVisitor = [signalName, &descriptors](const MetaClass::Signal* signal) -> bool
-    {
-        return (signal->name() == signalName) && signal->isInvocableWith(descriptors);
-    };
-    const MetaClass::Signal* signal = metaClass->visitSignals(signalVisitor);
-    if (signal)
-    {
-        return signal->activate(reinterpret_cast<intptr_t>(&instance), Callable::ArgumentPack(arguments...));
-    }
-
-    return -1;
+    return typePair;
 }
 
 } // namespace mox

@@ -98,7 +98,7 @@ T Variant::Data::get()
         return *value;
     }
 
-    Metatype sourceType = m_typeDescriptor.type;
+    Metatype sourceType = m_typeDescriptor.getType();
     Metatype destinationType = mox::metaType<T>();
     MetatypeConverter* converter = metadata::findConverter(sourceType, destinationType);
     throwIf<ExceptionType::BadTypeConversion>(!converter);

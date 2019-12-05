@@ -25,9 +25,8 @@ using namespace mox;
 class TBaseClass
 {
 public:
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, TBaseClass>
+    ClassMetaData(TBaseClass)
     {
-        MetaClassDefs()
     };
 
     explicit TBaseClass()
@@ -39,18 +38,16 @@ public:
 class BaseObject : public MetaObject, public TBaseClass
 {
 public:
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, BaseObject, MetaObject, TBaseClass>
+    ClassMetaData(BaseObject, MetaObject, TBaseClass)
     {
-        MetaClassDefs()
     };
 };
 
 class OtherBaseClass
 {
 public:
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, OtherBaseClass>
+    ClassMetaData(OtherBaseClass)
     {
-        MetaClassDefs()
     };
 
     explicit OtherBaseClass()
@@ -66,18 +63,16 @@ public:
     {
     }
 
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, DerivedClass, TBaseClass, OtherBaseClass>
+    ClassMetaData(DerivedClass, TBaseClass, OtherBaseClass)
     {
-        MetaClassDefs()
     };
 };
 
 class ObjectDerivedClass : public MetaObject, public DerivedClass
 {
 public:
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, ObjectDerivedClass, MetaObject, DerivedClass>
+    ClassMetaData(ObjectDerivedClass, MetaObject, DerivedClass)
     {
-        MetaClassDefs()
     };
 };
 
@@ -90,18 +85,16 @@ public:
 
     virtual void noop() = 0;
 
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SecondLevelDerived, DerivedClass>
+    ClassMetaData(SecondLevelDerived, DerivedClass)
     {
-        MetaClassDefs()
     };
 };
 
 class SecondObject : public MetaObject, public SecondLevelDerived
 {
 public:
-    struct StaticMetaClass : mox::StaticMetaClass<StaticMetaClass, SecondObject, MetaObject, SecondLevelDerived>
+    ClassMetaData(SecondObject, MetaObject, SecondLevelDerived)
     {
-        MetaClassDefs()
     };
     void noop() override
     {

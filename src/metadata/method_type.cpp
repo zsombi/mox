@@ -16,38 +16,29 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/metadata/metaclass.hpp>
-#include <mox/property/property_type.hpp>
+#include <mox/metadata/method_type.hpp>
 
 namespace mox
 {
 
-MetaClass::Property::Property(MetaClass& metaClass, PropertyType& type, std::string_view name)
-    : m_ownerClass(metaClass)
-    , m_type(type)
-    , m_name(name)
+std::string MethodType::signature() const
 {
-    m_ownerClass.addProperty(*this);
-}
-
-std::string MetaClass::Property::name() const
-{
-    return m_name;
-}
-
-const PropertyType& MetaClass::Property::type() const
-{
-    return m_type;
-}
-
-Variant MetaClass::Property::get(intptr_t instance) const
-{
-    return m_type.get(instance);
-}
-
-bool MetaClass::Property::set(intptr_t instance, const Variant& value) const
-{
-    return m_type.set(instance, value);
+    std::string sign(MetatypeDescriptor::get(returnType().getType()).name());
+    sign += ' ' + name() + '(';
+    for (auto& des : descriptors())
+    {
+        sign += MetatypeDescriptor::get(des.getType()).name();
+        sign += ',';
+    }
+    if (!descriptors().empty())
+    {
+        sign.back() = ')';
+    }
+    else
+    {
+        sign += ')';
+    }
+    return sign;
 }
 
 } // namespace mox

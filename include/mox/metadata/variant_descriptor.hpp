@@ -29,13 +29,6 @@ namespace mox
 /// Defines the type attributes of a Mox Variant.
 struct MOX_API VariantDescriptor
 {
-    /// Tye metatype of the variant.
-    const Metatype type = Metatype::Invalid;
-    /// \e true if the variant holds a reference value, \e false if not.
-    const bool isReference = false;
-    /// \e true if the variant holds a const value, \e false if not.
-    const bool isConst = false;
-
     /// Constructor.
     VariantDescriptor() = default;
     VariantDescriptor(Metatype type, bool ref, bool c);
@@ -43,9 +36,7 @@ struct MOX_API VariantDescriptor
     /// Constructs a descriptor from a value.
     template <typename Type>
     VariantDescriptor(Type)
-        : type(metaType<Type>())
-        , isReference(std::is_reference<Type>())
-        , isConst(std::is_const<Type>())
+        : VariantDescriptor(metaType<Type>(), std::is_reference<Type>(), std::is_const<Type>())
     {
     }
 
@@ -61,6 +52,19 @@ struct MOX_API VariantDescriptor
                          });
     }
 
+    Metatype getType() const
+    {
+        return static_cast<Metatype>(m_type);
+    }
+    bool isConst() const
+    {
+        return m_isConst;
+    }
+    bool isReference() const
+    {
+        return m_isReference;
+    }
+
     /// Tests whether an \a other variant descriptor is compatible with this.
     bool invocableWith(const VariantDescriptor& other) const;
 
@@ -69,31 +73,43 @@ struct MOX_API VariantDescriptor
 
     /// Swaps variant descriptors.
     void swap(VariantDescriptor& other);
+
+private:
+    /// Tye metatype of the variant.
+    Metatype m_type = Metatype::Invalid;
+    /// \e true if the variant holds a reference value, \e false if not.
+    bool m_isReference = false;
+    /// \e true if the variant holds a const value, \e false if not.
+    bool m_isConst = false;
 };
 
 /// Defines a container with variant descriptors.
-class MOX_API VariantDescriptorContainer : public std::vector<VariantDescriptor>
+class MOX_API VariantDescriptorContainer
 {
-    typedef std::vector<VariantDescriptor> BaseType;
+    using BaseType = std::vector<VariantDescriptor>;
+    BaseType m_container;
+
 public:
+    using iterator = BaseType::iterator;
+    using const_iterator = BaseType::const_iterator;
 
     /// Construct the container from an other, using its iterators.
     template <typename Iterator>
     VariantDescriptorContainer(Iterator begin, Iterator end)
-        : BaseType(begin, end)
+        : m_container(begin, end)
     {
     }
 
     /// Construct the container extracting the types from the parameters passed as arguments.
     template <typename... Arguments>
     VariantDescriptorContainer(Arguments...)
-        : BaseType(get<Arguments...>())
+        : m_container(getArgs<Arguments...>().m_container)
     {
     }
 
     /// Fetch the variant descriptors from a set of argument types.
     template <typename... Arguments>
-    static VariantDescriptorContainer get()
+    static VariantDescriptorContainer getArgs()
     {
         const std::array<VariantDescriptor, sizeof... (Arguments)> aa = {{ VariantDescriptor::get<Arguments>()... }};
         return VariantDescriptorContainer(aa.begin(), aa.end());
@@ -117,6 +133,59 @@ public:
     /// passed as actual parameter.
     /// \return If the variant types from \a other are compatible, returns \e true, otherwise \e false.
     bool isInvocableWith(const VariantDescriptorContainer& other) const;
+
+    void swap(VariantDescriptorContainer& other)
+    {
+        std::swap(m_container, other.m_container);
+    }
+
+    size_t size() const
+    {
+        return m_container.size();
+    }
+    bool empty() const
+    {
+        return m_container.empty();
+    }
+    void clear()
+    {
+        m_container.clear();
+    }
+
+    VariantDescriptor& operator[](size_t index)
+    {
+        return m_container[index];
+    }
+    const VariantDescriptor& operator[](size_t index) const
+    {
+        return m_container[index];
+    }
+
+    iterator begin()
+    {
+        return m_container.begin();
+    }
+    iterator end()
+    {
+        return m_container.end();
+    }
+    const_iterator begin() const
+    {
+        return m_container.begin();
+    }
+    const_iterator end() const
+    {
+        return m_container.end();
+    }
+
+    bool operator==(VariantDescriptorContainer& other) const
+    {
+        return m_container == other.m_container;
+    }
+    bool operator==(const VariantDescriptorContainer& other) const
+    {
+        return m_container == other.m_container;
+    }
 };
 
 } // namespace mox

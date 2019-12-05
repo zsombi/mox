@@ -23,56 +23,22 @@
 namespace mox
 {
 
-std::string MetaClass::Method::name() const
+void MetaClass::addMetaMethod(MethodType& method)
 {
-    return m_name;
+    m_metaMethods.push_back(&method);
 }
 
-
-MetaClass::Signal::Signal(MetaClass& metaClass, const SignalType& type, std::string_view name)
-    : m_ownerClass(metaClass)
-    , m_type(type)
-    , m_name(name)
+void MetaClass::addMetaSignal(SignalType &signal)
 {
-    m_ownerClass.addSignal(*this);
+    m_metaSignals.push_back(&signal);
 }
 
-std::string MetaClass::Signal::name() const
+void MetaClass::addMetaProperty(PropertyType& property)
 {
-    return m_name;
+    m_metaProperties.push_back(&property);
 }
 
-const SignalType& MetaClass::Signal::type() const
-{
-    return m_type;
-}
-
-int MetaClass::Signal::activate(intptr_t sender, const Callable::ArgumentPack &arguments) const
-{
-    return m_type.activate(sender, arguments);
-}
-
-bool MetaClass::Signal::isInvocableWith(const VariantDescriptorContainer &arguments) const
-{
-    return m_type.getArguments().isInvocableWith(arguments);
-}
-
-void MetaClass::addMethod(const Method &method)
-{
-    m_methods.push_back(&method);
-}
-
-void MetaClass::addSignal(const Signal &signal)
-{
-    m_signals.push_back(&signal);
-}
-
-void MetaClass::addProperty(const Property &property)
-{
-    m_properties.push_back(&property);
-}
-
-MetaClass::MetaClass(const MetatypeDescriptor& type)
+MetaClass::MetaClass(std::pair<Metatype, Metatype> type)
     : m_type(type)
 {
     MetaData::addMetaClass(*this);
@@ -123,11 +89,11 @@ MetaClass::VisitorResultType MetaClass::visitSuperClasses(const MetaClassVisitor
     return std::make_tuple(Continue, MetaValue());
 }
 
-const MetaClass::Method* MetaClass::visitMethods(const MethodVisitor& visitor) const
+const MethodType* MetaClass::visitMethods(const MethodVisitor& visitor) const
 {
     auto tester = [&visitor](const MetaClass& mc) -> VisitorResultType
     {
-        for (auto method : mc.m_methods)
+        for (auto method : mc.m_metaMethods)
         {
             if (visitor(method))
             {
@@ -139,14 +105,14 @@ const MetaClass::Method* MetaClass::visitMethods(const MethodVisitor& visitor) c
 
     VisitorResultType result = visit(MetaClassVisitor(tester));
     MetaValue method = std::get<1>(result);
-    return (std::get<0>(result) == Abort) ? std::any_cast<const MetaClass::Method*>(method) : nullptr;
+    return (std::get<0>(result) == Abort) ? std::any_cast<const MethodType*>(method) : nullptr;
 }
 
-const MetaClass::Signal* MetaClass::visitSignals(const SignalVisitor& visitor) const
+const SignalType* MetaClass::visitSignals(const SignalVisitor& visitor) const
 {
     auto tester = [&visitor](const MetaClass& mc) -> VisitorResultType
     {
-        for (auto signal : mc.m_signals)
+        for (auto signal : mc.m_metaSignals)
         {
             if (visitor(signal))
             {
@@ -158,14 +124,14 @@ const MetaClass::Signal* MetaClass::visitSignals(const SignalVisitor& visitor) c
 
     auto result = visit(MetaClassVisitor(tester));
     auto signal = std::get<1>(result);
-    return (std::get<0>(result) == Abort) ? std::any_cast<const MetaClass::Signal*>(signal) : nullptr;
+    return (std::get<0>(result) == Abort) ? std::any_cast<const SignalType*>(signal) : nullptr;
 }
 
-const MetaClass::Property* MetaClass::visitProperties(const PropertyVisitor& visitor) const
+const PropertyType* MetaClass::visitProperties(const PropertyVisitor& visitor) const
 {
     auto tester = [&visitor](const MetaClass& mc) -> VisitorResultType
     {
-        for (const auto property : mc.m_properties)
+        for (const auto property : mc.m_metaProperties)
         {
             if (visitor(property))
             {
@@ -176,7 +142,7 @@ const MetaClass::Property* MetaClass::visitProperties(const PropertyVisitor& vis
     };
     auto result = visit(tester);
     auto property = std::get<1>(result);
-    return (std::get<0>(result) == Abort) ? std::any_cast<const MetaClass::Property*>(property) : nullptr;
+    return (std::get<0>(result) == Abort) ? std::any_cast<const PropertyType*>(property) : nullptr;
 }
 
 } // namespace mox

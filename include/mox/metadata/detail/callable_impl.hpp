@@ -99,7 +99,7 @@ Callable::Callable(Function fn)
 {
     if constexpr (function_traits<Function>::type == FunctionType::Method)
     {
-        m_classType = metaType<typename function_traits<Function>::object>();
+        m_classType = registerClassMetaTypes<typename function_traits<Function>::object>().first;
     }
 
     m_invoker = [function = std::forward<Function>(fn)](const ArgumentPack& args)
