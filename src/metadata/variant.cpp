@@ -80,7 +80,7 @@ bool VariantDescriptor::invocableWith(const VariantDescriptor& other) const
 {
 #if 1
     const bool typeIsSame = (other.m_type == m_type);
-    const bool typeIsConvertible = typeIsSame || metadata::findConverter(other.m_type, m_type);
+    const bool typeIsConvertible = typeIsSame || MetatypeDescriptor::findConverter(other.m_type, m_type);
 
     if (m_isReference && other.m_isReference)
     {

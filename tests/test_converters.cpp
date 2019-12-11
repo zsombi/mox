@@ -98,7 +98,7 @@ TEST_F(Converters, test_base_type_converters)
         {
             if (from != to)
             {
-                mox::MetatypeConverter* converter = mox::metadata::findConverter(from, to);
+                auto converter = mox::MetatypeDescriptor::findConverter(from, to);
                 EXPECT_NOT_NULL(converter);
             }
         }
@@ -111,17 +111,17 @@ TEST_F(Converters, test_register_converter_function)
     EXPECT_TRUE(b);
 
     // Convert long long to UserType.
-    mox::MetatypeConverter* converter = mox::metadata::findConverter(mox::Metatype::Int32, mox::metaType<converter_test::UserType>());
+    auto converter = mox::MetatypeDescriptor::findConverter(mox::Metatype::Int32, mox::metaType<converter_test::UserType>());
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType result;
     int32_t v = 65537;
-    mox::MetaValue r = converter->convert(*converter, &v);
+    mox::MetaValue r = converter->convert(&v);
     EXPECT_NO_THROW(result = std::any_cast<converter_test::UserType>(r));
     EXPECT_EQ(1, result.v1);
     EXPECT_EQ(1, result.v2);
 
-    converter = mox::metadata::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
+    converter = mox::MetatypeDescriptor::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NULL(converter);
 }
 
@@ -136,28 +136,28 @@ TEST_F(Converters, test_register_converter_functor)
     bool b = mox::registerConverter<converter_test::UserType, int32_t>(userType2int32);
     EXPECT_TRUE(b);
 
-    auto converter = mox::metadata::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
+    auto converter = mox::MetatypeDescriptor::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType v;
     v.v1 = 1;
     v.v2 = 1;
     int32_t result = 0;
-    mox::MetaValue presult = converter->convert(*converter, &v);
+    mox::MetaValue presult = converter->convert(&v);
     EXPECT_NO_THROW(result = std::any_cast<int32_t>(presult));
     EXPECT_EQ(65537, result);
 }
 
 TEST_F(Converters, test_registered_functor_converter)
 {
-    auto converter = mox::metadata::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
+    auto converter = mox::MetatypeDescriptor::findConverter(mox::metaType<converter_test::UserType>(), mox::Metatype::Int32);
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType v;
     v.v1 = 1;
     v.v2 = 1;
     int32_t result = 0;
-    mox::MetaValue presult = converter->convert(*converter, &v);
+    mox::MetaValue presult = converter->convert(&v);
     EXPECT_NO_THROW(result = std::any_cast<int32_t>(presult));
     EXPECT_EQ(65537, result);
 }
@@ -169,7 +169,7 @@ TEST_F(Converters, test_register_converter_method)
     b = mox::registerConverter<converter_test::SelfConvertible, converter_test::UserType*>(&converter_test::SelfConvertible::ptr_convert);
     EXPECT_TRUE(b);
 
-    mox::MetatypeConverter* converter = mox::metadata::findConverter(mox::metaType<converter_test::SelfConvertible>(), mox::metaType<converter_test::UserType>());
+    auto converter = mox::MetatypeDescriptor::findConverter(mox::metaType<converter_test::SelfConvertible>(), mox::metaType<converter_test::UserType>());
     EXPECT_NOT_NULL(converter);
 
     converter_test::SelfConvertible src;
@@ -177,16 +177,16 @@ TEST_F(Converters, test_register_converter_method)
     src.v2 = 20;
 
     converter_test::UserType dst;
-    mox::MetaValue anyresult = converter->convert(*converter, &src);
+    mox::MetaValue anyresult = converter->convert(&src);
     EXPECT_NO_THROW(dst = std::any_cast<converter_test::UserType>(anyresult));
     EXPECT_EQ(10, dst.v1);
     EXPECT_EQ(20, dst.v2);
 
-    converter = mox::metadata::findConverter(mox::metaType<converter_test::SelfConvertible>(), mox::metaType<converter_test::UserType*>());
+    converter = mox::MetatypeDescriptor::findConverter(mox::metaType<converter_test::SelfConvertible>(), mox::metaType<converter_test::UserType*>());
     EXPECT_NOT_NULL(converter);
 
     converter_test::UserType* pdst = nullptr;
-    anyresult = converter->convert(*converter, &src);
+    anyresult = converter->convert(&src);
     EXPECT_NO_THROW(pdst = std::any_cast<converter_test::UserType*>(anyresult));
     EXPECT_EQ(10, pdst->v1);
     EXPECT_EQ(20, pdst->v2);

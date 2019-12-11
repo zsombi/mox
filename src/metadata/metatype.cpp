@@ -31,18 +31,44 @@
 namespace mox
 {
 
+MetatypeDescriptor::Converter::Converter(const Storage& storage, VTable* vtable)
+    : m_storage(storage)
+    , m_vtable(vtable)
+{
+}
+MetatypeDescriptor::Converter::Converter(const Converter& other)
+    : m_vtable(other.m_vtable)
+{
+    if (m_vtable)
+    {
+        m_storage = other.m_storage;
+    }
+}
 
-//type_not_registered::type_not_registered(const std::type_info& rtti)
-//{
-//    int status = 0;
-//    char* abiName = abi::__cxa_demangle(rtti.name(), nullptr, nullptr, &status);
-//    m_message = "Type '" + std::string(abiName) + "' not registered as metatype.";
-//    free(abiName);
-//}
-//const char* type_not_registered::what() const EXCEPTION_NOEXCEPT
-//{
-//    return m_message.c_str();
-//}
+MetatypeDescriptor::Converter::Converter(Converter&& rhs) noexcept
+{
+    swap(rhs);
+}
+
+MetatypeDescriptor::Converter::~Converter()
+{
+    if (m_vtable)
+    {
+        m_storage.reset();
+    }
+    m_vtable = nullptr;
+}
+
+const MetaValue MetatypeDescriptor::Converter::convert(const void* value) const
+{
+    return m_vtable ? m_vtable->convert(m_storage, value) : MetaValue();
+}
+
+void MetatypeDescriptor::Converter::swap(Converter& other)
+{
+    std::swap(m_storage, other.m_storage);
+    std::swap(m_vtable, other.m_vtable);
+}
 
 
 MetatypeDescriptor::MetatypeDescriptor(std::string_view name, int id, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer)
@@ -153,20 +179,32 @@ const std::type_info* MetatypeDescriptor::rtti() const
     return m_rtti;
 }
 
-MetatypeConverter* MetatypeDescriptor::findConverterTo(Metatype target)
+const MetatypeDescriptor::Converter* MetatypeDescriptor::findConverterTo(Metatype target) const
 {
     auto i = m_converters.find(target);
     if (i == m_converters.cend())
         return nullptr;
     else
-        return i->second.get();
+        return &i->second;
 }
 
-bool MetatypeDescriptor::addConverter(MetatypeConverterPtr&& converter, Metatype target)
+bool MetatypeDescriptor::registerConverter(Converter&& converter, Metatype fromType, Metatype toType)
+{
+    MetatypeDescriptor& fromTypeDes = MetaData::getMetaType(fromType);
+    return fromTypeDes.addConverter(std::forward<Converter>(converter), toType);
+}
+
+const MetatypeDescriptor::Converter* MetatypeDescriptor::findConverter(Metatype fromType, Metatype toType)
+{
+    MetatypeDescriptor& fromTypeDes = MetaData::getMetaType(fromType);
+    return fromTypeDes.findConverterTo(toType);
+}
+
+bool MetatypeDescriptor::addConverter(Converter&& converter, Metatype target)
 {
     if (m_converters.find(target) == m_converters.end())
     {
-        m_converters.insert(std::make_pair(target, std::forward<MetatypeConverterPtr>(converter)));
+        m_converters.insert({target, std::forward<Converter>(converter)});
         return true;
     }
     return false;
@@ -174,12 +212,14 @@ bool MetatypeDescriptor::addConverter(MetatypeConverterPtr&& converter, Metatype
 
 #define ATOMIC_TYPE(name, Type, typeId) \
 { \
-    const MetatypeDescriptor& metaType = metaData.addMetaType(name, typeid(Type), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>); \
-    FATAL(metaType.id() == typeId, "wrong atomic type registration!"); \
+    auto metaType = mox::registerMetaType<Type>(name); \
+    FATAL(metaType == typeId, "wrong atomic type registration!"); \
 }
 
 void registerAtomicTypes(MetaData& metaData)
 {
+    UNUSED(metaData);
+
     ATOMIC_TYPE("void", void, Metatype::Void)
     ATOMIC_TYPE("bool", bool, Metatype::Bool)
     ATOMIC_TYPE("char", char, Metatype::Char)
@@ -192,15 +232,20 @@ void registerAtomicTypes(MetaData& metaData)
     ATOMIC_TYPE("uint64", uint64_t, Metatype::UInt64)
     ATOMIC_TYPE("float", float, Metatype::Float)
     ATOMIC_TYPE("double", double, Metatype::Double)
+
+#ifdef LONG_SYNONIM_OF_UINT64
+    metaData.synonymTypes.push_back(std::make_pair(&typeid(intptr_t), Metatype::Int64));
+    metaData.synonymTypes.push_back(std::make_pair(&typeid(long), Metatype::Int64));
+    metaData.synonymTypes.push_back(std::make_pair(&typeid(unsigned long), Metatype::UInt64));
+#endif
+
     ATOMIC_TYPE("std::string", std::string, Metatype::String)
     ATOMIC_TYPE("literal", std::string_view, Metatype::Literal)
     ATOMIC_TYPE("void*", void*, Metatype::VoidPtr)
     ATOMIC_TYPE("byte*", byte*, Metatype::BytePtr)
-
-#ifdef LONG_SYNONIM_OF_UINT64
-    metaData.synonymTypes.push_back(std::make_pair(&typeid(long), Metatype::Int64));
-    metaData.synonymTypes.push_back(std::make_pair(&typeid(unsigned long), Metatype::UInt64));
-#endif
+    ATOMIC_TYPE("int*", int32_t*, Metatype::Int32Ptr)
+    ATOMIC_TYPE("int64*", int64_t*, Metatype::Int64Ptr)
+    ATOMIC_TYPE("vector<int32>", std::vector<int32_t>, Metatype::Int32Vector)
 }
 
 }// namespace mox

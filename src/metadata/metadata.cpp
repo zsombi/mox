@@ -149,18 +149,6 @@ Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isCla
     return type->id();
 }
 
-bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType)
-{
-    MetatypeDescriptor& descriptor = MetaData::getMetaType(fromType);
-    return descriptor.addConverter(std::forward<MetatypeConverterPtr>(converter), toType);
-}
-
-MetatypeConverter* findConverter(Metatype from, Metatype to)
-{
-    MetatypeDescriptor& descriptor = MetaData::getMetaType(from);
-    return descriptor.findConverterTo(to);
-}
-
 } // namespace metadata
 
 MetatypeDescriptor& MetaData::getMetaType(Metatype type)

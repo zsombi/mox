@@ -32,31 +32,11 @@
 namespace mox
 {
 
-inline bool isNumericMetatype(Metatype type)
-{
-    return type >= Metatype::Bool && type <= Metatype::Double;
-}
-
-
-template <typename From, typename To>
-To atomicConverter(From value)
-{
-    return static_cast<To>(value);
-}
-
-template <typename From, typename To, typename Function>
-void internal_registerConverter(Function converter)
-{
-    MetatypeDescriptor* fromType = metadata::findMetatypeDescriptor(remove_cv<From>());
-    Metatype to = metadata::findMetatypeDescriptor(remove_cv<To>())->id();
-    fromType->addConverter(std::make_unique<ConverterFunctor<From, To, Function>>(converter), to);
-}
-
 template <typename From, typename To>
 void registerAtomicConverter()
 {
-    internal_registerConverter<From, To>(atomicConverter<From, To>);
-    internal_registerConverter<To, From>(atomicConverter<To, From>);
+    registerConverter<From, To>();
+    registerConverter<To, From>();
 }
 
 bool stringToBool(std::string value)
@@ -115,9 +95,9 @@ String numberToString(From from)
 template <typename T>
 void registerStringConverter()
 {
-    internal_registerConverter<std::string, T>(stringToNumber<std::string, T>);
-    internal_registerConverter<T, std::string>(numberToString<T, std::string>);
-    internal_registerConverter<std::string_view, T>(stringToNumber<std::string_view, T>);
+    registerConverter<std::string, T>(stringToNumber<std::string, T>);
+    registerConverter<T, std::string>(numberToString<T, std::string>);
+    registerConverter<std::string_view, T>(stringToNumber<std::string_view, T>);
 }
 
 std::string literalToString(std::string_view value)
@@ -139,6 +119,7 @@ void registerConverters()
     registerAtomicConverter<bool, uint64_t>();
     registerAtomicConverter<bool, float>();
     registerAtomicConverter<bool, double>();
+    registerAtomicConverter<bool, intptr_t>();
     // char
     registerAtomicConverter<char, byte>();
     registerAtomicConverter<char, short>();
@@ -149,6 +130,7 @@ void registerConverters()
     registerAtomicConverter<char, uint64_t>();
     registerAtomicConverter<char, float>();
     registerAtomicConverter<char, double>();
+    registerAtomicConverter<char, intptr_t>();
     // byte
     registerAtomicConverter<byte, short>();
     registerAtomicConverter<byte, unsigned short>();
@@ -158,6 +140,7 @@ void registerConverters()
     registerAtomicConverter<byte, uint64_t>();
     registerAtomicConverter<byte, float>();
     registerAtomicConverter<byte, double>();
+    registerAtomicConverter<byte, intptr_t>();
     // short
     registerAtomicConverter<short, unsigned short>();
     registerAtomicConverter<short, int32_t>();
@@ -166,6 +149,7 @@ void registerConverters()
     registerAtomicConverter<short, uint64_t>();
     registerAtomicConverter<short, float>();
     registerAtomicConverter<short, double>();
+    registerAtomicConverter<short, intptr_t>();
     // word
     registerAtomicConverter<unsigned short, int32_t>();
     registerAtomicConverter<unsigned short, uint32_t>();
@@ -173,17 +157,20 @@ void registerConverters()
     registerAtomicConverter<unsigned short, uint64_t>();
     registerAtomicConverter<unsigned short, float>();
     registerAtomicConverter<unsigned short, double>();
+    registerAtomicConverter<unsigned short, intptr_t>();
     // int
     registerAtomicConverter<int32_t, uint32_t>();
     registerAtomicConverter<int32_t, int64_t>();
     registerAtomicConverter<int32_t, uint64_t>();
     registerAtomicConverter<int32_t, float>();
     registerAtomicConverter<int32_t, double>();
+    registerAtomicConverter<int32_t, intptr_t>();
     // uint
     registerAtomicConverter<uint32_t, int64_t>();
     registerAtomicConverter<uint32_t, uint64_t>();
     registerAtomicConverter<uint32_t, float>();
     registerAtomicConverter<uint32_t, double>();
+    registerAtomicConverter<uint32_t, intptr_t>();
     // int64
     registerAtomicConverter<int64_t, uint64_t>();
     registerAtomicConverter<int64_t, float>();
@@ -194,9 +181,9 @@ void registerConverters()
     // float and double
     registerAtomicConverter<float, double>();
     // string
-    internal_registerConverter<bool, std::string>(boolToString);
-    internal_registerConverter<std::string, bool>(stringToBool);
-    internal_registerConverter<std::string_view, bool>(literalToBool);
+    registerConverter<bool, std::string>(boolToString);
+    registerConverter<std::string, bool>(stringToBool);
+    registerConverter<std::string_view, bool>(literalToBool);
     registerStringConverter<byte>();
     registerStringConverter<short>();
     registerStringConverter<unsigned short>();
@@ -207,7 +194,7 @@ void registerConverters()
     registerStringConverter<float>();
     registerStringConverter<double>();
     // literal to string
-    internal_registerConverter<std::string_view, std::string>(literalToString);
+    registerConverter<std::string_view, std::string>(literalToString);
 }
 
 } // namespace mox

@@ -52,6 +52,10 @@ enum class Metatype : int
     // Pointer types
     VoidPtr,
     BytePtr,
+    Int32Ptr,
+    Int64Ptr,
+    // Vectors
+    Int32Vector,
     // All user types to be installed here
     UserType
 };
@@ -59,27 +63,6 @@ ENABLE_ENUM_OPERATORS(Metatype)
 
 /// Base type of all Mox metavalues.
 typedef std::any MetaValue;
-
-/// Metatype converters
-/// \{
-/// Base converter.
-struct MOX_API MetatypeConverter
-{
-    typedef MetaValue (*ConverterFunction)(const MetatypeConverter& /*converter*/, const void*/*value*/);
-
-    /// Constructs a converter with a converter function.
-    explicit MetatypeConverter(ConverterFunction function)
-        : convert(function)
-    {
-    }
-    explicit MetatypeConverter() = default;
-    ConverterFunction convert = nullptr;
-
-    DISABLE_COPY(MetatypeConverter)
-};
-typedef std::unique_ptr<MetatypeConverter> MetatypeConverterPtr;
-
-/// \}
 
 } // mox
 

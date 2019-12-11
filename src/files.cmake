@@ -36,6 +36,7 @@ set(HEADERS
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype_descriptor.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metatype_descriptor_impl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/variant_descriptor.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/variant.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/method_type.hpp

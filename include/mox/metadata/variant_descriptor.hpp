@@ -43,13 +43,13 @@ struct MOX_API VariantDescriptor
     /// Returns the variant descriptor for the \e Type.
     /// \return The variant descriptor for the \e Type.
     template <typename Type>
-    static VariantDescriptor&& get()
+    static VariantDescriptor get()
     {
-        return std::move(VariantDescriptor{
-                             metaType<Type>(),
-                             std::is_reference<Type>(),
-                             std::is_const<Type>()
-                         });
+        return VariantDescriptor(
+                    metaType<Type>(),
+                    std::is_reference<Type>(),
+                    std::is_const<Type>()
+                    );
     }
 
     Metatype getType() const

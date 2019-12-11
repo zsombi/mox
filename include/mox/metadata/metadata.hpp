@@ -66,6 +66,13 @@ Metatype registerMetaType(std::string_view name = "");
 template <class Class>
 std::pair<Metatype, Metatype> registerClassMetaTypes(std::string_view name = "");
 
+/// Registers an explicit converter between From and To types
+/// \tparam From The source type to convert from.
+/// \tparam To The destination type to convert into.
+/// \return If the converter is registered, returns \e true, otherwise \e false.
+template <typename From, typename To>
+bool registerConverter();
+
 /// Registers a converter function that converts a value between two distinct types.
 /// Returns \e true if the converter is registered with success, \e false otherwise.
 /// A converter registration fails if Mox already has a converter for the desired types.
@@ -108,16 +115,6 @@ MOX_API Metatype findMetatype(const std::type_info& rtti);
 /// \param name Optional, the name of the metatype to override the default RTTI type name.
 /// \return the MetatypeDescriptor associated to the \e rtti.
 MOX_API Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name);
-
-/// Registers a \a converter that converts a value from \a fromType to \a toType.
-MOX_API bool registerConverter(MetatypeConverterPtr&& converter, Metatype fromType, Metatype toType);
-
-/// Look for the converter that converts a type between \a from and \a to.
-/// \param from The source type.
-/// \param to The destination type.
-/// \return The converter found that converts a value between \a from and to \a to types.
-/// nullptr is returned if there is no converter found to convert between the two metatypes.
-MOX_API MetatypeConverter* findConverter(Metatype from, Metatype to);
 
 }} // namespace mox::metadata
 

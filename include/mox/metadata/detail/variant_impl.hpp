@@ -32,7 +32,7 @@ Variant::Variant(const T value)
 template <typename T>
 bool Variant::canConvert()
 {
-    return isValid() && metadata::findConverter(metaType(), mox::metaType<T>()) != nullptr;
+    return isValid() && MetatypeDescriptor::get(metaType()).findConverterTo(mox::metaType<T>()) != nullptr;
 }
 
 template <typename T>
@@ -64,22 +64,17 @@ Variant::Data::Data(T value)
     : m_value(value)
     , m_typeDescriptor(value)
 {
-    if constexpr (std::is_pointer_v<T>)
+    m_getter = [value]() -> void*
     {
-        m_getter = [this]() -> void*
+        if constexpr (std::is_pointer_v<T>)
         {
-            T ret = std::any_cast<T>(m_value);
-            return reinterpret_cast<void*>(ret);
-        };
-    }
-    else
-    {
-        m_getter = [this]() -> void*
+            return reinterpret_cast<void*>(const_cast<T>(value));
+        }
+        else
         {
-            T* ret = std::any_cast<T>(&m_value);
-            return reinterpret_cast<void*>(ret);
+            return reinterpret_cast<void*>(const_cast<T*>(&value));
         };
-    }
+    };
 
     m_isEqual = [this](const Data& other)
     {
@@ -98,13 +93,13 @@ T Variant::Data::get()
         return *value;
     }
 
-    Metatype sourceType = m_typeDescriptor.getType();
-    Metatype destinationType = mox::metaType<T>();
-    MetatypeConverter* converter = metadata::findConverter(sourceType, destinationType);
+    const auto& sourceType = MetatypeDescriptor::get(m_typeDescriptor.getType());
+    auto destinationType = mox::metaType<T>();
+    auto converter = sourceType.findConverterTo(destinationType);
     throwIf<ExceptionType::BadTypeConversion>(!converter);
 
     void* sourceValue = m_getter();
-    MetaValue tmp = converter->convert(*converter, sourceValue);
+    auto tmp = converter->convert(sourceValue);
     value = std::any_cast<T>(&tmp);
     throwIf<ExceptionType::BadTypeConversion>(!value);
 

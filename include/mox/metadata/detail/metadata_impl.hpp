@@ -23,74 +23,10 @@
 #include <string>
 #include <mox/utils/globals.hpp>
 #include <mox/config/error.hpp>
+#include <mox/metadata/metatype_descriptor.hpp>
 
 namespace mox
 {
-
-namespace
-{
-
-/**********************************************************
- * Converters
- */
-
-template <typename From, typename To, typename Function>
-struct ConverterFunctor : MetatypeConverter
-{
-private:
-    Function m_function;
-
-    static MetaValue convert(const MetatypeConverter& converter, const void* value)
-    {
-        const From* in = reinterpret_cast<const From*>(value);
-        const ConverterFunctor& that = static_cast<const ConverterFunctor&>(converter);
-        To out = that.m_function(*in);
-        return out;
-    }
-public:
-    explicit ConverterFunctor(Function function) :
-        MetatypeConverter(&ConverterFunctor::convert),
-        m_function(function)
-    {
-    }
-};
-
-template <typename From, typename To>
-struct ConverterMethod : MetatypeConverter
-{
-    To (From::*m_function)() const;
-    explicit ConverterMethod(To (From::*function)() const)
-        : MetatypeConverter(converter)
-        , m_function(function)
-    {
-    }
-
-    static MetaValue converter(const MetatypeConverter& converter, const void* value)
-    {
-        const From* source = static_cast<const From*>(value);
-        const ConverterMethod& _this = static_cast<const ConverterMethod&>(converter);
-        To destination = (source->*_this.m_function)();
-        return destination;
-    }
-};
-
-template <typename From, typename ConverterHost>
-struct EmbeddedConverter : MetatypeConverter
-{
-    ConverterHost host;
-    explicit EmbeddedConverter()
-        : MetatypeConverter(converter)
-    {
-    }
-
-    static MetaValue converter(const MetatypeConverter& converter, const void* value)
-    {
-        const EmbeddedConverter& _this = reinterpret_cast<const EmbeddedConverter&>(converter);
-        return _this.host.convert(static_cast<const From*>(value));
-    }
-};
-
-} // noname
 
 template <typename Type>
 Metatype metaType()
@@ -119,6 +55,11 @@ Metatype registerMetaType(std::string_view name)
     }
 
     newType = metadata::tryRegisterMetatype(remove_cv<Type>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
+    if constexpr (std::is_pointer_v<Type>)
+    {
+        mox::registerConverter<Type, intptr_t>();
+        mox::registerConverter<intptr_t, Type>();
+    }
 
     return newType;
 }
@@ -133,20 +74,36 @@ std::pair<Metatype, Metatype> registerClassMetaTypes(std::string_view name)
 }
 
 
+template <typename From, typename To>
+bool registerConverter()
+{
+    const Metatype toType = metaType<To>();
+
+    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(remove_cv<From>());
+    if constexpr(std::is_class_v<typename std::remove_pointer_t<From>> && std::is_class_v<typename std::remove_pointer_t<To>>)
+    {
+        return descriptor->addConverter(MetatypeDescriptor::Converter::dynamicCast<From, To>(), toType);
+    }
+    else
+    {
+        return descriptor->addConverter(MetatypeDescriptor::Converter::fromExplicit<From, To>(), toType);
+    }
+}
+
 template <typename From, typename To, typename Function>
 bool registerConverter(Function function)
 {
-    const Metatype fromType = metaType<From>();
     const Metatype toType = metaType<To>();
-    return metadata::registerConverter(std::make_unique<ConverterFunctor<From, To, Function>>(function), fromType, toType);
+    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(remove_cv<From>());
+    return descriptor->addConverter(MetatypeDescriptor::Converter::fromFunction<From, To, Function>(function), toType);
 }
 
 template <typename From, typename To>
-bool registerConverter(To (From::*function)() const)
+bool registerConverter(To (From::*method)() const)
 {
-    const Metatype fromType = metaType<From>();
     const Metatype toType = metaType<To>();
-    return metadata::registerConverter(std::make_unique<ConverterMethod<From, To>>(function), fromType, toType);
+    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(remove_cv<From>());
+    return descriptor->addConverter(MetatypeDescriptor::Converter::fromMethod<From, To>(method), toType);
 }
 
 } // namespace mox

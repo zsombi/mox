@@ -177,3 +177,16 @@ TEST(Variant, test_argument_descriptor_operators_lsv_rsv)
     EXPECT_FALSE(a2.invocableWith(a1));
     EXPECT_TRUE(a1.invocableWith(a2));
 }
+
+TEST(Variant, test_convert_pointer_to_intptr)
+{
+    int value = 101;
+    int* pvalue = &value;
+    mox::Variant var(pvalue);
+
+    EXPECT_EQ(mox::Metatype::Int32Ptr, var.descriptor().getType());
+
+    intptr_t ipvalue = reinterpret_cast<intptr_t>(pvalue);
+    intptr_t iptr = var;
+    EXPECT_EQ(iptr, ipvalue);
+}

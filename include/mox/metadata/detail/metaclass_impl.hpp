@@ -25,47 +25,16 @@ namespace mox
 /******************************************************************************
  * StaticMetaClass
  */
-namespace
-{
-
-template <typename From, typename To>
-struct Caster : MetatypeConverter
-{
-    static MetaValue converter(const MetatypeConverter&, const void* value)
-    {
-        auto src = const_cast<From*>(reinterpret_cast<const From*>(value));
-        auto dst = dynamic_cast<To*>(src);
-        return dst;
-    }
-
-    explicit Caster()
-        : MetatypeConverter(converter)
-    {
-    }
-};
-
-} // noname
-
 template <class MetaClassDecl, class BaseClass, class... SuperClasses>
 StaticMetaClass<MetaClassDecl, BaseClass, SuperClasses...>::StaticMetaClass()
     : mox::MetaClass({mox::metaType<BaseClass>(), mox::metaType<BaseClass*>()})
 {
-    struct Element
-    {
-        MetatypeConverter* converter;
-        Metatype from;
-        Metatype to;
-    };
-
-    std::array<Element, 2 * sizeof...(SuperClasses)> casters =
+    std::array<bool, 2 * sizeof...(SuperClasses)> casters =
     {{
-        Element{new Caster<BaseClass, SuperClasses>(), getMetaTypes().second, mox::registerClassMetaTypes<SuperClasses>().second}...,
-        Element{new Caster<SuperClasses, BaseClass>(), mox::metaType<SuperClasses*>(), getMetaTypes().second}...
+        MetatypeDescriptor::registerConverter(MetatypeDescriptor::Converter::dynamicCast<BaseClass*, SuperClasses*>(), getMetaTypes().second, mox::registerClassMetaTypes<SuperClasses>().second)...,
+        MetatypeDescriptor::registerConverter(MetatypeDescriptor::Converter::dynamicCast<SuperClasses*, BaseClass*>(), mox::metaType<SuperClasses*>(), getMetaTypes().second)...
     }};
-    for (auto& caster : casters)
-    {
-        metadata::registerConverter(std::unique_ptr<MetatypeConverter>(caster.converter), caster.from, caster.to);
-    }
+    UNUSED(casters);
 }
 
 template <class MetaClassDecl, class BaseClass, class... SuperClasses>

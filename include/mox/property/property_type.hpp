@@ -101,12 +101,9 @@ public:
 
     /// Constructor.
     explicit PropertyTypeDecl(std::string_view name)
-        : PropertyType(/*VariantDescriptor::get<ValueType>(), */access, name)
+        : PropertyType(VariantDescriptor::get<ValueType>(), access, name)
         , ChangedSignalType(std::string(name) + "Changed")
     {
-        auto type(VariantDescriptor::get<ValueType>());
-        m_typeDescriptor.swap(type);
-
         if constexpr (has_static_metaclass_v<HostClass>)
         {
             registerMetaClass<HostClass>();
