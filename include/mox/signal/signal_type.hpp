@@ -52,12 +52,12 @@ public:
     std::string signature() const override;
 
     /// Activates the signal on an instance.
-    /// \param sender The signal sender instance in \e intptr_t format.
+    /// \param sender The signal sender instance.
     /// \param args The arguments to pass to the signal packed for metainvocation.
     /// \return The activation count, the number of times the signal was activated.
     /// If the signal is not activable with the arguments, or the sender has no
     /// signal with this type, returns -1.
-    int activate(intptr_t sender, const Callable::ArgumentPack& args) const;
+    int activate(Instance sender, const Callable::ArgumentPack& args) const;
 
     template <class SenderObject, typename... Arguments>
     int emit(SenderObject& sender, Arguments... args) const
@@ -66,7 +66,7 @@ public:
         {
             return -1;
         }
-        return activate(reinterpret_cast<intptr_t>(&sender), Callable::ArgumentPack(args...));
+        return activate(&sender, Callable::ArgumentPack(args...));
     }
 
     /// Checks if a signal type is compatible with the \a other. Two signal types
@@ -138,7 +138,7 @@ int emit(Class& instance, std::string_view signalName, Arguments... arguments)
     auto signal = metaClass->visitSignals(signalVisitor);
     if (signal)
     {
-        return signal->activate(reinterpret_cast<intptr_t>(&instance), Callable::ArgumentPack(arguments...));
+        return signal->activate(&instance, Callable::ArgumentPack(arguments...));
     }
 
     return -1;

@@ -20,7 +20,6 @@
 #define CALLABLE_HPP
 
 #include <functional>
-#include <tuple>
 #include <type_traits>
 
 #include <mox/metadata/variant.hpp>
@@ -30,17 +29,6 @@
 
 namespace mox
 {
-
-/// Exception thrown on invalid argument count, or invalid argument type.
-class MOX_API invalid_argument : public std::exception
-{
-public:
-    /// Constructor.
-    explicit invalid_argument() = default;
-
-    /// String representation of the exception.
-    const char* what() const EXCEPTION_NOEXCEPT override;
-};
 
 /******************************************************************************
  * Callables
@@ -71,7 +59,7 @@ public:
         /// \param index The index of the argument requested.
         /// \return The argument value.
         /// \throws std::bad_any_cast if the argument at \a index is of a different type.
-        /// \throws invalid_argument if the argument \a index is out of bounds.
+        /// \throws ExceptionType::InvalidArgument if the argument \a index is out of bounds.
         template <typename Type>
         Type get(size_t index) const;
 
@@ -81,7 +69,7 @@ public:
     };
 
     /// Invoker function type.
-    typedef std::function<Variant(ArgumentPack const&)> InvokerFunction;
+    using InvokerFunction = std::function<Variant(ArgumentPack const&)>;
 
     /// Creates a callable for a function, method or functor.
     template <typename Function>
@@ -110,17 +98,13 @@ public:
     /// \return The argument descriptor for the return type.
     const VariantDescriptor& returnType() const;
 
-    /// Returns the metatype of the class that owns the callable method.
-    /// \return The metatype of the class, Invalid if the callable is not holding a method.
-    Metatype classType() const;
-
     /// Returns the number of arguments of the callable.
     /// \return The number of arguments of the callable.
     size_t argumentCount() const;
 
     /// Returns the argument descriptor for the argument at \a index.
     /// \return the argument descriptor for the argument at \a index.
-    /// \throws Callable::invalid_argument if the \a index is out of arguments bounds.
+    /// \throws ExceptionType::InvalidArgument if the \a index is out of arguments bounds.
     const VariantDescriptor& argumentType(size_t index) const;
 
     /// Returns the container with the argument descriptors.
@@ -137,7 +121,7 @@ public:
     /// formal parameters are defined for the callable. When the callable is a method, the first argument
     /// must be the instance of the class the method belongs to.
     /// \return The return value of the callable, or an invalid \l Variant if the callable is a void type.
-    /// \throws Callable::invalid_argument if the argument count is less than the defined argument count
+    /// \throws ExceptionType::InvalidArgument if the argument count is less than the defined argument count
     /// for the callable.
     /// \throws bad_conversion if the arguments mismatch.
     Variant apply(const ArgumentPack& args) const;
@@ -152,7 +136,6 @@ private:
     InvokerFunction m_invoker;
     VariantDescriptor m_ret;
     VariantDescriptorContainer m_args;
-    Metatype m_classType = Metatype::Invalid;
     FunctionType m_type = FunctionType::Invalid;
     bool m_isConst = false;
 

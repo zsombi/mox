@@ -23,6 +23,16 @@
 
 #include <algorithm>
 
+namespace std
+{
+
+void swap(mox::Variant& lhs, mox::Variant& rhs)
+{
+    lhs.swap(rhs);
+}
+
+}
+
 namespace mox
 {
 
@@ -30,6 +40,24 @@ Variant::Variant(const Variant& other)
     : m_data(other.m_data)
 {
 }
+
+Variant::Variant(Variant&& other)
+{
+    swap(other);
+}
+
+Variant& Variant::operator=(Variant&& other)
+{
+    Variant(other).swap(*this);
+    return *this;
+}
+
+Variant& Variant::operator=(const Variant& other)
+{
+    Variant(other).swap(*this);
+    return *this;
+}
+
 
 bool Variant::isValid() const
 {
@@ -51,6 +79,11 @@ const VariantDescriptor& Variant::descriptor() const
 {
     FATAL(m_data, "Variant is not initialized.")
     return m_data->m_typeDescriptor;
+}
+
+void Variant::swap(Variant &other)
+{
+    std::swap(m_data, other.m_data);
 }
 
 bool operator==(const Variant &var1, const Variant &var2)

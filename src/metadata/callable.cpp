@@ -22,11 +22,6 @@
 namespace mox
 {
 
-const char* invalid_argument::what() const EXCEPTION_NOEXCEPT
-{
-    return "invalid argument type applied";
-}
-
 Callable::Callable(Callable&& other)
 {
     swap(other);
@@ -48,7 +43,6 @@ void Callable::swap(Callable& other)
     m_invoker.swap(other.m_invoker);
     m_ret.swap(other.m_ret);
     m_args.swap(other.m_args);
-    std::swap(m_classType, other.m_classType);
     std::swap(m_type, other.m_type);
     std::swap(m_isConst, other.m_isConst);
 }
@@ -68,11 +62,6 @@ const VariantDescriptor& Callable::returnType() const
     return m_ret;
 }
 
-Metatype Callable::classType() const
-{
-    return m_classType;
-}
-
 size_t Callable::argumentCount() const
 {
     return m_args.size();
@@ -83,7 +72,7 @@ const VariantDescriptor& Callable::argumentType(size_t index) const
     size_t count = argumentCount();
     if (index >= count)
     {
-        throw invalid_argument();
+        throw Exception(ExceptionType::InvalidArgument);
     }
     return m_args[index];
 }
@@ -106,7 +95,6 @@ Variant Callable::apply(const ArgumentPack& args) const
 void Callable::reset()
 {
     m_args.clear();
-    m_classType = Metatype::Invalid;
     m_type = FunctionType::Invalid;
 }
 

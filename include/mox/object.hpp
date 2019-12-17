@@ -73,7 +73,7 @@ public:
     size_t childCount() const;
     /// Returns the child index of a given \a child object.
     /// \return The index of the \a child object in the children list.
-    /// \throws Callable::invalid_argument if the \a child is not a child of this object.
+    /// \throws ExceptionType::InvalidArgument if the \a child is not a child of this object.
     size_t childIndex(const Object& child);
     /// Returns the child object at \a index.
     /// \return The child object at index, nullptr if there is no child at the specified index.

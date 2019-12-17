@@ -149,7 +149,7 @@ TEST_F(Callables, test_invoke_callable_with_args_using_no_arg_fails)
 {
     Callable callable(factorial);
 
-    EXPECT_THROW(callable.apply(Callable::ArgumentPack()), mox::invalid_argument);
+    EXPECT_THROW(callable.apply(Callable::ArgumentPack()), mox::Exception);
 }
 
 TEST_F(Callables, test_apply_callable_function_with_args_and_ret)
@@ -225,14 +225,6 @@ TEST_F(Callables, test_method_ret_and_argument_types)
     EXPECT_EQ(Metatype::Void, callable.returnType().getType());
     EXPECT_EQ(1u, callable.argumentCount());
     EXPECT_EQ(Metatype::Int32, callable.argumentType(0u).getType());
-    EXPECT_EQ(functorMetaType, callable.classType());
-}
-
-TEST_F(Callables, test_function_class_type_invalid)
-{
-    Callable callable(testFunc2);
-
-    EXPECT_EQ(Metatype::Invalid, callable.classType());
 }
 
 TEST_F(Callables, test_apply_method_no_arg)
@@ -305,7 +297,7 @@ TEST_F(Callables, test_lambda_with_args)
     Callable callable(lambda);
     EXPECT_FALSE(invoked);
 
-    EXPECT_THROW(callable.apply(Callable::ArgumentPack()), mox::invalid_argument);
+    EXPECT_THROW(callable.apply(Callable::ArgumentPack()), mox::Exception);
 
     callable.apply(Callable::ArgumentPack(10, "alma"sv));
     EXPECT_TRUE(invoked);

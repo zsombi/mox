@@ -74,7 +74,7 @@ std::string SignalType::signature() const
     return sign;
 }
 
-int SignalType::activate(intptr_t instance, const Callable::ArgumentPack &args) const
+int SignalType::activate(Instance instance, const Callable::ArgumentPack &args) const
 {
     lock_guard lock(const_cast<SignalType&>(*this));
     auto it = m_instances.find(instance);

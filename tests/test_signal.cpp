@@ -222,8 +222,8 @@ TEST_F(SignalTest, test_signal_without_metaclass)
     EXPECT_EQ(0, test.voidSig());
     EXPECT_EQ(0, test.intSig(10));
 
-    EXPECT_EQ(0, TestEmitterNoMetaClass::VoidSignalType.activate(intptr_t(&test), Callable::ArgumentPack()));
-    EXPECT_EQ(0, TestEmitterNoMetaClass::IntSignalType.activate(intptr_t(&test), Callable::ArgumentPack(100)));
+    EXPECT_EQ(0, TestEmitterNoMetaClass::VoidSignalType.activate(&test, Callable::ArgumentPack()));
+    EXPECT_EQ(0, TestEmitterNoMetaClass::IntSignalType.activate(&test, Callable::ArgumentPack(100)));
 }
 
 TEST_F(SignalTest, test_signal_with_metaclass)
@@ -231,11 +231,11 @@ TEST_F(SignalTest, test_signal_with_metaclass)
     TestEmitterWithMetaClass test;
 
     EXPECT_EQ(0, test.voidSig());
-    EXPECT_EQ(0, TestEmitterWithMetaClass::StaticMetaClass::VoidSignalType.activate(intptr_t(&test), Callable::ArgumentPack()));
+    EXPECT_EQ(0, TestEmitterWithMetaClass::StaticMetaClass::VoidSignalType.activate(&test, Callable::ArgumentPack()));
 
     auto param = "alpha"sv;
     EXPECT_EQ(0, test.string(param));
-    EXPECT_EQ(0, TestEmitterWithMetaClass::StringSignalType.activate(intptr_t(&test), Callable::ArgumentPack(param)));
+    EXPECT_EQ(0, TestEmitterWithMetaClass::StringSignalType.activate(&test, Callable::ArgumentPack(param)));
 }
 
 

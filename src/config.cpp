@@ -22,6 +22,28 @@
 namespace mox
 {
 
+Instance::Instance(intptr_t instance)
+    : m_instance(instance)
+{
+}
+
+Instance::Instance(const Instance& other)
+    : m_instance(other.m_instance)
+{
+}
+
+Instance::Instance(Instance&& other)
+{
+    std::swap(m_instance, other.m_instance);
+}
+
+Instance::operator intptr_t() const
+{
+    return m_instance;
+}
+
+
+
 Exception::Exception(ExceptionType type)
     : m_type(type)
 {
@@ -31,6 +53,8 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
 {
     switch (m_type)
     {
+        case ExceptionType::InvalidArgument:
+            return "invalid argument type applied";
         case ExceptionType::InvalidThreadOwnershipChange:
             return "Changing Object's thread ownership at this time is not allowed.";
         case ExceptionType::DetachedThread:

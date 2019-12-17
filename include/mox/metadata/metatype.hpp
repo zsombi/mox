@@ -20,9 +20,7 @@
 #define METATYPE_HPP
 
 #include <any>
-
-#include <mox/utils/globals.hpp>
-#include <mox/utils/type_traits.hpp>
+#include <mox/utils/type_traits/enum_operators.hpp>
 
 namespace mox
 {

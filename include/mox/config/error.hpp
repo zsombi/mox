@@ -27,6 +27,7 @@ namespace mox
 
 enum class ExceptionType
 {
+    InvalidArgument,
     InvalidThreadOwnershipChange,
     DetachedThread,
     AttempThreadJoinWithin,

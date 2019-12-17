@@ -29,12 +29,6 @@ PropertyType::PropertyType(VariantDescriptor&& typeDes, PropertyAccess access, s
 {
 }
 
-PropertyType::PropertyType(PropertyAccess access, std::string_view name)
-    : AbstractMetaInfo(name)
-    , m_access(access)
-{
-}
-
 std::string PropertyType::signature() const
 {
     return name() + '<' + MetatypeDescriptor::get(m_typeDescriptor.getType()).name() + '>';
@@ -73,7 +67,7 @@ void PropertyType::removePropertyInstance(Property& property)
     property.m_host = 0;
 }
 
-Variant PropertyType::get(intptr_t instance) const
+Variant PropertyType::get(Instance instance) const
 {
     const auto it = m_instances.find(instance);
     if (it != m_instances.cend())
@@ -83,7 +77,7 @@ Variant PropertyType::get(intptr_t instance) const
     return Variant();
 }
 
-bool PropertyType::set(intptr_t instance, const Variant& value) const
+bool PropertyType::set(Instance instance, const Variant& value) const
 {
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(m_access == PropertyAccess::ReadOnly);
 

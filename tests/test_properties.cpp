@@ -415,9 +415,9 @@ TEST_F(Properties, test_metaproperty)
 {
     PropertyMetatypeTest test;
 
-    EXPECT_EQ(-1, PropertyMetatypeTest::StaticMetaClass::IntPropertyType.get(intptr_t(&test)));
-    EXPECT_EQ(true, PropertyMetatypeTest::StaticMetaClass::ReadOnlyBoolPropertyType.get(intptr_t(&test)));
-    EXPECT_EQ("alpha"s, PropertyMetatypeTest::StaticMetaClass::StringPropertyType.get(intptr_t(&test)));
+    EXPECT_EQ(-1, PropertyMetatypeTest::StaticMetaClass::IntPropertyType.get(&test));
+    EXPECT_EQ(true, PropertyMetatypeTest::StaticMetaClass::ReadOnlyBoolPropertyType.get(&test));
+    EXPECT_EQ("alpha"s, PropertyMetatypeTest::StaticMetaClass::StringPropertyType.get(&test));
 }
 
 TEST_F(Properties, test_metaproperty_get)
@@ -426,9 +426,9 @@ TEST_F(Properties, test_metaproperty_get)
     auto mc = PropertyMetatypeTest::StaticMetaClass::get();
     test.objectName = "testObject";
 
-    EXPECT_EQ(-1, mc->IntPropertyType.get(intptr_t(&test)));
-    EXPECT_EQ(true, mc->ReadOnlyBoolPropertyType.get(intptr_t(&test)));
-    EXPECT_EQ("alpha"s, mc->StringPropertyType.get(intptr_t(&test)));
+    EXPECT_EQ(-1, mc->IntPropertyType.get(&test));
+    EXPECT_EQ(true, mc->ReadOnlyBoolPropertyType.get(&test));
+    EXPECT_EQ("alpha"s, mc->StringPropertyType.get(&test));
 
     EXPECT_EQ(std::make_pair(-1, true), property<int>(test, "intValue"));
     EXPECT_EQ(std::make_pair(true, true), property<bool>(test, "enabled"));
@@ -442,9 +442,9 @@ TEST_F(Properties, test_metaproperty_set)
     PropertyMetatypeTest test;
     auto mc = PropertyMetatypeTest::StaticMetaClass::get();
 
-    EXPECT_TRUE(mc->IntPropertyType.set(intptr_t(&test), Variant(2)));
-    EXPECT_THROW(mc->ReadOnlyBoolPropertyType.set(intptr_t(&test), Variant(true)), mox::Exception);
-    EXPECT_TRUE(mc->StringPropertyType.set(intptr_t(&test), Variant("stew"s)));
+    EXPECT_TRUE(mc->IntPropertyType.set(&test, Variant(2)));
+    EXPECT_THROW(mc->ReadOnlyBoolPropertyType.set(&test, Variant(true)), mox::Exception);
+    EXPECT_TRUE(mc->StringPropertyType.set(&test, Variant("stew"s)));
 
     EXPECT_TRUE(setProperty(test, "intValue", 20));
     EXPECT_THROW(setProperty(test, "enabled", true), mox::Exception);

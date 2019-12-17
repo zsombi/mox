@@ -40,6 +40,8 @@ struct MOX_API Variant
 
     /// Copy constructor.
     Variant(const Variant& other);
+    /// Move constructor.
+    Variant(Variant&& other);
 
     /// Chacks if this variant is convertible into type T.
     /// \return \e true if this variant is convertible into type T, \e false otherwise.
@@ -61,6 +63,10 @@ struct MOX_API Variant
     /// Assignment operator.
     template <typename T>
     Variant& operator=(const T value);
+    /// Copy assignment operator.
+    Variant& operator=(const Variant&);
+    /// Move assignment operator.
+    Variant& operator=(Variant&&);
 
     /// Returns \e true if this variant holds a valid value.
     bool isValid() const;
@@ -73,6 +79,9 @@ struct MOX_API Variant
 
     /// Returns the variant descriptor.
     const VariantDescriptor& descriptor() const;
+
+    /// Swaps variants.
+    void swap(Variant& other);
 
 private:
     struct Data
@@ -131,6 +140,13 @@ bool MOX_API operator==(const Variant &var1, const Variant &var2);
 bool MOX_API operator!=(const Variant &var1, const Variant &var2);
 
 } // namespace mox
+
+namespace std
+{
+
+void swap(mox::Variant& lhs, mox::Variant& rhs);
+
+}
 
 #include <mox/metadata/detail/variant_impl.hpp>
 

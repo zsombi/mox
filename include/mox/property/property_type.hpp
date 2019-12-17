@@ -66,9 +66,19 @@ public:
     /// Removes the instance of the property.
     void removePropertyInstance(Property& property);
 
-    Variant get(intptr_t instance) const;
-    bool set(intptr_t instance, const Variant& value) const;
+    /// Get the property value that is declared on an \a instance.
+    /// \param instance The instance thr property is declared on.
+    /// \return The variant with the property value. If the property is not defined on the
+    /// instance, returns an invalid variant.
+    Variant get(Instance instance) const;
+    /// Set the value of the property declared on an \a instance.
+    /// \param instance The instane the property is declared.
+    /// \param value The variant with the value to set.
+    /// \return If the property is not declared on the instance, or the value is not valid for
+    /// the proeprty, returns \e false, otherwise \e true.
+    bool set(Instance instance, const Variant& value) const;
 
+    /// Returns the signature of the property.
     std::string signature() const override;
 
 protected:
@@ -77,7 +87,6 @@ protected:
     /// \param signalType The reference to the signal type defining the change signal of the property.
     /// \param access The access type of the property.
     PropertyType(VariantDescriptor&& typeDes, PropertyAccess access, std::string_view name);
-    PropertyType(PropertyAccess access, std::string_view name);
 
     /// Map of the property instances.
     FlatMap<intptr_t, Property*> m_instances;
@@ -128,7 +137,7 @@ std::pair<ValueType, bool> property(Class& instance, std::string_view name)
     auto property = metaClass->visitProperties(finder);
     if (property)
     {
-        ValueType value = property->get(intptr_t(&instance));
+        ValueType value = property->get(&instance);
         return std::make_pair(value, true);
     }
     return std::make_pair(ValueType(), false);
@@ -145,7 +154,7 @@ bool setProperty(Class& instance, std::string_view name, ValueType value)
     auto property = metaClass->visitProperties(finder);
     if (property)
     {
-        return property->set(intptr_t(&instance), Variant(value));
+        return property->set(&instance, Variant(value));
     }
     return false;
 }

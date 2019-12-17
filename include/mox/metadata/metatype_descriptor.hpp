@@ -208,9 +208,9 @@ private:
     using ConverterMap = std::unordered_map<Metatype, Converter>;
 
     ConverterMap m_converters;
-    char* m_name{nullptr};
-    const std::type_info* m_rtti{nullptr};
-    Metatype m_id{Metatype::Invalid};
+    char* m_name = nullptr;
+    const std::type_info* m_rtti = nullptr;
+    Metatype m_id = Metatype::Invalid;
     bool m_isEnum:1;
     bool m_isClass:1;
     bool m_isPointer:1;

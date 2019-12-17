@@ -69,6 +69,34 @@ private:
     std::string m_name;
 };
 
+/// Class instance holder, used to store and pass class pointers without preserving type information.
+class MOX_API Instance
+{
+    intptr_t m_instance = 0;
+
+    Instance(intptr_t instance);
+
+public:
+    /// Default constructor.
+    Instance() = default;
+    /// Copy constructor.
+    Instance(const Instance& other);
+    /// Move constructor.
+    Instance(Instance&& other);
+
+    /// Creates an instance holder from a class pointer.
+    /// \tparam Class Teh class type.
+    /// \param instance The pointer to the class instance.
+    template <class Class>
+    Instance(Class* instance)
+        : Instance(intptr_t(instance))
+    {
+    }
+
+    /// Cast operator.
+    operator intptr_t() const;
+};
+
 }
 
 #endif // DEFTYPES_HPP

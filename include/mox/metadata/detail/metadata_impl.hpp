@@ -48,13 +48,14 @@ const MetatypeDescriptor& metatypeDescriptor()
 template <typename Type>
 Metatype registerMetaType(std::string_view name)
 {
-    Metatype newType = metadata::findMetatype(remove_cv<Type>());
+    const auto& rtti = remove_cv<Type>();
+    auto newType = metadata::findMetatype(rtti);
     if (newType != Metatype::Invalid)
     {
         return newType;
     }
 
-    newType = metadata::tryRegisterMetatype(remove_cv<Type>(), std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
+    newType = metadata::tryRegisterMetatype(rtti, std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
     if constexpr (std::is_pointer_v<Type>)
     {
         mox::registerConverter<Type, intptr_t>();
