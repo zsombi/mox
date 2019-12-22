@@ -88,8 +88,10 @@ protected:
     /// \param access The access type of the property.
     PropertyType(VariantDescriptor&& typeDes, PropertyAccess access, std::string_view name);
 
+    using InstanceCollection = FlatMap<intptr_t, Property*>;
+
     /// Map of the property instances.
-    FlatMap<intptr_t, Property*> m_instances;
+    InstanceCollection m_instances;
     /// The type descriptor of the property.
     VariantDescriptor m_typeDescriptor;
     /// The property access type.

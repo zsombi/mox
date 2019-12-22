@@ -23,9 +23,10 @@
 namespace mox
 {
 
-Property::Property(intptr_t host, PropertyType& type)
-    : SharedLock<ObjectLock>(*reinterpret_cast<ObjectLock*>(host))
+Property::Property(Instance host, PropertyType& type, AbstractPropertyData& data)
+    : SharedLock<ObjectLock>(*host.as<ObjectLock>())
     , changed(host, type.getChangedSignalType())
+    , m_data(data)
     , m_type(&type)
     , m_host(host)
 {
@@ -35,11 +36,12 @@ Property::Property(intptr_t host, PropertyType& type)
 Property::~Property()
 {
     // Detach the value providers.
-    detachValueProviders();
-
-    // Detach the default one too.
-    FlagScope<true> lock(m_silentMode);
-    m_valueProviders.front()->detach();
+    lock_guard lockVp(m_valueProviders);
+    auto detacher = [](auto vp)
+    {
+        if (vp) vp->detach();
+    };
+    m_valueProviders.forEach(detacher);
 
     m_type->removePropertyInstance(*this);
 }
@@ -51,148 +53,110 @@ bool Property::isReadOnly() const
 
 Variant Property::get() const
 {
-    lock_guard lock(*const_cast<Property*>(this));
-    auto vp = getActiveValueProvider();
-    throwIf<ExceptionType::MissingPropertyDefaultValueProvider>(!vp);
-    return vp->getLocalValue();
+    return m_data.getData();
 }
 
 void Property::set(const Variant& value)
 {
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
-    auto vp = getDefaultValueProvider();
-    detachValueProviders();
-    if (!vp->isActive())
-    {
-        vp->activate();
-    }
+    // Detach only generic value providers on property write.
+    detachValueProviders(ValueProviderFlags::Generic);
 
-    vp->set(value);
+    auto exclusiveVp = getExclusiveValueProvider();
+    if (exclusiveVp)
+    {
+        return;
+    }
+    // Set the value.
+    update(value);
+}
+
+void Property::update(const Variant &value)
+{
+    if (value == m_data.getData())
+    {
+        return;
+    }
+    m_data.setData(value);
+    changed.activate(Callable::ArgumentPack(value));
 }
 
 void Property::reset()
 {
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
-    auto vp = getDefaultValueProvider();
-    detachValueProviders();
-    if (!vp->isActive())
-    {
-        vp->activate();
-    }
+    detachValueProviders(ValueProviderFlags::KeepOnWrite);
+    detachValueProviders(ValueProviderFlags::Exclusive);
 
-    vp->resetToDefault();
+    auto defaultVp = getDefaultValueProvider();
+    throwIf<ExceptionType::MissingPropertyDefaultValueProvider>(!defaultVp);
+    set(defaultVp->getLocalValue());
 }
 
 PropertyValueProviderSharedPtr Property::getDefaultValueProvider() const
 {
-    return m_valueProviders.front();
+    auto findDefaultVP = [](auto& vp)
+    {
+        return vp && vp->hasFlags(ValueProviderFlags::Default);
+    };
+    auto idx = m_valueProviders.findIf(findDefaultVP);
+    if (idx)
+    {
+        return m_valueProviders[*idx];
+    }
+    return nullptr;
 }
 
-PropertyValueProviderSharedPtr Property::getActiveValueProvider() const
+PropertyValueProviderSharedPtr Property::getExclusiveValueProvider() const
 {
-    return m_activeValueProvider >= 0 ? m_valueProviders[size_t(m_activeValueProvider)] : nullptr;
+    auto findDefaultVP = [](auto& vp)
+    {
+        return (vp && vp->hasFlags(ValueProviderFlags::Exclusive));
+    };
+    auto idx = m_valueProviders.findIf(findDefaultVP);
+    if (idx)
+    {
+        return m_valueProviders[*idx];
+    }
+    return nullptr;
 }
 
-
-void Property::attachValueProvider(PropertyValueProviderSharedPtr vp)
+void Property::addValueProvider(PropertyValueProviderSharedPtr vp)
 {
+    throwIf<ExceptionType::PropertyHasDefaultValueProvider>(getDefaultValueProvider() && vp && vp->hasFlags(ValueProviderFlags::Default));
     lock_guard lock(*this);
     if (isReadOnly())
     {
         FATAL(m_valueProviders.empty(), "Only default value provider is allowed on read-only properties")
     }
 
-    m_valueProviders.push_back(vp);
+    lock_guard vpLock(m_valueProviders);
+    m_valueProviders.append(vp);
 }
 
-void Property::detachValueProvider(PropertyValueProviderSharedPtr vp)
+void Property::removeValueProvider(PropertyValueProviderSharedPtr vp)
 {
     lock_guard lock(*this);
-    auto activeVP = getActiveValueProvider();
-
-    mox::erase(m_valueProviders, vp);
-
-    auto it = std::find(m_valueProviders.begin(), m_valueProviders.end(), activeVP);
-    m_activeValueProvider = (it != m_valueProviders.end())
-            ? int(std::distance(m_valueProviders.begin(), it))
-            : -1;
-}
-
-void Property::activateValueProvider(PropertyValueProviderSharedPtr vp)
-{
-    if (m_activating || m_silentMode)
+    lock_guard lockVp(m_valueProviders);
+    auto idx = m_valueProviders.find(vp);
+    if (idx)
     {
-        return;
-    }
-
-    lock_guard lock(*this);
-    FlagScope<true> activeLock(m_activating);
-    auto activeVp = getActiveValueProvider();
-
-    Variant oldValue;
-    if (activeVp)
-    {
-        oldValue = activeVp->getLocalValue();
-    }
-    if (activeVp && activeVp != vp && activeVp->isActive())
-    {
-        activeVp->deactivate();
-    }
-
-    auto it = std::find(m_valueProviders.begin(), m_valueProviders.end(), vp);
-    if (it != m_valueProviders.end())
-    {
-        m_activeValueProvider = int(std::distance(m_valueProviders.begin(), it));
-    }
-
-    ScopeRelock unlock(*this);
-    Variant newValue = get();
-    if (oldValue != newValue)
-    {
-        changed.activate(Callable::ArgumentPack(newValue));
+        m_valueProviders[*idx].reset();
     }
 }
 
-void Property::deactivateValueProvider(PropertyValueProviderSharedPtr vp)
-{
-    if (m_activating || m_silentMode)
-    {
-        return;
-    }
-
-    FlagScope<true> activeLock(m_activating);
-
-    Variant oldValue = get();
-
-    {
-        lock_guard lock(*this);
-        m_activeValueProvider = m_valueProviders.empty() ? -1 : 0;
-
-        if (m_valueProviders.front() != vp && !m_valueProviders.front()->isActive())
-        {
-            m_valueProviders.front()->activate();
-        }
-    }
-
-    Variant newValue = get();
-    if (oldValue != newValue)
-    {
-        changed.activate(Callable::ArgumentPack(newValue));
-    }
-}
-
-void Property::detachValueProviders()
+void Property::detachValueProviders(ValueProviderFlags flags)
 {
     FlagScope<true> silentLock(m_silentMode);
-    while (m_valueProviders.size() > 1)
+
+    lock_guard vpLock(m_valueProviders);
+    auto detacher = [&flags](auto vp)
     {
-        m_valueProviders.back()->detach();
-    }
-    if (!m_valueProviders.front()->isActive())
-    {
-        m_valueProviders.front()->activate();
-    }
-    m_activeValueProvider = 0;
+        if (vp->getFlags() == flags)
+        {
+            vp->detach();
+        }
+    };
+    m_valueProviders.forEach(detacher);
 }
 
 }

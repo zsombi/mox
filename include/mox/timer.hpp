@@ -121,7 +121,7 @@ public:
 
 private:
     /// Constructor.
-    explicit Timer(Type type, std::chrono::milliseconds timeout);
+    explicit Timer(Type type, std::chrono::milliseconds interval);
     DISABLE_COPY(Timer)
     DISABLE_MOVE(Timer)
 

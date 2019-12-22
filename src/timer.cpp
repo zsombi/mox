@@ -43,9 +43,9 @@ TimerPtr Timer::createSingleShot(std::chrono::milliseconds timeout)
     return timer;
 }
 
-TimerPtr Timer::createRepeating(std::chrono::milliseconds timeout)
+TimerPtr Timer::createRepeating(std::chrono::milliseconds interval)
 {
-    TimerPtr timer(new Timer(Type::Repeating, timeout));
+    TimerPtr timer(new Timer(Type::Repeating, interval));
     return timer;
 }
 

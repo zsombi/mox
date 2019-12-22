@@ -27,12 +27,7 @@ Instance::Instance(intptr_t instance)
 {
 }
 
-Instance::Instance(const Instance& other)
-    : m_instance(other.m_instance)
-{
-}
-
-Instance::Instance(Instance&& other)
+Instance::Instance(Instance&& other) noexcept
 {
     std::swap(m_instance, other.m_instance);
 }
@@ -40,6 +35,32 @@ Instance::Instance(Instance&& other)
 Instance::operator intptr_t() const
 {
     return m_instance;
+}
+
+void Instance::reset() noexcept
+{
+    m_instance = 0;
+}
+
+bool Instance::operator==(const Instance& rhs)
+{
+    return m_instance == rhs.m_instance;
+}
+
+Instance& Instance::operator=(const Instance& rhs)
+{
+    m_instance = rhs.m_instance;
+    return *this;
+}
+
+bool operator==(const Instance& lhs, intptr_t rhs)
+{
+    return (intptr_t)lhs == rhs;
+}
+
+bool operator==(intptr_t lhs, const Instance& rhs)
+{
+    return lhs == (intptr_t)rhs;
 }
 
 
@@ -69,14 +90,12 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "No default value provider set for the property!";
         case ExceptionType::AttempWriteReadOnlyProperty:
             return "Attempt writing a read-only property";
-        case ExceptionType::ActiveValueProvider:
-            return "Attempt activating an already active property value provider.";
-        case ExceptionType::InactiveValueProvider:
-            return "Attempt deactivating an already inactive property value provider.";
         case ExceptionType::ValueProviderNotAttached:
             return "The property value provider is not attached.";
         case ExceptionType::ValueProviderAlreadyAttached:
             return "The property value provider is already attached.";
+        case ExceptionType::PropertyHasDefaultValueProvider:
+            return "The property already has default value provider attached.";
     }
     return nullptr;
 }

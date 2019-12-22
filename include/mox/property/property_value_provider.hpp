@@ -29,10 +29,27 @@ class Property;
 class AbstractPropertyValueProvider;
 using PropertyValueProviderSharedPtr = std::shared_ptr<AbstractPropertyValueProvider>;
 
-/// AbstractPropertyValueProvider class defines the interface for the property value providers in mox.
-/// You can derive your custiom value providers by subclassing from this class and implement override
-/// the desired functionalities. The minimum required from a proeprty value provider is to implement
-/// the \l getLocalValue() and \l setLocalValue() methods.
+/// Property value provider flags.
+enum class ValueProviderFlags
+{
+    Generic = 0,
+    /// The value provider is the default value provider of the property. Default value providers
+    /// are attached to the property where the property is defined.
+    Default = 1,
+    /// The property value provider is the only value provider for the property
+    /// that can update the value of the property. When set, values passed to the
+    /// property setter are ignored.
+    Exclusive = 2,
+    /// The property value provider survives explicit property write operation.
+    /// This flag is automatically set for the default value providers.
+    KeepOnWrite = 4,
+};
+ENABLE_ENUM_OPERATORS(ValueProviderFlags)
+
+
+/// AbstractPropertyValueProvider class is the base class for the property value providers in Mox.
+/// You can derive your custom value providers by subclassing from this class and implement override
+/// the desired functionalities.
 ///
 /// Each property value is responsible to maintain the value it holds. The base class provides API to
 /// detect value changes, so you don't need to worry about those when providing only the default set
@@ -54,6 +71,11 @@ public:
     /// Destructor.
     virtual ~AbstractPropertyValueProvider();
 
+    /// Returns the flags of the value provider.
+    ValueProviderFlags getFlags() const;
+    /// Tests the existence of the flags on the value provider.
+    bool hasFlags(ValueProviderFlags flags) const;
+
     /// Attach the property value provider to a \a property. On successfull attach, the value provider
     /// is also activated.
     /// \param property The property to attach a value provider.
@@ -71,55 +93,59 @@ public:
     /// \return If the value provider is attached, returns \e true, otherwise \e false.
     bool isAttached() const;
 
-    /// Activates a value provider.
-    /// \throws Exception with ExceptionType::ValueProviderNotAttached if the value provider is not attached.
-    /// \throws Exception with ExceptionType::ActiveValueProvider if the value provider is already active.
-    void activate();
-
-    /// Deactivates the value provider.
-    /// \throws Exception with ExceptionType::ValueProviderNotAttached if the value provider is not attached.
-    /// \throws Exception with ExceptionType::InactiveValueProvider if the value provider is not active.
-    void deactivate();
-
-    /// Returns the active state of a value provider.
-    /// \return If the value provider is active, returns \e true, otherwise \e false.
-    bool isActive() const;
-
-    /// Returns the local value maintained by the value provider. You must implement this method in
-    /// your value provider.
-    /// \return The local value of the value provider stored in a variant.
+    /// Returns local value of the property value provider. The local value is the default value of a
+    /// property value provider.
+    /// \return The local value of the property value provider, stored in a variant.
     virtual Variant getLocalValue() const = 0;
-
-    /// Sets the local value of a value provider. If the \a value passed as argument differs from the
-    /// current one, the value provider emits the changed signal of the property.
-    /// \param value The value to set to the value provider.
-    void set(const Variant& value);
-
-    /// The method restores the value provider's local value to the defaults. The method is called
-    /// only on the property's default value provider.
-    virtual void resetToDefault() {}
 
 protected:
     /// Constructor.
-    explicit AbstractPropertyValueProvider() = default;
+    explicit AbstractPropertyValueProvider(ValueProviderFlags flags = ValueProviderFlags::Generic);
 
-    /// The method sets the local value and returns the local value changed state.
-    /// \param value The new value to set for the local value.
-    /// \return If the value is changes, returns \e true, otherwise returns \e false.
-    virtual bool setLocalValue(const Variant& value) = 0;
+    /// Updates the property value without breaking any value provider.
+    /// \param value The value to update.
+    void update(const Variant& value);
+
     /// The method is called when the value provider attach operation is completed.
     virtual void onAttached() {}
     /// The method is called prior to the property gets detached.
     virtual void onDetached() {}
-    /// The method is called when a value provider activation is completed.
-    virtual void onActivated() {}
-    /// The method is called when a value provider deactivation is completed.
-    virtual void onDeactivated() {}
 
     /// The property to which the value provider is attached.
     Property* m_property = nullptr;
-    /// The active state of the value provider.
-    bool m_isActive = false;
+    /// The flags of the property value provider.
+    const ValueProviderFlags m_flags = ValueProviderFlags::Generic;
+};
+
+
+/// Generic property value provider with default value storage.
+/// \tparam ValueType The type of the value the value provider manages.
+/// \tparam ValueProviderFlags The value provider flags.
+template <typename ValueType, ValueProviderFlags ProviderFlags = ValueProviderFlags::Generic>
+class PropertyValueProvider : public AbstractPropertyValueProvider
+{
+    ValueType m_default;
+
+public:
+    /// Constructor.
+    explicit PropertyValueProvider(ValueType defaultValue)
+        : AbstractPropertyValueProvider(ProviderFlags)
+        , m_default(defaultValue)
+    {
+    }
+
+    /// Override of AbstractPropertyValueProvider::getLocalValue().
+    Variant getLocalValue() const override
+    {
+        return Variant(m_default);
+    }
+
+protected:
+    /// Override of AbstractPropertyValueProvider::onAttached().
+    void onAttached() override
+    {
+        update(Variant(m_default));
+    }
 };
 
 } // namespace mox

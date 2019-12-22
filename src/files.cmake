@@ -56,6 +56,7 @@ set(HEADERS
 
     # Property handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_decl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_data.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_type.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_value_provider.hpp

@@ -73,9 +73,23 @@ public:
         m_container.clear();
     }
 
+    bool empty() const
+    {
+        return m_container.empty();
+    }
+
     size_t size() const
     {
         return m_container.size();
+    }
+
+    Type& front()
+    {
+        return m_container.front();
+    }
+    const Type& front() const
+    {
+        return m_container.front();
     }
 
     Type& back()
@@ -106,8 +120,30 @@ public:
         m_container.emplace_back(std::forward<Type>(value));
     }
 
+    std::optional<size_t> find(const Type& value) const
+    {
+        for (auto it = m_container.begin(); it != m_container.end(); ++it)
+        {
+            if (value == *it)
+            {
+                return std::distance(m_container.begin(), it);
+            }
+        }
+        return std::nullopt;
+    }
+
     template <typename Predicate>
     std::optional<size_t> findIf(Predicate predicate)
+    {
+        auto it = std::find_if(m_container.begin(), m_container.end(), predicate);
+        if (it == m_container.end())
+        {
+            return std::nullopt;
+        }
+        return std::distance(m_container.begin(), it);
+    }
+    template <typename Predicate>
+    std::optional<size_t> findIf(Predicate predicate) const
     {
         auto it = std::find_if(m_container.begin(), m_container.end(), predicate);
         if (it == m_container.end())

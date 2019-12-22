@@ -35,10 +35,9 @@ enum class ExceptionType
     BadTypeConversion,
     MissingPropertyDefaultValueProvider,
     AttempWriteReadOnlyProperty,
-    ActiveValueProvider,
-    InactiveValueProvider,
     ValueProviderNotAttached,
     ValueProviderAlreadyAttached,
+    PropertyHasDefaultValueProvider,
 };
 
 class MOX_API Exception : public std::exception

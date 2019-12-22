@@ -23,8 +23,23 @@
 namespace mox
 {
 
+AbstractPropertyValueProvider::AbstractPropertyValueProvider(ValueProviderFlags flags)
+    : m_flags(flags)
+{
+}
+
 AbstractPropertyValueProvider::~AbstractPropertyValueProvider()
 {
+}
+
+ValueProviderFlags AbstractPropertyValueProvider::getFlags() const
+{
+    return m_flags;
+}
+
+bool AbstractPropertyValueProvider::hasFlags(ValueProviderFlags flags) const
+{
+    return (m_flags & flags) == flags;
 }
 
 void AbstractPropertyValueProvider::attach(Property& property)
@@ -32,27 +47,20 @@ void AbstractPropertyValueProvider::attach(Property& property)
     throwIf<ExceptionType::ValueProviderAlreadyAttached>(isAttached());
 
     m_property = &property;
-    m_property->attachValueProvider(shared_from_this());
+    m_property->addValueProvider(shared_from_this());
 
     onAttached();
-
-    activate();
 }
 
 void AbstractPropertyValueProvider::detach()
 {
     throwIf<ExceptionType::ValueProviderNotAttached>(!isAttached());
 
-    if (isActive())
-    {
-        deactivate();
-    }
-
     onDetached();
 
     // Make sure that this is deleted last.
     auto keepAlive = shared_from_this();
-    m_property->detachValueProvider(keepAlive);
+    m_property->removeValueProvider(keepAlive);
     m_property = nullptr;
 }
 
@@ -61,39 +69,18 @@ bool AbstractPropertyValueProvider::isAttached() const
     return m_property != nullptr;
 }
 
-void AbstractPropertyValueProvider::activate()
+void AbstractPropertyValueProvider::update(const Variant& value)
 {
     throwIf<ExceptionType::ValueProviderNotAttached>(!isAttached());
-    throwIf<ExceptionType::ActiveValueProvider>(m_isActive);
-
-    m_isActive = true;
-    m_property->activateValueProvider(shared_from_this());
-
-    onActivated();
-}
-
-void AbstractPropertyValueProvider::deactivate()
-{
-    throwIf<ExceptionType::ValueProviderNotAttached>(!isAttached());
-    throwIf<ExceptionType::InactiveValueProvider>(!m_isActive);
-
-    m_isActive = false;
-    m_property->deactivateValueProvider(shared_from_this());
-
-    onDeactivated();
-}
-
-bool AbstractPropertyValueProvider::isActive() const
-{
-    return m_isActive;
-}
-
-void AbstractPropertyValueProvider::set(const Variant& value)
-{
-    if (setLocalValue(value))
+    // If the property is read-only, only default value provider can update its value.
+    throwIf<ExceptionType::AttempWriteReadOnlyProperty>(m_property->isReadOnly() && !hasFlags(ValueProviderFlags::Default));
+    // If the property has exclusive value providers, only that one can provide values for the property. Ignore the rest.
+    auto exclusiveVp = m_property->getExclusiveValueProvider();
+    if (exclusiveVp && (exclusiveVp.get() != this))
     {
-        m_property->changed.activate(Callable::ArgumentPack(value));
+        return;
     }
+    m_property->update(value);
 }
 
 } // namespace mox

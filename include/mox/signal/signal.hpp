@@ -197,7 +197,7 @@ protected:
     DISABLE_COPY(Signal)
 
     /// Construct the
-    explicit Signal(intptr_t owner, SignalType& signalType);
+    explicit Signal(Instance owner, SignalType& signalType);
 
     /// Adds a \a connection to the signal.
     void addConnection(ConnectionSharedPtr connection);
@@ -219,7 +219,7 @@ protected:
     /// The signal type.
     SignalType* m_signalType = nullptr;
     /// The signal owner.
-    intptr_t m_owner = 0;
+    Instance m_owner;
     /// Triggering flag. Locks the signal from recursive triggering.
     bool m_triggering = false;
 };
@@ -230,7 +230,7 @@ class SignalDecl : public Signal
 public:
     template <class SignalOwner>
     explicit SignalDecl(SignalOwner& owner, SignalType& type)
-        : Signal(reinterpret_cast<intptr_t>(&owner), type)
+        : Signal(&owner, type)
     {
         // Signal arguments must match with the signal type.
         auto signalArgs = VariantDescriptorContainer::getArgs<Arguments...>();

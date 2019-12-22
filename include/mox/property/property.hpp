@@ -20,6 +20,7 @@
 #define PROPERTY_HPP
 
 #include <mox/config/platform_config.hpp>
+#include <mox/property/property_data.hpp>
 #include <mox/property/property_type.hpp>
 #include <mox/signal/signal.hpp>
 
@@ -70,36 +71,34 @@ public:
     /// default value.
     void reset();
 
-protected:
-    /// Constructor.
-    explicit Property(intptr_t owner, PropertyType& type);
-
     /// Gets the default value provider of the property.
     PropertyValueProviderSharedPtr getDefaultValueProvider() const;
-    /// Gets the active value provider of the property.
-    PropertyValueProviderSharedPtr getActiveValueProvider() const;
+    /// Returns the property value oprovider that exclusively provides the property value.
+    PropertyValueProviderSharedPtr getExclusiveValueProvider() const;
+
+protected:
+    /// Constructor.
+    explicit Property(Instance host, PropertyType& type, AbstractPropertyData& data);
+
+    void update(const Variant& value);
 
     /// Attaches a value provider to the property. When attached, the value provider is appended to
     /// the value providers' list.
-    void attachValueProvider(PropertyValueProviderSharedPtr vp);
+    void addValueProvider(PropertyValueProviderSharedPtr vp);
     /// Detaches a value provider from the property. When detached, the value provider is removed from
     /// the property.
-    void detachValueProvider(PropertyValueProviderSharedPtr vp);
-    /// Activates a value provider. When done so, the previous active value provider is deactivated.
-    void activateValueProvider(PropertyValueProviderSharedPtr vp);
-    /// Deactivates a value provider, and sets the default value provider as the active one.
-    void deactivateValueProvider(PropertyValueProviderSharedPtr vp);
-    /// Detaches all the value providers, except the default value provider.
-    void detachValueProviders();
+    void removeValueProvider(PropertyValueProviderSharedPtr vp);
+    /// Detaches the value providers which satisfy the flags.
+    void detachValueProviders(ValueProviderFlags flags);
 
     /// The vector with the value providers of the property, including the default one.
-    std::vector<PropertyValueProviderSharedPtr> m_valueProviders;
+    SharedVector<PropertyValueProviderSharedPtr> m_valueProviders;
+    /// The property data.
+    AbstractPropertyData& m_data;
     /// The type of the property.
     PropertyType* m_type = nullptr;
     /// The host object of the property.
-    intptr_t m_host = 0u;
-    /// The index of the active value provider.
-    int m_activeValueProvider = -1;
+    Instance m_host;
     /// Activation lock flag.
     bool m_activating = false;
     /// Silent mode lock flag.
@@ -114,55 +113,27 @@ private:
 /// value provider for the property.
 /// \tparam ValueType The value type of the property.
 template <typename ValueType>
-class PropertyDecl : public Property
+class PropertyDecl : protected PropertyData<ValueType>, public Property
 {
+    using DataType = PropertyData<ValueType>;
+
 public:
-    /// The default value provider of this property.
-    class PropertyDefaultValueProvider : public AbstractPropertyValueProvider
-    {
-        ValueType m_value;
-        ValueType m_defaultValue;
-
-    public:
-        /// Constructor, creates the value provider with a default value.
-        PropertyDefaultValueProvider(ValueType defaultValue)
-            : m_value(defaultValue)
-            , m_defaultValue(defaultValue)
-        {}
-
-        /// Local value getter.
-        Variant getLocalValue() const override
-        {
-            return Variant(m_value);
-        }
-        /// Local value setter.
-        bool setLocalValue(const Variant& value) override
-        {
-            bool changed = (m_value != value);
-            m_value = (ValueType)value;
-            return changed;
-        }
-        /// Resets the value provider to the default value.
-        void resetToDefault() override
-        {
-            set(Variant(m_defaultValue));
-        }
-    };
-    using PropertyDefaultValueProviderSharedPtr = std::shared_ptr<PropertyDefaultValueProvider>;
 
     /// Construct a property with a host, type and default value. Create read-write properties with
     /// this constructor.
-    /// \tparam PropertyHowt The type of the class that hosts the property.
+    /// \tparam PropertyHost The type of the class that hosts the property.
     /// \param host The host of the property.
     /// \param type The reference to the PropertyType that describes the property.
     /// \param defaultValue The default value of the property.
     template <class PropertyHost>
     explicit PropertyDecl(PropertyHost& host, PropertyType& type, const ValueType& defaultValue)
-        : Property(reinterpret_cast<intptr_t>(&host), type)
+        : DataType(defaultValue)
+        , Property(&host, type, *this)
     {
         if (!isReadOnly())
         {
-            auto defvp = make_polymorphic_shared<AbstractPropertyValueProvider, PropertyDefaultValueProvider>(defaultValue);
+            using VP = PropertyValueProvider<ValueType, ValueProviderFlags::Default | ValueProviderFlags::KeepOnWrite>;
+            auto defvp = make_polymorphic_shared<AbstractPropertyValueProvider, VP>(defaultValue);
             defvp->attach(*this);
         }
     }
@@ -172,23 +143,23 @@ public:
     /// \param host The host of the property.
     /// \param type The reference to the PropertyType that describes the property.
     /// \param defaultValueProvider The default value provider of the property.
-    template <class PropertyHost>
-    explicit PropertyDecl(PropertyHost& host, PropertyType& type, PropertyValueProviderSharedPtr defaultValueProvider)
-        : Property(reinterpret_cast<intptr_t>(&host), type)
+    template <class PropertyHost, class DefValueProvider>
+    explicit PropertyDecl(PropertyHost& host, PropertyType& type, std::shared_ptr<DefValueProvider> defaultValueProvider)
+        : Property(&host, type, static_cast<AbstractPropertyData&>(*this))
     {
-        FATAL(defaultValueProvider, "Properties must have defaule value providers")
+        throwIf<ExceptionType::MissingPropertyDefaultValueProvider>(!defaultValueProvider || !defaultValueProvider->hasFlags(ValueProviderFlags::Default));
         defaultValueProvider->attach(*this);
     }
 
     /// Cast opertator, the property getter.
     operator ValueType()
     {
-        return get();
+        return static_cast<DataType*>(this)->getValue();
     }
     /// Const cast opertator, the property getter.
     operator ValueType() const
     {
-        return get();
+        return static_cast<const DataType*>(this)->getValue();
     }
     /// Property setter.
     /// \param value The value to set.

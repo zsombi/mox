@@ -37,3 +37,5 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
     target_link_libraries(mox "-framework Foundation -framework CoreFoundation")
     set_target_properties(mox PROPERTIES LINK_FLAGS "-Wl,-F/Library/Frameworks")
 endif()
+
+target_include_directories(mox PRIVATE ${CMAKE_SOURCE_DIR}/src/include)

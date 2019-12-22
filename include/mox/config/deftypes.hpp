@@ -80,12 +80,12 @@ public:
     /// Default constructor.
     Instance() = default;
     /// Copy constructor.
-    Instance(const Instance& other);
+    Instance(const Instance& other) = default;
     /// Move constructor.
-    Instance(Instance&& other);
+    Instance(Instance&& other) noexcept;
 
     /// Creates an instance holder from a class pointer.
-    /// \tparam Class Teh class type.
+    /// \tparam Class The class type.
     /// \param instance The pointer to the class instance.
     template <class Class>
     Instance(Class* instance)
@@ -95,7 +95,31 @@ public:
 
     /// Cast operator.
     operator intptr_t() const;
+
+    /// Cast the instance as a type.
+    /// \tparam Type The type to convert to.
+    /// \return The pointer of Type the instance is converted.
+    template <typename Type>
+    Type* as() const noexcept
+    {
+        return reinterpret_cast<Type*>(m_instance);
+    }
+
+    /// Reset the instance.
+    void reset() noexcept;
+
+    /// Equality comparison operator.
+    bool operator==(const Instance& rhs);
+
+    /// Assignment operator.
+    Instance& operator=(const Instance& rhs);
 };
+
+/// Compare an Instance with an intptr_t.
+bool operator==(const Instance& lhs, intptr_t rhs);
+
+/// Compare an intptr_t with an Instance.
+bool operator==(intptr_t lhs, const Instance& rhs);
 
 }
 

@@ -75,6 +75,14 @@ std::shared_ptr<Type> make_polymorphic_shared(Args&&... args)
     return std::static_pointer_cast<Type>(shared);
 }
 
+template <typename BaseType, typename Type>
+std::shared_ptr<Type> make_polymorphic_shared_ptr(Type* type)
+{
+    static_assert(std::is_base_of_v<BaseType, Type>, "BaseType is not a superclass of Type.");
+    auto shared = std::shared_ptr<BaseType>{std::unique_ptr<BaseType>(type)};
+    return std::static_pointer_cast<Type>(shared);
+}
+
 template <typename Type, typename Allocator, typename VType>
 void erase(std::vector<Type, Allocator>& v, const VType& value)
 {

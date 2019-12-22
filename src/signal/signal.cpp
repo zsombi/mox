@@ -74,10 +74,10 @@ std::string SignalType::signature() const
     return sign;
 }
 
-int SignalType::activate(Instance instance, const Callable::ArgumentPack &args) const
+int SignalType::activate(Instance sender, const Callable::ArgumentPack &args) const
 {
     lock_guard lock(const_cast<SignalType&>(*this));
-    auto it = m_instances.find(instance);
+    auto it = m_instances.find(sender);
     if (it != m_instances.cend())
     {
         return it->second->activate(args);
@@ -98,7 +98,7 @@ const VariantDescriptorContainer& SignalType::getArguments() const
 void SignalType::addSignalInstance(Signal& signal)
 {
     lock_guard lock(*this);
-    auto it = m_instances.insert(std::make_pair(signal.m_owner, &signal));
+    auto it = m_instances.insert(std::make_pair((intptr_t)signal.m_owner, &signal));
     FATAL(it != m_instances.end(), "The SignalType is already in use for signal " << typeid(m_instances.find(signal.m_owner)->second).name())
 }
 
@@ -106,7 +106,7 @@ void SignalType::removeSignalInstance(Signal& signal)
 {
     lock_guard lock(*this);
 #if 1
-    auto pv = std::make_pair(signal.m_owner, &signal);
+    auto pv = std::make_pair((intptr_t)signal.m_owner, &signal);
     mox::erase(m_instances, pv);
 #else
     const auto it = m_instances.find(signal.m_owner);
@@ -114,6 +114,7 @@ void SignalType::removeSignalInstance(Signal& signal)
     m_instances.erase(it, it);
 #endif
     signal.m_signalType = nullptr;
+    signal.m_owner.reset();
 }
 
 /******************************************************************************
@@ -302,8 +303,8 @@ void SignalConnection::reset()
 /******************************************************************************
  *
  */
-Signal::Signal(intptr_t owner, SignalType& signalType)
-    : SharedLock<ObjectLock>(*reinterpret_cast<ObjectLock*>(owner))
+Signal::Signal(Instance owner, SignalType& signalType)
+    : SharedLock<ObjectLock>(*owner.as<ObjectLock>())
     , m_signalType(&signalType)
     , m_owner(owner)
 {
@@ -439,7 +440,7 @@ bool Signal::disconnectImpl(Variant receiver, const Callable& callable)
     return false;
 }
 
-int Signal::activate(const Callable::ArgumentPack& args)
+int Signal::activate(const Callable::ArgumentPack& arguments)
 {
     FATAL(m_signalType, "Invalid signal")
     if (m_triggering)
@@ -453,14 +454,14 @@ int Signal::activate(const Callable::ArgumentPack& args)
     int count = 0;
 
     lock_guard refConnections(m_connections);
-    auto activator = [&args, self = this, &count](ConnectionSharedPtr& connection)
+    auto activator = [&arguments, self = this, &count](ConnectionSharedPtr& connection)
     {
         if (!connection)
         {
             return;
         }
         ScopeRelock relock{*self};
-        connection->activate(args);
+        connection->activate(arguments);
         ++count;
     };
     m_connections.forEach(activator);

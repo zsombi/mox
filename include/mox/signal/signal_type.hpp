@@ -94,8 +94,9 @@ protected:
     /// Constructor.
     SignalType(VariantDescriptorContainer&& args, std::string_view name);
 
+    using InstanceContainer = FlatMap<intptr_t, Signal*>;
     /// The instances of the signal type.
-    FlatMap<intptr_t, Signal*> m_instances;
+    InstanceContainer m_instances;
     /// Holds the argument descriptors of the signal type.
     VariantDescriptorContainer m_argumentDescriptors;
 };
