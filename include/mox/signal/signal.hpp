@@ -192,6 +192,15 @@ public:
     /// Destructor.
     virtual ~Signal();
 
+    bool isBlocked() const
+    {
+        return m_blocked;
+    }
+    void setBlocked(bool blocked)
+    {
+        m_blocked = blocked;
+    }
+
 protected:
     Signal() = delete;
     DISABLE_COPY(Signal)
@@ -222,6 +231,8 @@ protected:
     Instance m_owner;
     /// Triggering flag. Locks the signal from recursive triggering.
     bool m_triggering = false;
+    /// The signal activation is blocked.
+    bool m_blocked = false;
 };
 
 template <typename... Arguments>
@@ -242,6 +253,24 @@ public:
     /// \param arguments... The variadic arguments passed.
     /// \return The number of connections activated.
     int operator()(Arguments... arguments);
+};
+
+class MOX_API SignalBlocker
+{
+    Signal& m_signal;
+    bool m_prevBlockState;
+
+public:
+    explicit SignalBlocker(Signal& signal)
+        : m_signal(signal)
+        , m_prevBlockState(m_signal.isBlocked())
+    {
+        m_signal.setBlocked(true);
+    }
+    ~SignalBlocker()
+    {
+        m_signal.setBlocked(m_prevBlockState);
+    }
 };
 
 } // mox

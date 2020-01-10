@@ -244,7 +244,7 @@ void GSocketNotifierSource::shutDown()
 
 void GSocketNotifierSource::addNotifier(SocketNotifier& notifier)
 {
-    pollHandlers.emplace(GPollHandler(notifier));
+    pollHandlers.emplace_back(GPollHandler(notifier));
     g_source_add_poll(static_cast<GSource*>(source), &pollHandlers.back().fd);
 }
 

@@ -133,7 +133,7 @@ void GTimerSource::addTimer(Timer &timer)
     FATAL(!index, "The timer is already registered")
 
     Source* gtimer = Source::create(timer);
-    timers.append(gtimer);
+    timers.push_back(gtimer);
 
     GlibEventDispatcher* evLoop = static_cast<GlibEventDispatcher*>(m_eventDispatcher.lock().get());
     g_source_attach(static_cast<GSource*>(gtimer), evLoop->context);

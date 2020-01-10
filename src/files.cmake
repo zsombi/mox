@@ -61,6 +61,9 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_value_provider.hpp
 
+    # Bindings
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding.hpp
+
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_handler.hpp
@@ -81,6 +84,10 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/mox_module.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/timer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/object.hpp
+
+    # Private includes
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/property_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/property_binding_p.hpp
     )
 
 set(SOURCES
@@ -105,6 +112,9 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/property/property.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/property/property_type.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/property/property_value_provider.cpp
+
+    # Binding
+    ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding.cpp
 
     # Event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event.cpp

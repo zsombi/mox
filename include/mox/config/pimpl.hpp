@@ -16,34 +16,110 @@
  * <http://www.gnu.org/licenses/>
  */
 
+#include <memory>
+
 #ifndef PIMPL_HPP
 #define PIMPL_HPP
 
-#define DECLARE_PRIVATE(Class) \
-    inline Class##Private* d_func() { return reinterpret_cast<Class##Private *>(d_ptr.get()); } \
-    inline const Class##Private* d_func() const { return reinterpret_cast<const Class##Private *>(d_ptr.get()); } \
-    friend class Class##Private;
 
-#define DECLARE_PRIVATE_D(Dptr, Class) \
-    inline Class##Private* d_func() { return reinterpret_cast<Class##Private *>(Dptr); } \
-    inline const Class##Private* d_func() const { return reinterpret_cast<const Class##Private *>(Dptr); } \
-    friend class Class##Private;
+template <typename T>
+T* pimplGetPtrHelper(T* ptr)
+{
+    return ptr;
+}
 
-#define DECLARE_PUBLIC(Class)                                    \
-    public: \
-    static Class##Private* get(Class& object) { return object.d_func(); } \
-    static const Class##Private* cget(const Class& object) { return object.d_func(); } \
-    static Class##Private* get(const Class& object) { return const_cast<Class*>(&object)->d_func(); } \
-    static Class##Private* get(std::shared_ptr<Class> object) { return object->d_func(); } \
-    static const Class##Private* get(std::shared_ptr<const Class> object) { return object->d_func(); } \
-    inline Class* p_func() { return static_cast<Class *>(p_ptr); } \
-    inline const Class* p_func() const { return static_cast<const Class *>(p_ptr); } \
+template <typename Ptr>
+auto pimplGetPtrHelper(const Ptr& ptr) -> decltype(ptr.operator->())
+{
+    return ptr.operator->();
+}
+
+template <typename Ptr>
+auto pimplGetPtrHelper(Ptr& ptr) -> decltype(ptr.operator->())
+{
+    return ptr.operator->();
+}
+
+#define DECLARE_PRIVATE(Class)                                                      \
+    inline Class##Private* d_func()                                                 \
+    {                                                                               \
+        return reinterpret_cast<Class##Private*>(pimplGetPtrHelper(d_ptr));         \
+    }                                                                               \
+    inline const Class##Private* d_func() const                                     \
+    {                                                                               \
+        return reinterpret_cast<const Class##Private*>(pimplGetPtrHelper(d_ptr));   \
+    }                                                                               \
+    friend struct PimplHelpers<Class, Class##Private>;                              \
+    friend struct Class##Private;
+
+#define DECLARE_PUBLIC(Class)                                                       \
+    inline Class* p_func()                                                          \
+    {                                                                               \
+        return static_cast<Class*>(p_ptr);                                          \
+    }                                                                               \
+    inline const Class* p_func() const                                              \
+    {                                                                               \
+        return static_cast<const Class *>(p_ptr);                                   \
+    }                                                                               \
     friend class Class;
 
 #define D_PTR(Class) \
-    Class##Private * const d = d_func()
+    auto const d = d_func()
 
 #define P_PTR(Class) \
-    Class * const p = p_func()
+    auto const p = p_func()
+
+
+template <class PublicClass, class PrivateClass>
+struct PimplHelpers
+{
+    static PrivateClass* get(PublicClass& p)
+    {
+        return p.d_func();
+    }
+    static const PrivateClass* get(const PublicClass& p)
+    {
+        return p.d_func();
+    }
+};
+
+
+/// Movable PIMPL.
+namespace pimpl
+{
+
+namespace
+{
+
+template <class T>
+void defaultDelete(T* p) noexcept
+{
+    static_assert(sizeof(T) > 0, "Incomplete type for pimpl deleter");
+    static_assert(!std::is_void<T>::value, "Cannot delete incomplete type");
+    delete p;
+}
+
+} // noname
+
+/// The D-pointer type.
+template <class T, class Deleter = void(*)(T*)>
+using d_ptr_type = std::unique_ptr<T, Deleter>;
+
+template <class T, typename... Args>
+inline d_ptr_type<T> make_d_ptr(Args&&... args)
+{
+    static_assert(!std::is_array<T>::value, "d_ptr_type does not support arrays");
+    return d_ptr_type<T>(new T(std::forward<Args>(args)...), &defaultDelete<T>);
+}
+
+} // pimpl
+
+#define DECLARE_PRIVATE_PTR(Class)          \
+    pimpl::d_ptr_type<Class##Private> d_ptr;\
+    DECLARE_PRIVATE(Class)
+
+#define DECLARE_PUBLIC_PTR(Class)   \
+    Class* p_ptr = nullptr;         \
+    DECLARE_PUBLIC(Class)
 
 #endif // PIMPL_HPP

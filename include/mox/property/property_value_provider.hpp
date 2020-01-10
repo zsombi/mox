@@ -26,8 +26,8 @@ namespace mox
 
 class Property;
 
-class AbstractPropertyValueProvider;
-using PropertyValueProviderSharedPtr = std::shared_ptr<AbstractPropertyValueProvider>;
+class PropertyValueProvider;
+using PropertyValueProviderSharedPtr = std::shared_ptr<PropertyValueProvider>;
 
 /// Property value provider flags.
 enum class ValueProviderFlags
@@ -47,7 +47,7 @@ enum class ValueProviderFlags
 ENABLE_ENUM_OPERATORS(ValueProviderFlags)
 
 
-/// AbstractPropertyValueProvider class is the base class for the property value providers in Mox.
+/// PropertyValueProvider class is the base class for the property value providers in Mox.
 /// You can derive your custom value providers by subclassing from this class and implement override
 /// the desired functionalities.
 ///
@@ -65,11 +65,11 @@ ENABLE_ENUM_OPERATORS(ValueProviderFlags)
 ///
 /// When a property is destroyed, it detaches all value providers. You can detach the value provider
 /// manually by calling the detach() method.
-class MOX_API AbstractPropertyValueProvider : public std::enable_shared_from_this<AbstractPropertyValueProvider>
+class MOX_API PropertyValueProvider : public std::enable_shared_from_this<PropertyValueProvider>
 {
 public:
     /// Destructor.
-    virtual ~AbstractPropertyValueProvider();
+    virtual ~PropertyValueProvider();
 
     /// Returns the flags of the value provider.
     ValueProviderFlags getFlags() const;
@@ -83,7 +83,7 @@ public:
     /// is already attached.
     void attach(Property& property);
 
-    /// Detaches a property value provider. If the value provider is also the active one, deactivates
+    /// Detaches a property value provider. If the value provider is also the active one, disables
     /// it prior to detach it.
     /// \throws Exception with ExceptionType::ValueProviderNotAttached code if the value provider
     /// is not attached.
@@ -93,58 +93,100 @@ public:
     /// \return If the value provider is attached, returns \e true, otherwise \e false.
     bool isAttached() const;
 
+    /// Returns the enabled state of the property value provider.
+    /// \return If the value provider is enabled, returns \e true, otherwise \e false.
+    bool isEnabled() const;
+    /// Sets the property value provider enabled state.
+    /// \param enabled The new enabled state of the value provider.
+    /// \throws Exception with ExceptionType::ValueProviderNotAttached code if the value provider
+    /// is not attached.
+    void setEnabled(bool enabled);
+
     /// Returns local value of the property value provider. The local value is the default value of a
     /// property value provider.
     /// \return The local value of the property value provider, stored in a variant.
-    virtual Variant getLocalValue() const = 0;
+    virtual Variant getLocalValue() const;
 
 protected:
     /// Constructor.
-    explicit AbstractPropertyValueProvider(ValueProviderFlags flags = ValueProviderFlags::Generic);
+    explicit PropertyValueProvider(ValueProviderFlags flags = ValueProviderFlags::Generic);
 
-    /// Updates the property value without breaking any value provider.
+    /// The activate is called when the property value provider is attached. Value providers
+    /// can set initial value to the property they are attached to. The activation tries to
+    /// enable the value provider.
+    void activate();
+
+    /// Updates the property value without removing value providers.
     /// \param value The value to update.
     void update(const Variant& value);
 
-    /// The method is called when the value provider attach operation is completed.
+    /// The method is called when the value provider is attached to a property.
     virtual void onAttached() {}
-    /// The method is called prior to the property gets detached.
+    /// The method is called before the value provider is detached from a property.
     virtual void onDetached() {}
+
+    /// The method is called when a value provider is attached with success, and prior it is
+    /// enabled. Youcan override this method to provide value provider specific initial value
+    /// for the attached property.
+    virtual void onActivating() {}
+
+    /// The method is called when the enabled state is changed. You can override this to set
+    /// a value provider specific value to the attached property each time the value provider
+    /// is enabled, or to back up th evalue provider's value when disabled, so you can restore
+    /// it when it gets re-enabled.
+    virtual void onEnabledChanged() {}
+
+    // TODO: move to pimpl
+    enum State
+    {
+        Attaching,
+        Attached,
+        Detaching,
+        Detached
+    };
+
+    friend struct PropertyPrivate;
+    friend class Property;
+
+    PropertyValueProviderSharedPtr prev;
+    PropertyValueProviderSharedPtr next;
 
     /// The property to which the value provider is attached.
     Property* m_property = nullptr;
     /// The flags of the property value provider.
     const ValueProviderFlags m_flags = ValueProviderFlags::Generic;
+    /// Value provider state.
+    State m_state = Detached;
+    /// The enabled state.
+    bool m_enabled = false;
 };
 
 
-/// Generic property value provider with default value storage.
-/// \tparam ValueType The type of the value the value provider manages.
-/// \tparam ValueProviderFlags The value provider flags.
-template <typename ValueType, ValueProviderFlags ProviderFlags = ValueProviderFlags::Generic>
-class PropertyValueProvider : public AbstractPropertyValueProvider
+/// Property value provider template for default property values.
+template <typename ValueType, ValueProviderFlags ProviderFlags = ValueProviderFlags::Default>
+class DefaultValueProvider : public PropertyValueProvider
 {
-    ValueType m_default;
+    ValueType m_defaultValue;
 
 public:
     /// Constructor.
-    explicit PropertyValueProvider(ValueType defaultValue)
-        : AbstractPropertyValueProvider(ProviderFlags)
-        , m_default(defaultValue)
+    explicit DefaultValueProvider(ValueType defaultValue)
+        : PropertyValueProvider(ProviderFlags)
+        , m_defaultValue(defaultValue)
     {
     }
 
-    /// Override of AbstractPropertyValueProvider::getLocalValue().
+    /// Override of PropertyValueProvider::getLocalValue().
     Variant getLocalValue() const override
     {
-        return Variant(m_default);
+        return Variant(m_defaultValue);
     }
 
 protected:
-    /// Override of AbstractPropertyValueProvider::onAttached().
-    void onAttached() override
+    /// Override of PropertyValueProvider::onActivating().
+    void onActivating() override
     {
-        update(Variant(m_default));
+        update(Variant(m_defaultValue));
     }
 };
 

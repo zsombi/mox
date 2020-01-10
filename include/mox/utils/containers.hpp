@@ -110,24 +110,27 @@ public:
         return m_container[index];
     }
 
-    void append(Type value)
+    void push_back(Type value)
     {
         m_container.push_back(value);
     }
 
-    void emplace(Type&& value)
+    void emplace_back(Type&& value)
     {
         m_container.emplace_back(std::forward<Type>(value));
     }
 
+    void erase(const Type& value)
+    {
+        mox::erase(m_container, value);
+    }
+
     std::optional<size_t> find(const Type& value) const
     {
-        for (auto it = m_container.begin(); it != m_container.end(); ++it)
+        auto it = std::find(m_container.begin(), m_container.end(), value);
+        if (it != m_container.end())
         {
-            if (value == *it)
-            {
-                return std::distance(m_container.begin(), it);
-            }
+            return std::distance(m_container.begin(), it);
         }
         return std::nullopt;
     }
@@ -136,21 +139,21 @@ public:
     std::optional<size_t> findIf(Predicate predicate)
     {
         auto it = std::find_if(m_container.begin(), m_container.end(), predicate);
-        if (it == m_container.end())
+        if (it != m_container.end())
         {
-            return std::nullopt;
+            return std::distance(m_container.begin(), it);
         }
-        return std::distance(m_container.begin(), it);
+        return std::nullopt;
     }
     template <typename Predicate>
     std::optional<size_t> findIf(Predicate predicate) const
     {
         auto it = std::find_if(m_container.begin(), m_container.end(), predicate);
-        if (it == m_container.end())
+        if (it != m_container.end())
         {
-            return std::nullopt;
+            return std::distance(m_container.begin(), it);
         }
-        return std::distance(m_container.begin(), it);
+        return std::nullopt;
     }
 
     template <typename Callback>

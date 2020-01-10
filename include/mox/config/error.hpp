@@ -38,6 +38,7 @@ enum class ExceptionType
     ValueProviderNotAttached,
     ValueProviderAlreadyAttached,
     PropertyHasDefaultValueProvider,
+    PropertyHasExclusiveValueProvider
 };
 
 class MOX_API Exception : public std::exception

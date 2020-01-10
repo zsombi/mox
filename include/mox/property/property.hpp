@@ -20,6 +20,7 @@
 #define PROPERTY_HPP
 
 #include <mox/config/platform_config.hpp>
+#include <mox/config/pimpl.hpp>
 #include <mox/property/property_data.hpp>
 #include <mox/property/property_type.hpp>
 #include <mox/signal/signal.hpp>
@@ -39,11 +40,11 @@ namespace mox
 ///
 /// A property can have multiple value providers, and only one of those can be active at a time, and
 /// only the default value provider can reset the property to the default value.
-/// \see PropertyDecl<>, AbstractPropertyValueProvider
+/// \see PropertyDecl<>, PropertyValueProvider
+struct PropertyPrivate;
 class MOX_API Property : public SharedLock<ObjectLock>
 {
-    friend class PropertyType;
-    friend class AbstractPropertyValueProvider;
+    DECLARE_PRIVATE_PTR(Property)
 
 public:
     /// The change signal of the property. The signal is automatically emitted whenever a property
@@ -73,39 +74,19 @@ public:
 
     /// Gets the default value provider of the property.
     PropertyValueProviderSharedPtr getDefaultValueProvider() const;
-    /// Returns the property value oprovider that exclusively provides the property value.
+    /// Returns the property value provider that exclusively provides the property value.
     PropertyValueProviderSharedPtr getExclusiveValueProvider() const;
 
 protected:
     /// Constructor.
     explicit Property(Instance host, PropertyType& type, AbstractPropertyData& data);
 
-    void update(const Variant& value);
-
-    /// Attaches a value provider to the property. When attached, the value provider is appended to
-    /// the value providers' list.
-    void addValueProvider(PropertyValueProviderSharedPtr vp);
-    /// Detaches a value provider from the property. When detached, the value provider is removed from
-    /// the property.
-    void removeValueProvider(PropertyValueProviderSharedPtr vp);
     /// Detaches the value providers which satisfy the flags.
     void detachValueProviders(ValueProviderFlags flags);
 
-    /// The vector with the value providers of the property, including the default one.
-    SharedVector<PropertyValueProviderSharedPtr> m_valueProviders;
-    /// The property data.
-    AbstractPropertyData& m_data;
-    /// The type of the property.
-    PropertyType* m_type = nullptr;
-    /// The host object of the property.
-    Instance m_host;
-    /// Activation lock flag.
-    bool m_activating = false;
-    /// Silent mode lock flag.
-    bool m_silentMode = false;
-
 private:
     Property() = delete;
+    DISABLE_COPY_OR_MOVE(Property)
 };
 
 /// Declare a property in your class using this class. The template defines the default value provider
@@ -116,6 +97,7 @@ template <typename ValueType>
 class PropertyDecl : protected PropertyData<ValueType>, public Property
 {
     using DataType = PropertyData<ValueType>;
+    using ThisType = PropertyDecl<ValueType>;
 
 public:
 
@@ -132,8 +114,8 @@ public:
     {
         if (!isReadOnly())
         {
-            using VP = PropertyValueProvider<ValueType, ValueProviderFlags::Default | ValueProviderFlags::KeepOnWrite>;
-            auto defvp = make_polymorphic_shared<AbstractPropertyValueProvider, VP>(defaultValue);
+            using VP = DefaultValueProvider<ValueType>;
+            auto defvp = make_polymorphic_shared<PropertyValueProvider, VP>(defaultValue);
             defvp->attach(*this);
         }
     }
@@ -152,20 +134,40 @@ public:
     }
 
     /// Cast opertator, the property getter.
-    operator ValueType()
-    {
-        return static_cast<DataType*>(this)->getValue();
-    }
-    /// Const cast opertator, the property getter.
     operator ValueType() const
     {
-        return static_cast<const DataType*>(this)->getValue();
+        return this->getValue();
     }
     /// Property setter.
     /// \param value The value to set.
     auto& operator=(ValueType value)
     {
         set(Variant(value));
+        return *this;
+    }
+
+    /// Copy operator.
+    auto& operator=(const ThisType& other)
+    {
+        set(other.get());
+        return *this;
+    }
+
+    /// Prefix increment operator.
+    auto& operator++()
+    {
+        static_assert (std::is_integral_v<ValueType>, "Increment operator is available for integral types");
+        auto value = this->getValue();
+        set(Variant(++value));
+        return *this;
+    }
+
+    /// Prefix decrement operator.
+    auto& operator--()
+    {
+        static_assert (std::is_integral_v<ValueType>, "Increment operator is available for integral types");
+        auto value = this->getValue();
+        set(Variant(--value));
         return *this;
     }
 };

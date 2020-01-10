@@ -102,7 +102,7 @@ void CFTimerSource::addTimer(Timer& timer)
     FATAL(!index, "Timer already registered")
 
     lock_guard lock(timers);
-    timers.emplace(std::make_unique<TimerRecord>(timer));
+    timers.emplace_back(std::make_unique<TimerRecord>(timer));
 }
 
 void CFTimerSource::removeTimer(Timer &timer)

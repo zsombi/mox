@@ -63,6 +63,10 @@ static inline std::string dbg_fileName(const char* path)
     Class(Class&&) = delete; \
     Class& operator=(Class&&) = delete;
 
+#define DISABLE_COPY_OR_MOVE(Class) \
+    DISABLE_COPY(Class) \
+    DISABLE_MOVE(Class)
+
 namespace mox
 {
 

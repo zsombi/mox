@@ -19,6 +19,8 @@
 #include <mox/property/property.hpp>
 #include <mox/property/property_type.hpp>
 
+#include <property_p.hpp>
+
 namespace mox
 {
 
@@ -37,7 +39,6 @@ std::string PropertyType::signature() const
 PropertyType::~PropertyType()
 {
     VariantDescriptor invalid;
-//    m_typeDescriptor.swap(invalid);
     m_typeDescriptor = invalid;
 }
 
@@ -54,17 +55,17 @@ const VariantDescriptor& PropertyType::getValueType() const
 void PropertyType::addPropertyInstance(Property& property)
 {
     lock_guard lock(*this);
-    FATAL(m_instances.find(property.m_host) == m_instances.end(), "Property instance already registered!")
+    FATAL(m_instances.find(PropertyPrivate::get(property)->m_host) == m_instances.end(), "Property instance already registered!")
 
-    m_instances.insert(std::make_pair((intptr_t)property.m_host, &property));
+    m_instances.insert(std::make_pair((intptr_t)PropertyPrivate::get(property)->m_host, &property));
 }
 
 void PropertyType::removePropertyInstance(Property& property)
 {
     lock_guard lock(*this);
-    auto pv = std::make_pair((intptr_t)property.m_host, &property);
+    auto pv = std::make_pair((intptr_t)PropertyPrivate::get(property)->m_host, &property);
     mox::erase(m_instances, pv);
-    property.m_host.reset();
+    PropertyPrivate::get(property)->m_host.reset();
 }
 
 Variant PropertyType::get(Instance instance) const

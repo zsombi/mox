@@ -68,7 +68,7 @@ CFSocketNotifierSource::Socket::~Socket()
 
 void CFSocketNotifierSource::Socket::addNotifier(SocketNotifier &notifier)
 {
-    notifiers.append(notifier.shared_from_this());
+    notifiers.push_back(notifier.shared_from_this());
     if (notifier.hasReadMode())
     {
         if (!readNotifierCount)

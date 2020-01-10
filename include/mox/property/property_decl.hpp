@@ -7,9 +7,9 @@ namespace mox
 {
 
 class PropertyType;
-class AbstractPropertyValueProvider;
+class PropertyValueProvider;
 
-using PropertyValueProviderSharedPtr = std::shared_ptr<AbstractPropertyValueProvider>;
+using PropertyValueProviderSharedPtr = std::shared_ptr<PropertyValueProvider>;
 
 } // namespace mox
 

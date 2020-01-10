@@ -96,6 +96,8 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "The property value provider is already attached.";
         case ExceptionType::PropertyHasDefaultValueProvider:
             return "The property already has default value provider attached.";
+        case ExceptionType::PropertyHasExclusiveValueProvider:
+            return "The property has an exclusive value provider.";
     }
     return nullptr;
 }

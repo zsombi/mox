@@ -40,6 +40,7 @@ set(SOURCES
     test_threads.cpp
     test_properties.cpp
     test_enumerate_metatypes.cpp
+    test_bindings.cpp
     )
 add_executable(unittest ${SOURCES})
 target_link_libraries(unittest mox gtest_main)

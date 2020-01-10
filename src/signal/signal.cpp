@@ -324,7 +324,7 @@ void Signal::addConnection(ConnectionSharedPtr connection)
 {
     FATAL(m_signalType, "Invalid signal")
     lock_guard lock(*this);
-    m_connections.append(connection);
+    m_connections.push_back(connection);
 }
 
 void Signal::removeConnection(ConnectionSharedPtr connection)
@@ -443,7 +443,7 @@ bool Signal::disconnectImpl(Variant receiver, const Callable& callable)
 int Signal::activate(const Callable::ArgumentPack& arguments)
 {
     FATAL(m_signalType, "Invalid signal")
-    if (m_triggering)
+    if (m_triggering || m_blocked)
     {
         return 0;
     }

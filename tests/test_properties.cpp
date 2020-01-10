@@ -23,11 +23,30 @@
 
 using namespace mox;
 
+template <typename ValueType>
+class TestValueProvider : public PropertyValueProvider
+{
+    ValueType m_value;
+
+public:
+    explicit TestValueProvider(ValueType value, ValueProviderFlags flags = ValueProviderFlags::Generic)
+        : PropertyValueProvider(flags)
+        , m_value(value)
+    {
+    }
+
+protected:
+    void onActivating() override
+    {
+        update(Variant(m_value));
+    }
+};
+
 class PropertyTest : public ObjectLock
 {
-    class StatusVP : public PropertyValueProvider<bool, ValueProviderFlags::Default>
+    class StatusVP : public DefaultValueProvider<bool>
     {
-        using Base = PropertyValueProvider<bool, ValueProviderFlags::Default>;
+        using Base = DefaultValueProvider<bool>;
     public:
         explicit StatusVP()
             : Base(true)
@@ -40,9 +59,9 @@ class PropertyTest : public ObjectLock
         }
     };
 
-    class XStatusVP : public PropertyValueProvider<bool, ValueProviderFlags::Default | ValueProviderFlags::Exclusive>
+    class XStatusVP : public DefaultValueProvider<bool, ValueProviderFlags::Exclusive>
     {
-        using Base = PropertyValueProvider<bool, ValueProviderFlags::Default | ValueProviderFlags::Exclusive>;
+        using Base = DefaultValueProvider<bool, ValueProviderFlags::Exclusive>;
     public:
         explicit XStatusVP()
             : Base(true)
@@ -55,9 +74,9 @@ class PropertyTest : public ObjectLock
         }
     };
 
-    class DriverX : public PropertyValueProvider<int, ValueProviderFlags::Default | ValueProviderFlags::Exclusive>
+    class DriverX : public DefaultValueProvider<int, ValueProviderFlags::Exclusive>
     {
-        using Base = PropertyValueProvider<int, ValueProviderFlags::Default | ValueProviderFlags::Exclusive>;
+        using Base = DefaultValueProvider<int, ValueProviderFlags::Exclusive>;
 
     public:
         explicit DriverX()
@@ -105,7 +124,7 @@ public:
 
 class PropertyMetatypeTest : public Object
 {
-    PropertyValueProviderSharedPtr enabler = std::make_shared<PropertyValueProvider<bool, ValueProviderFlags::Default>>(true);
+    PropertyValueProviderSharedPtr enabler = std::make_shared<DefaultValueProvider<bool>>(true);
 
 public:
     static std::shared_ptr<PropertyMetatypeTest> create(Object* parent = nullptr)
@@ -125,7 +144,7 @@ public:
     PropertyDecl<std::string> stringValue{*this, StaticMetaClass::StringPropertyType, "alpha"};
 };
 
-class CustomDefaultValueProvider : public AbstractPropertyValueProvider
+class CustomDefaultValueProvider : public PropertyValueProvider
 {
     int defaultValue;
 
@@ -136,21 +155,21 @@ class CustomDefaultValueProvider : public AbstractPropertyValueProvider
 
 public:
     explicit CustomDefaultValueProvider(int defaultValue)
-        : AbstractPropertyValueProvider(ValueProviderFlags::Default)
+        : PropertyValueProvider(ValueProviderFlags::Default)
         , defaultValue(defaultValue)
     {}
 
     static auto create(int defaultValue)
     {
-        return make_polymorphic_shared<AbstractPropertyValueProvider, CustomDefaultValueProvider>(defaultValue);
+        return make_polymorphic_shared<PropertyValueProvider, CustomDefaultValueProvider>(defaultValue);
     }
 };
 
 
 template <typename ValueType>
-class ExclusiveVP : public PropertyValueProvider<ValueType, ValueProviderFlags::Exclusive>
+class ExclusiveVP : public DefaultValueProvider<ValueType, ValueProviderFlags::Exclusive>
 {
-    using Base = PropertyValueProvider<ValueType, ValueProviderFlags::Exclusive>;
+    using Base = DefaultValueProvider<ValueType, ValueProviderFlags::Exclusive>;
 
     explicit ExclusiveVP(ValueType defValue)
         : Base(defValue)
@@ -161,7 +180,7 @@ public:
 
     static std::shared_ptr<ExclusiveVP<ValueType>> create(ValueType defValue)
     {
-        return make_polymorphic_shared_ptr<AbstractPropertyValueProvider>(new ExclusiveVP<ValueType>(defValue));
+        return make_polymorphic_shared_ptr<PropertyValueProvider>(new ExclusiveVP<ValueType>(defValue));
     }
 
     void setLocalValue(ValueType value)
@@ -208,7 +227,7 @@ TEST_F(Properties, test_properties_is_metatype)
     EXPECT_TRUE(test.enabled);
     EXPECT_EQ(-1, test.intValue);
     std::string str = test.stringValue;
-    EXPECT_EQ(std::string("alpha"), str);
+    EXPECT_EQ("alpha"s, str);
 }
 
 TEST_F(Properties, test_readonly_property_setter_throws)
@@ -293,7 +312,7 @@ TEST_F(Properties, test_add_new_value_provider)
 
     EXPECT_EQ(0, test.driver);
 
-    auto vp1 = std::make_shared<PropertyValueProvider<int>>(1010);
+    auto vp1 = std::make_shared<TestValueProvider<int>>(1010);
     EXPECT_FALSE(vp1->isAttached());
     EXPECT_NO_THROW(vp1->attach(test.driver));
     EXPECT_TRUE(vp1->isAttached());
@@ -302,7 +321,7 @@ TEST_F(Properties, test_add_new_value_provider)
 TEST_F(Properties, test_attach_again)
 {
     PropertyTest test;
-    auto vp1 = std::make_shared<PropertyValueProvider<int>>(1010);
+    auto vp1 = std::make_shared<TestValueProvider<int>>(1010);
     EXPECT_NO_THROW(vp1->attach(test.driver));
     EXPECT_THROW(vp1->attach(test.driver), mox::Exception);
 }
@@ -310,7 +329,7 @@ TEST_F(Properties, test_attach_again)
 TEST_F(Properties, test_detach_again)
 {
     PropertyTest test;
-    auto vp1 = std::make_shared<PropertyValueProvider<int>>(1010);
+    auto vp1 = std::make_shared<TestValueProvider<int>>(1010);
     EXPECT_NO_THROW(vp1->attach(test.driver));
     EXPECT_NO_THROW(vp1->detach());
     EXPECT_THROW(vp1->detach(), mox::Exception);
@@ -321,7 +340,7 @@ TEST_F(Properties, test_atach_to_two_properties)
     PropertyTest test1;
     PropertyMetatypeTest test2;
 
-    auto vp = std::make_shared<PropertyValueProvider<int>>(1010);
+    auto vp = std::make_shared<TestValueProvider<int>>(1010);
     vp->attach(test1.driver);
 
     EXPECT_TRUE(vp->isAttached());
@@ -338,9 +357,9 @@ TEST_F(Properties, test_remove_value_provider)
     };
     test.driver.changed.connect(onDriverChanged);
 
-    auto vp1 = std::make_shared<PropertyValueProvider<int>>(1010);
+    auto vp1 = std::make_shared<TestValueProvider<int>>(1010);
     vp1->attach(test.driver);
-    auto vp2 = std::make_shared<PropertyValueProvider<int>>(2030);
+    auto vp2 = std::make_shared<TestValueProvider<int>>(2030);
     vp2->attach(test.driver);
 
     EXPECT_EQ(2, triggerCount);
@@ -356,9 +375,9 @@ TEST_F(Properties, test_remove_value_provider)
 TEST_F(Properties, test_set_property_value_detaches_value_providers)
 {
     PropertyTest test;
-    auto vp1 = std::make_shared<PropertyValueProvider<int>>(1010);
+    auto vp1 = std::make_shared<TestValueProvider<int>>(1010);
     vp1->attach(test.driver);
-    auto vp2 = std::make_shared<PropertyValueProvider<int>>(2030);
+    auto vp2 = std::make_shared<TestValueProvider<int>>(2030);
     vp2->attach(test.driver);
     EXPECT_EQ(2030, test.driver);
 
@@ -379,13 +398,22 @@ TEST_F(Properties, test_attach_exclusive_value_providers)
 {
     PropertyTest test;
 
-    auto vp = ExclusiveVP<int>::create(1234);
-    EXPECT_NO_THROW(vp->attach(test.driver));
+    auto defaultVP = test.driver.getDefaultValueProvider();
+    EXPECT_TRUE(defaultVP->isAttached());
+
+    auto vp1 = ExclusiveVP<int>::create(1234);
+    EXPECT_NO_THROW(vp1->attach(test.driver));
+    EXPECT_TRUE(vp1->isAttached());
+    EXPECT_TRUE(vp1->isEnabled());
     EXPECT_EQ(1234, test.driver);
 
-    // The second exclusive is ignored
-    vp = ExclusiveVP<int>::create(999);
-    EXPECT_NO_THROW(vp->attach(test.driver));
+    // The second exclusive detaches the previous
+    auto vp2 = ExclusiveVP<int>::create(999);
+    EXPECT_THROW(vp2->attach(test.driver), Exception);
+    EXPECT_FALSE(vp2->isAttached());
+    EXPECT_FALSE(vp2->isEnabled());
+    EXPECT_TRUE(vp1->isAttached());
+    EXPECT_TRUE(vp1->isEnabled());
     EXPECT_EQ(1234, test.driver);
 
     // Write to the property.
@@ -406,26 +434,30 @@ TEST_F(Properties, test_attach_exclusive_value_provider_to_property_with_default
     PropertyTest test;
 
     auto vp = ExclusiveVP<int>::create(1234);
-    vp->attach(test.driverX);
+    EXPECT_THROW(vp->attach(test.driverX), Exception);
     EXPECT_NE(1234, test.driverX);
 }
 
-TEST_F(Properties, test_update_property_with_exclusive_value_provider)
+TEST_F(Properties, test_attach_normal_value_provider_after_exclusive)
 {
     PropertyTest test;
-    auto vp = ExclusiveVP<int>::create(1234);
-    vp->attach(test.driverX);
+    // set the value to differ from the default value before other value providers are attached.
+    test.driver = 3;
+    EXPECT_EQ(3, test.driver);
 
-    vp->setLocalValue(999);
-    EXPECT_NE(999, test.driverX);
+    auto vp1 = std::make_shared<DefaultValueProvider<int, ValueProviderFlags::Exclusive>>(9030);
+    vp1->attach(test.driver);
+    EXPECT_EQ(9030, test.driver);
+    EXPECT_TRUE(vp1->isAttached());
+    EXPECT_TRUE(vp1->isEnabled());
 
-    auto xvp = test.driverX.getExclusiveValueProvider();
-    EXPECT_NOT_NULL(xvp);
-
-    // test.driverX updates from test.driver, so make it change
-    EXPECT_EQ(0, test.driverX);
-    test.driver = 6;
-    EXPECT_EQ(3, test.driverX);
+    auto vp2 = std::make_shared<TestValueProvider<int>>(2030);
+    vp2->attach(test.driver);
+    EXPECT_EQ(9030, test.driver);
+    EXPECT_TRUE(vp1->isAttached());
+    EXPECT_TRUE(vp2->isAttached());
+    EXPECT_TRUE(vp1->isEnabled());
+    EXPECT_FALSE(vp2->isEnabled());
 }
 
 TEST_F(Properties, test_reset_property_with_default_value_provider)
@@ -437,7 +469,7 @@ TEST_F(Properties, test_reset_property_with_default_value_provider)
     EXPECT_NOT_NULL(test.driverX.getExclusiveValueProvider());
 }
 
-TEST_F(Properties, test_property_reset_removes_exclusive_value_providers)
+TEST_F(Properties, test_property_reset_keeps_exclusive_value_providers)
 {
     PropertyTest test;
 
@@ -447,14 +479,14 @@ TEST_F(Properties, test_property_reset_removes_exclusive_value_providers)
     EXPECT_EQ(vp, test.driver.getExclusiveValueProvider());
 
     test.driver.reset();
-    EXPECT_FALSE(vp->isAttached());
+    EXPECT_TRUE(vp->isAttached());
 }
 
 TEST_F(Properties, test_property_setter_keeps_keep_on_write_value_providers)
 {
     PropertyTest test;
 
-    auto vp = std::make_shared<PropertyValueProvider<int, ValueProviderFlags::KeepOnWrite>>(10);
+    auto vp = std::make_shared<TestValueProvider<int>>(10, ValueProviderFlags::KeepOnWrite);
     vp->attach(test.driver);
     EXPECT_TRUE(vp->isAttached());
 
@@ -470,11 +502,11 @@ TEST_F(Properties, test_reset_to_default_value_detaches_value_providers)
     test.driver = 3;
     EXPECT_EQ(3, test.driver);
 
-    auto vp1 = std::make_shared<PropertyValueProvider<int>>(1010);
+    auto vp1 = std::make_shared<TestValueProvider<int>>(1010);
     vp1->attach(test.driver);
-    auto vp3 = std::make_shared<PropertyValueProvider<int, ValueProviderFlags::Exclusive>>(9030);
+    auto vp3 = std::make_shared<DefaultValueProvider<int, ValueProviderFlags::Exclusive>>(9030);
     vp3->attach(test.driver);
-    auto vp2 = std::make_shared<PropertyValueProvider<int, ValueProviderFlags::KeepOnWrite>>(2030);
+    auto vp2 = std::make_shared<TestValueProvider<int>>(2030, ValueProviderFlags::KeepOnWrite);
     vp2->attach(test.driver);
     EXPECT_EQ(9030, test.driver);
 
@@ -486,11 +518,90 @@ TEST_F(Properties, test_reset_to_default_value_detaches_value_providers)
     test.driver.changed.connect(onDriverChanged);
 
     test.driver.reset();
-    EXPECT_EQ(1, triggerCount);
+    // Due to exclusive VP, the value does not change ever.
+    EXPECT_EQ(0, triggerCount);
     EXPECT_FALSE(vp1->isAttached());
     EXPECT_FALSE(vp2->isAttached());
-    EXPECT_FALSE(vp3->isAttached());
+    EXPECT_TRUE(vp3->isAttached());
+    EXPECT_EQ(9030, test.driver);
+}
+
+TEST_F(Properties, test_detach_disabled_value_providers)
+{
+    PropertyTest test;
+
+    auto vp1 = std::make_shared<TestValueProvider<int>>(100);
+    auto vp2 = std::make_shared<TestValueProvider<int>>(200);
+    auto vp3 = std::make_shared<TestValueProvider<int>>(300);
+
+    vp1->attach(test.driver);
+    vp2->attach(test.driver);
+    vp3->attach(test.driver);
+    EXPECT_TRUE(vp1->isAttached());
+    EXPECT_TRUE(vp2->isAttached());
+    EXPECT_TRUE(vp3->isAttached());
+    EXPECT_FALSE(vp1->isEnabled());
+    EXPECT_FALSE(vp2->isEnabled());
+    EXPECT_TRUE(vp3->isEnabled());
+    EXPECT_EQ(300, test.driver);
+
+    vp1->detach();
+    EXPECT_FALSE(vp1->isAttached());
+    EXPECT_TRUE(vp2->isAttached());
+    EXPECT_TRUE(vp3->isAttached());
+    EXPECT_FALSE(vp1->isEnabled());
+    EXPECT_FALSE(vp2->isEnabled());
+    EXPECT_TRUE(vp3->isEnabled());
+    EXPECT_EQ(300, test.driver);
+
+    vp2->detach();
+    EXPECT_FALSE(vp1->isAttached());
+    EXPECT_FALSE(vp2->isAttached());
+    EXPECT_TRUE(vp3->isAttached());
+    EXPECT_FALSE(vp1->isEnabled());
+    EXPECT_FALSE(vp2->isEnabled());
+    EXPECT_TRUE(vp3->isEnabled());
+    EXPECT_EQ(300, test.driver);
+}
+
+TEST_F(Properties, test_value_providers_enablement)
+{
+    PropertyTest test;
+
+    auto vp1 = std::make_shared<TestValueProvider<int>>(100);
+    auto vp2 = std::make_shared<TestValueProvider<int>>(200);
+    auto vp3 = std::make_shared<TestValueProvider<int>>(300);
+
     EXPECT_EQ(0, test.driver);
+    EXPECT_FALSE(vp1->isEnabled());
+    EXPECT_FALSE(vp2->isEnabled());
+    EXPECT_FALSE(vp3->isEnabled());
+
+    vp1->attach(test.driver);
+    EXPECT_TRUE(vp1->isEnabled());
+    EXPECT_FALSE(vp2->isEnabled());
+    EXPECT_FALSE(vp3->isEnabled());
+    EXPECT_EQ(100, test.driver);
+
+    vp2->attach(test.driver);
+    EXPECT_FALSE(vp1->isEnabled());
+    EXPECT_TRUE(vp2->isEnabled());
+    EXPECT_FALSE(vp3->isEnabled());
+    EXPECT_EQ(200, test.driver);
+
+    vp3->attach(test.driver);
+    EXPECT_FALSE(vp1->isEnabled());
+    EXPECT_FALSE(vp2->isEnabled());
+    EXPECT_TRUE(vp3->isEnabled());
+    EXPECT_EQ(300, test.driver);
+
+    // enable vp1
+    vp1->setEnabled(true);
+    EXPECT_TRUE(vp1->isEnabled());
+    EXPECT_FALSE(vp2->isEnabled());
+    EXPECT_FALSE(vp3->isEnabled());
+    // The value stays as it was before vp1 got enabled, as vp1 doesn't change the value when enabled.
+    EXPECT_EQ(300, test.driver);
 }
 
 
@@ -539,7 +650,7 @@ TEST_F(Properties, test_metaproperty_set_detaches_value_providers)
 {
     PropertyMetatypeTest test;
 
-    auto vp1 = std::make_shared<PropertyValueProvider<int>>(123);
+    auto vp1 = std::make_shared<TestValueProvider<int>>(123);
     vp1->attach(test.intValue);
 
     EXPECT_EQ(123, test.intValue);

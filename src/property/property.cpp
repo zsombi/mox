@@ -17,43 +17,193 @@
  */
 
 #include "../signal/signal_p.h"
+#include <property_p.hpp>
 #include <mox/property/property.hpp>
 #include <mox/config/error.hpp>
 
 namespace mox
 {
 
-Property::Property(Instance host, PropertyType& type, AbstractPropertyData& data)
-    : SharedLock<ObjectLock>(*host.as<ObjectLock>())
-    , changed(host, type.getChangedSignalType())
+PropertyPrivate::PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, Instance host)
+    : p_ptr(&p)
     , m_data(data)
     , m_type(&type)
     , m_host(host)
 {
-    m_type->addPropertyInstance(*this);
+}
+
+void PropertyPrivate::addValueProvider(PropertyValueProviderSharedPtr vp)
+{
+    FATAL(vp, "Null property value provider.")
+
+    P_PTR(Property);
+    // Only one default value provider is allowed. A second default VP is allowed only if it is exclusive too.
+    throwIf<ExceptionType::PropertyHasDefaultValueProvider>(p->getDefaultValueProvider() && vp->hasFlags(ValueProviderFlags::Default) && !vp->hasFlags(ValueProviderFlags::Exclusive));
+    // Only one exclusive value provider is allowed.
+    throwIf<ExceptionType::PropertyHasExclusiveValueProvider>(vp->hasFlags(ValueProviderFlags::Exclusive) && p->getExclusiveValueProvider());
+
+    lock_guard lock(*p);
+    if (p->isReadOnly())
+    {
+        FATAL(!m_valueProviders, "Only default value provider is allowed on read-only properties")
+    }
+
+    bool isDefaultVP = vp->hasFlags(ValueProviderFlags::Default) || vp->hasFlags(ValueProviderFlags::Exclusive);
+    if (isDefaultVP)
+    {
+        // Exclusive value providers replace default value providers.
+        if (m_defaultValueProvider)
+        {
+            ScopeRelock relock(*p);
+            m_defaultValueProvider->detach();
+            m_defaultValueProvider.reset();
+        }
+    }
+
+    if (!m_valueProviders)
+    {
+        m_valueProviders = vp;
+        m_defaultValueProvider = vp;
+    }
+    else
+    {
+        // Insert the value provider right after the active one.
+        vp->prev = m_valueProviders->prev;
+        vp->next = m_valueProviders;
+        if (vp->prev)
+        {
+            vp->prev->next = vp;
+        }
+        m_valueProviders->prev = vp;
+
+        if (!m_defaultValueProvider && isDefaultVP)
+        {
+            m_defaultValueProvider = vp;
+        }
+    }
+}
+
+PropertyValueProviderSharedPtr PropertyPrivate::removeValueProvider(PropertyValueProviderSharedPtr vp)
+{
+    P_PTR(Property);
+    bool wasEnabled = vp->isEnabled();
+    vp->setEnabled(false);
+
+    lock_guard lock(*p);
+
+    if (m_valueProviders == vp)
+    {
+        m_valueProviders = vp->prev;
+        if (m_valueProviders)
+        {
+            m_valueProviders->next.reset();
+        }
+    }
+    else
+    {
+        if (vp->prev)
+        {
+            vp->prev->next = vp->next;
+        }
+        if (vp->next)
+        {
+            vp->next->prev = vp->prev;
+        }
+    }
+    vp->prev.reset();
+    vp->next.reset();
+
+    if (wasEnabled && m_valueProviders)
+    {
+        return m_valueProviders;
+    }
+    return nullptr;
+}
+
+void PropertyPrivate::activateValueProvider(PropertyValueProviderSharedPtr vp)
+{
+    if (m_valueProviders == vp && vp->isEnabled())
+    {
+        return;
+    }
+
+    if (!vp)
+    {
+        m_valueProviders->setEnabled(true);
+        return;
+    }
+
+    // remove the vp from the list
+    if (vp->prev)
+    {
+        vp->prev->next = vp->next;
+    }
+    if (vp->next)
+    {
+        vp->next->prev = vp->prev;
+    }
+    vp->next.reset();
+    vp->prev.reset();
+
+    // disable head
+    m_valueProviders->setEnabled(false);
+
+    // put the vp as head
+    vp->prev = m_valueProviders;
+    m_valueProviders->next = vp;
+    m_valueProviders = vp;
+}
+
+void PropertyPrivate::update(const Variant &value)
+{
+    {
+        lock_guard lock(*p_func());
+        if (value == m_data.getData())
+        {
+            return;
+        }
+        m_data.setData(value);
+    }
+    p_func()->changed.activate(Callable::ArgumentPack(value));
+}
+
+
+
+Property::Property(Instance host, PropertyType& type, AbstractPropertyData& data)
+    : SharedLock<ObjectLock>(*host.as<ObjectLock>())
+    , d_ptr(pimpl::make_d_ptr<PropertyPrivate>(*this, data, type, host))
+    , changed(host, type.getChangedSignalType())
+{
+    d_func()->m_type->addPropertyInstance(*this);
 }
 
 Property::~Property()
 {
     // Detach the value providers.
-    lock_guard lockVp(m_valueProviders);
-    auto detacher = [](auto vp)
+    D_PTR(Property);
+    // Block property change signal activation.
+    changed.setBlocked(true);
+    if (d->m_valueProviders)
     {
-        if (vp) vp->detach();
-    };
-    m_valueProviders.forEach(detacher);
+        d->m_valueProviders->setEnabled(false);
+    }
+    while (d->m_valueProviders)
+    {
+        d->m_valueProviders->detach();
+    }
 
-    m_type->removePropertyInstance(*this);
+    d->m_type->removePropertyInstance(*this);
 }
 
 bool Property::isReadOnly() const
 {
-    return m_type->getAccess() == PropertyAccess::ReadOnly;
+    return d_func()->m_type->getAccess() == PropertyAccess::ReadOnly;
 }
 
 Variant Property::get() const
 {
-    return m_data.getData();
+    lock_guard lock(const_cast<Property&>(*this));
+    return d_func()->m_data.getData();
 }
 
 void Property::set(const Variant& value)
@@ -68,24 +218,14 @@ void Property::set(const Variant& value)
         return;
     }
     // Set the value.
-    update(value);
-}
-
-void Property::update(const Variant &value)
-{
-    if (value == m_data.getData())
-    {
-        return;
-    }
-    m_data.setData(value);
-    changed.activate(Callable::ArgumentPack(value));
+    d_func()->update(value);
 }
 
 void Property::reset()
 {
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
+    detachValueProviders(ValueProviderFlags::Generic);
     detachValueProviders(ValueProviderFlags::KeepOnWrite);
-    detachValueProviders(ValueProviderFlags::Exclusive);
 
     auto defaultVp = getDefaultValueProvider();
     throwIf<ExceptionType::MissingPropertyDefaultValueProvider>(!defaultVp);
@@ -94,69 +234,37 @@ void Property::reset()
 
 PropertyValueProviderSharedPtr Property::getDefaultValueProvider() const
 {
-    auto findDefaultVP = [](auto& vp)
-    {
-        return vp && vp->hasFlags(ValueProviderFlags::Default);
-    };
-    auto idx = m_valueProviders.findIf(findDefaultVP);
-    if (idx)
-    {
-        return m_valueProviders[*idx];
-    }
-    return nullptr;
+    lock_guard lock(const_cast<Property&>(*this));
+    return d_func()->m_defaultValueProvider;
 }
 
 PropertyValueProviderSharedPtr Property::getExclusiveValueProvider() const
 {
-    auto findDefaultVP = [](auto& vp)
-    {
-        return (vp && vp->hasFlags(ValueProviderFlags::Exclusive));
-    };
-    auto idx = m_valueProviders.findIf(findDefaultVP);
-    if (idx)
-    {
-        return m_valueProviders[*idx];
-    }
-    return nullptr;
-}
+    lock_guard lock(const_cast<Property&>(*this));
+    D_PTR(Property);
 
-void Property::addValueProvider(PropertyValueProviderSharedPtr vp)
-{
-    throwIf<ExceptionType::PropertyHasDefaultValueProvider>(getDefaultValueProvider() && vp && vp->hasFlags(ValueProviderFlags::Default));
-    lock_guard lock(*this);
-    if (isReadOnly())
-    {
-        FATAL(m_valueProviders.empty(), "Only default value provider is allowed on read-only properties")
-    }
-
-    lock_guard vpLock(m_valueProviders);
-    m_valueProviders.append(vp);
-}
-
-void Property::removeValueProvider(PropertyValueProviderSharedPtr vp)
-{
-    lock_guard lock(*this);
-    lock_guard lockVp(m_valueProviders);
-    auto idx = m_valueProviders.find(vp);
-    if (idx)
-    {
-        m_valueProviders[*idx].reset();
-    }
+    return (d->m_defaultValueProvider && d->m_defaultValueProvider->hasFlags(ValueProviderFlags::Exclusive))
+            ? d->m_defaultValueProvider
+            : nullptr;
 }
 
 void Property::detachValueProviders(ValueProviderFlags flags)
 {
-    FlagScope<true> silentLock(m_silentMode);
-
-    lock_guard vpLock(m_valueProviders);
-    auto detacher = [&flags](auto vp)
+    D_PTR(Property);
+    SignalBlocker blockChange(changed);
+    for (auto pl = d->m_valueProviders; pl;)
     {
-        if (vp->getFlags() == flags)
+        if (pl->getFlags() == flags)
         {
+            auto vp = pl;
+            pl = pl->prev;
             vp->detach();
         }
-    };
-    m_valueProviders.forEach(detacher);
+        else
+        {
+            pl = pl->prev;
+        }
+    }
 }
 
 }
