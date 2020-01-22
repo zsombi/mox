@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 bitWelder
+ * Copyright (C) 2017-2020 bitWelder
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -25,23 +25,26 @@
 #include <mox/property/property_type.hpp>
 #include <mox/signal/signal.hpp>
 
-#include <mox/property/property_value_provider.hpp>
-#include <vector>
-
 namespace mox
 {
 
-/// The Property class provides the primitives for the property handling in Mox. To declare a property
-/// for your class, use PropertyDecl<> template.
+class Binding;
+using BindingSharedPtr = std::shared_ptr<Binding>;
+
+/// The Property class provides the primitives for the property handling in Mox.
 ///
-/// Properties do not hold the value. They use value providers to maintain the default and actual values
-/// of the property. These values of the value providers are called local values. Each property has a
-/// default value provider which maintains the default value of the property.
+/// Mox provides two types of properties: read-write, or writable properties, and read-only properties.
+/// Each property type has a change signal included, which reports value changes of the property.
 ///
-/// A property can have multiple value providers, and only one of those can be active at a time, and
-/// only the default value provider can reset the property to the default value.
-/// \see PropertyDecl<>, PropertyValueProvider
-struct PropertyPrivate;
+/// Properties store the value using AbstractPropertyData. For read-only properties, you can specify
+/// your own property data provider so you can update the property value. Calling the setter on read-only
+/// properties throws exception.
+///
+/// You can change the value of a writable property by calling the setter of the property, or by adding
+/// bindings to the property. Bindings provide automatic property value updates. A property can hold
+/// several bindings, but only one of those is enabled at a time.
+/// \see WritableProperty<>, ReadOnlyProperty<>, Binding, PropertyBinding, ExpressionBinding
+class PropertyPrivate;
 class MOX_API Property : public SharedLock<ObjectLock>
 {
     DECLARE_PRIVATE_PTR(Property)
@@ -55,88 +58,108 @@ public:
     virtual ~Property();
 
     /// Returns the read-only state of the property.
+    /// \return The read-only state of the property.
     bool isReadOnly() const;
 
-    /// Property getter, returns the property value as a variant. The property value is the local value
-    /// of the active value provider.
+    /// Property getter, returns the property value as a variant.
     /// \return The property value as variant.
     Variant get() const;
 
-    /// Property setter, sets the property value from a variant. When called, it silently detaches all
-    /// the attached value providers, except the default value priovider, and sets the local value of
-    /// the default value provider.
+    /// Property setter, sets the property value from a variant. Removes the discardable bindings.
+    /// \param value The property value to set.
     void set(const Variant& value);
 
-    /// Resets the property value to the default. When called, it silently detaches all the attached
-    /// value providers but the default value provider, and resets the default value provider to the
-    /// default value.
+    /// Resets the property value to the default. All property bindings are removed.
     void reset();
 
-    /// Gets the default value provider of the property.
-    PropertyValueProviderSharedPtr getDefaultValueProvider() const;
-    /// Returns the property value provider that exclusively provides the property value.
-    PropertyValueProviderSharedPtr getExclusiveValueProvider() const;
+    /// Bindings
+    /// \{
+    /// Adds a binding to the property. The binding becomes the active binding of the property.
+    /// \property binding The binding to add.
+    void addBinding(BindingSharedPtr binding);
+
+    /// Removes the binding from the property. If the binding was the active binding of the property,
+    /// the next binding in the binding stack is activated.
+    /// \param binding The binding to remove.
+    void removeBinding(Binding& binding);
+
+    /// Returns the current binding of the property.
+    /// \return the current binding, nullptr if the property has no bindings.
+    BindingSharedPtr getCurrentBinding();
+    /// \}
 
 protected:
     /// Constructor.
     explicit Property(Instance host, PropertyType& type, AbstractPropertyData& data);
 
-    /// Detaches the value providers which satisfy the flags.
-    void detachValueProviders(ValueProviderFlags flags);
+    /// Returns the data provider of the property.
+    AbstractPropertyData* getDataProvider() const;
 
 private:
     Property() = delete;
     DISABLE_COPY_OR_MOVE(Property)
 };
 
-/// Declare a property in your class using this class. The template defines the default value provider
-/// for the property. You can use this value provider to derive your default value providers, or any
-/// value provider for the property.
-/// \tparam ValueType The value type of the property.
+/// Declare a read-only property in your class using this template class. You must define the property
+/// data provider which you can use to update the value of the property. Derive the property data provider
+/// using PropertyData<> template.
 template <typename ValueType>
-class PropertyDecl : protected PropertyData<ValueType>, public Property
+class ReadOnlyProperty : public Property
 {
     using DataType = PropertyData<ValueType>;
-    using ThisType = PropertyDecl<ValueType>;
+    using ThisType = ReadOnlyProperty<ValueType>;
 
 public:
-
-    /// Construct a property with a host, type and default value. Create read-write properties with
-    /// this constructor.
+    /// Constructs the property with the host, type and data provider. The data provider holds the default
+    /// value of the property.
     /// \tparam PropertyHost The type of the class that hosts the property.
     /// \param host The host of the property.
     /// \param type The reference to the PropertyType that describes the property.
-    /// \param defaultValue The default value of the property.
-    template <class PropertyHost>
-    explicit PropertyDecl(PropertyHost& host, PropertyType& type, const ValueType& defaultValue)
-        : DataType(defaultValue)
-        , Property(&host, type, *this)
+    /// \param dataProvider The default value of the property.
+    template <class PropertyHost, class DataProvider>
+    explicit ReadOnlyProperty(PropertyHost& host, PropertyType& type, DataProvider& dataProvider)
+        : Property(&host, type, dataProvider)
     {
-        if (!isReadOnly())
-        {
-            using VP = DefaultValueProvider<ValueType>;
-            auto defvp = make_polymorphic_shared<PropertyValueProvider, VP>(defaultValue);
-            defvp->attach(*this);
-        }
-    }
-
-    /// Construct a property with a custom \a defaultValueProvider.
-    /// \tparam PropertyHowt The type of the class that hosts the property.
-    /// \param host The host of the property.
-    /// \param type The reference to the PropertyType that describes the property.
-    /// \param defaultValueProvider The default value provider of the property.
-    template <class PropertyHost, class DefValueProvider>
-    explicit PropertyDecl(PropertyHost& host, PropertyType& type, std::shared_ptr<DefValueProvider> defaultValueProvider)
-        : Property(&host, type, static_cast<AbstractPropertyData&>(*this))
-    {
-        throwIf<ExceptionType::MissingPropertyDefaultValueProvider>(!defaultValueProvider || !defaultValueProvider->hasFlags(ValueProviderFlags::Default));
-        defaultValueProvider->attach(*this);
+        static_assert(std::is_base_of_v<DataType, DataProvider>, "The data provider must be derived from PropertyData<>");
     }
 
     /// Cast opertator, the property getter.
     operator ValueType() const
     {
-        return this->getValue();
+        auto data = static_cast<DataType*>(getDataProvider());
+        return data->getValue();
+    }
+};
+
+/// Declare a writable property in your class using this template class. The template defines the property
+/// data provider for the property. You can use this value provider to derive your default value providers, or any
+/// value provider for the property.
+/// \tparam ValueType The value type of the property.
+template <typename ValueType>
+class WritableProperty : protected PropertyData<ValueType>, public Property
+{
+    using DataType = PropertyData<ValueType>;
+    using ThisType = WritableProperty<ValueType>;
+
+public:
+
+    /// Construct a property with a host, type and default value.
+    /// \tparam PropertyHost The type of the class that hosts the property.
+    /// \param host The host of the property.
+    /// \param type The reference to the PropertyType that describes the property.
+    /// \param defaultValue The default value of the property.
+    template <class PropertyHost>
+    explicit WritableProperty(PropertyHost& host, PropertyType& type, const ValueType& defaultValue = ValueType())
+        : DataType(defaultValue)
+        , Property(&host, type, *this)
+    {
+    }
+
+    /// Cast opertator, the property getter.
+    operator ValueType() const
+    {
+        auto dataProvider = static_cast<DataType*>(getDataProvider());
+        return dataProvider->getValue();
     }
     /// Property setter.
     /// \param value The value to set.

@@ -86,18 +86,12 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "Tye RTTI has no metatype registered";
         case ExceptionType::BadTypeConversion:
             return "No converter or faulty metatype conversion.";
-        case ExceptionType::MissingPropertyDefaultValueProvider:
-            return "No default value provider set for the property!";
         case ExceptionType::AttempWriteReadOnlyProperty:
             return "Attempt writing a read-only property";
-        case ExceptionType::ValueProviderNotAttached:
+        case ExceptionType::BindingNotAttached:
             return "The property value provider is not attached.";
-        case ExceptionType::ValueProviderAlreadyAttached:
+        case ExceptionType::BindingAlreadyAttached:
             return "The property value provider is already attached.";
-        case ExceptionType::PropertyHasDefaultValueProvider:
-            return "The property already has default value provider attached.";
-        case ExceptionType::PropertyHasExclusiveValueProvider:
-            return "The property has an exclusive value provider.";
     }
     return nullptr;
 }

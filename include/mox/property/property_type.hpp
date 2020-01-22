@@ -36,7 +36,7 @@ enum class PropertyAccess
 {
     /// Identifies a read-only property.
     ReadOnly,
-    /// Identifies a read-write proeprty.
+    /// Identifies a read-write property.
     ReadWrite
 };
 
@@ -75,7 +75,7 @@ public:
     /// \param instance The instane the property is declared.
     /// \param value The variant with the value to set.
     /// \return If the property is not declared on the instance, or the value is not valid for
-    /// the proeprty, returns \e false, otherwise \e true.
+    /// the property, returns \e false, otherwise \e true.
     bool set(Instance instance, const Variant& value) const;
 
     /// Returns the signature of the property.

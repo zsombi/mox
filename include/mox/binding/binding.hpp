@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 bitWelder
+ * Copyright (C) 2017-2020 bitWelder
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -20,44 +20,94 @@
 #define BINDING_HPP
 
 #include <mox/property/property.hpp>
-#include <mox/property/property_value_provider.hpp>
 
 namespace mox
 {
 
+class Property;
+class BindingGroup;
+using BindingGroupSharedPtr = std::shared_ptr<BindingGroup>;
+
 class Binding;
 using BindingSharedPtr = std::shared_ptr<Binding>;
 
-/// Binding class. Provides the interface for property bindings.
-class MOX_API Binding : public PropertyValueProvider
+class BindingPrivate;
+/// Binding class. Provides the interface for bindings on properties. You can create your own binding
+/// by deriving from this class, and implement the evaluate() method. In this method you give a value
+/// to the property you attach this binding. The property a binding is attached is called the binding
+/// target.
+///
+/// Mox has two types of bindings: permanent and discardable bindings. Permanent bindings survive
+/// write operation on the target property, whereas discardable properties are detached from the target
+/// property on write.
+///
+/// When a binding is disabled, the binding is excluded from the automatic evaluation. When a binding
+/// is re-enabled, the binding restores the state of the target property to the state preserved by the
+/// binding, by re-evaluating the binding. You can control this behavior by disabling the feature on
+/// the binding. You can disable the feature by calling setEvaluateOnEnabled() method.
+class MOX_API Binding : public std::enable_shared_from_this<Binding>
 {
-public:
-    /// Evaluates the binding. This is a binding specific action that updates the target
-    /// property of the binding.
-    virtual void evaluate() = 0;    
+    DECLARE_PRIVATE(Binding)
 
-    /// \name Binding functions
-    /// \{
-    /// Creates a property binding between a set of properties. If all the properties are writable, the binding
-    /// is a two-way binding. If one of the properties is read-only, the binding is one way only, and it
-    /// is attached only to the writable property. If there are more than one read-only properties specified,
-    /// the binding fails. The order of the properties are taken so that the left one is the source of the right
-    /// one.
-    /// \param properties The list of properties to bind.
-    /// \return The property binding handler on success, nullptr on failure.
-    template <ValueProviderFlags Flags = ValueProviderFlags::Generic, class... Prop>
-    static BindingSharedPtr create(Prop&... properties)
-    {
-        std::array<Property*, sizeof...(Prop)> props = {{&properties...}};
-        return bindProperties(std::vector<Property*>(props.begin(), props.end()), Flags);
-    }
-    /// \}
+public:
+    /// Destructor.
+    virtual ~Binding();
+
+    /// Evaluates the binding. You can override this method to provide the value for the target of the
+    /// binding.
+    virtual void evaluate() = 0;
+
+    /// Returns the attached state of the binding. A binding is attached when it has a target property.
+    /// \return If the binding is attached, returns \e true, otherwise \e false.
+    bool isAttached() const;
+
+    /// Returns the permanent state of the binding.
+    /// \return If the binding is permanent, returns \e true, otherwise \e false.
+    bool isPermanent() const;
+
+    /// Returns the enabled state of the binding.
+    /// \return If the binding is permanent, returns \e true, otherwise \e false.
+    bool isEnabled() const;
+
+    /// Changes the enabled state of the binding.
+    /// \param enabled The enabled state of the property.
+    void setEnabled(bool enabled);
+
+    /// Returns the state of the evaluate-on-enabled feature of the binding.
+    /// \return If the evaluate-on-enabled is on, returns \e true, otherwise returns \e false.
+    bool doesEvaluateOnEnabled() const;
+
+    /// Changes the evaluate-on-enabled feature of the binding.
+    /// \param doEvaluate If the feature is required, set \e true, otherwise set \e false.
+    void setEvaluateOnEnabled(bool doEvaluate);
+
+    /// Returns the target property of the binding.
+    /// \return If the binding is attached, returns the target property of the binding. If the property is
+    /// detached, returns \e nullptr.
+    Property* getTarget() const;
+
+    /// Detaches the binding from the target. If the binding is already detached, the calling this method
+    /// has no effect.
+    void detach();
+
+    /// Returns the group where this binding belongs to. If the binding has no group, the binding is solitaire.
+    /// \return The binding group of this binding.
+    BindingGroupSharedPtr getBindingGroup();
 
 protected:
     /// Constructor.
-    explicit Binding(ValueProviderFlags flags = ValueProviderFlags::Generic);
+    explicit Binding(bool permanent);
+    /// PIMPL constructor.
+    explicit Binding(pimpl::d_ptr_type<BindingPrivate> dd);
 
-    static BindingSharedPtr bindProperties(std::vector<Property*> properties, ValueProviderFlags flags);
+    /// Overridable method called when the binding is attached to the target property.
+    virtual void onAttached() {}
+    /// Overridable method called when the binding is detached from the target.
+    virtual void onDetached() {}
+    /// Overridable method called when the binding's enabled state is changed.
+    virtual void onEnabledChanged() {}
+
+    pimpl::d_ptr_type<BindingPrivate> d_ptr;
 };
 
 } // mox

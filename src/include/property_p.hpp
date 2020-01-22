@@ -22,14 +22,19 @@
 #include <mox/property/property.hpp>
 #include <mox/config/pimpl.hpp>
 
+#include <unordered_set>
+
 namespace mox
 {
 
-struct PropertyPrivate : PimplHelpers<Property, PropertyPrivate>
-{
-    DECLARE_PUBLIC(Property)
-    thread_local static inline Property* current = nullptr;
+class BindingSubscriber;
 
+class PropertyPrivate
+{
+public:
+    DECLARE_PUBLIC(Property)
+
+    static inline Property* current = nullptr;
     class Scope
     {
         Property* backup = nullptr;
@@ -45,36 +50,31 @@ struct PropertyPrivate : PimplHelpers<Property, PropertyPrivate>
         }
     };
 
-    PropertyValueProviderSharedPtr m_valueProviders;
-    PropertyValueProviderSharedPtr m_defaultValueProvider;
+    using SubscriberCollection = std::unordered_set<BindingSharedPtr>;
 
+    SubscriberCollection bindingSubscribers;
+    BindingSharedPtr bindingsHead;
     /// The p-object.
     Property* p_ptr;
     /// The property data.
-    AbstractPropertyData& m_data;
+    AbstractPropertyData& dataProvider;
     /// The type of the property.
-    PropertyType* m_type = nullptr;
+    PropertyType* type = nullptr;
     /// The host object of the property.
-    Instance m_host;
-    /// Activation lock flag.
-    bool m_activating = false;
+    Instance host;
 
     /// Constructor.
     explicit PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, Instance host);
-    /// Attaches a value provider to the property. When attached, the value provider is appended to
-    /// the value providers' list.
-    void addValueProvider(PropertyValueProviderSharedPtr vp);
-    /// Detaches a value provider from the property. When detached, the value provider is removed from
-    /// the property.
-    /// \return The value provider to enable, nullptr if no value provider has to be enabled.
-    PropertyValueProviderSharedPtr removeValueProvider(PropertyValueProviderSharedPtr vp);
 
-    /// Activates the value provider. The value provider must be set as enabled. The last enabled value provider
-    /// is disabled.
-    void activateValueProvider(PropertyValueProviderSharedPtr vp);
+    void accessed();
+    void notifyChanges();
+    void clearAllSubscribers();
+    void clearBindings();
+    void removeNonPermanentBindings();
 
-    /// Updates the value of the property.
-    void update(const Variant& value);
+    void eraseBinding(Binding& binding);
+    void addBinding(BindingSharedPtr binding);
+    void activateBinding(Binding& binding);
 };
 
 }

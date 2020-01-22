@@ -20,153 +20,169 @@
 #include <property_p.hpp>
 #include <mox/property/property.hpp>
 #include <mox/config/error.hpp>
+#include <mox/binding/binding.hpp>
+
+#include <binding_p.hpp>
 
 namespace mox
 {
 
+void AbstractPropertyData::accessed() const
+{
+    auto pp = PropertyPrivate::get(*m_property);
+    const_cast<PropertyPrivate*>(pp)->accessed();
+}
+
+void AbstractPropertyData::updateData(const Variant& newValue)
+{
+    if (newValue == getData())
+    {
+        return;
+    }
+    else
+    {
+        // Use this syntax to benefit the scope for data setting time only
+        lock_guard lock(*m_property);
+        setData(newValue);
+    }
+
+    auto pp = PropertyPrivate::get(*m_property);
+    pp->notifyChanges();
+
+    m_property->changed.activate(Callable::ArgumentPack(newValue));
+}
+
+
 PropertyPrivate::PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, Instance host)
     : p_ptr(&p)
-    , m_data(data)
-    , m_type(&type)
-    , m_host(host)
+    , dataProvider(data)
+    , type(&type)
+    , host(host)
 {
 }
 
-void PropertyPrivate::addValueProvider(PropertyValueProviderSharedPtr vp)
+void PropertyPrivate::accessed()
 {
-    FATAL(vp, "Null property value provider.")
-
-    P_PTR(Property);
-    // Only one default value provider is allowed. A second default VP is allowed only if it is exclusive too.
-    throwIf<ExceptionType::PropertyHasDefaultValueProvider>(p->getDefaultValueProvider() && vp->hasFlags(ValueProviderFlags::Default) && !vp->hasFlags(ValueProviderFlags::Exclusive));
-    // Only one exclusive value provider is allowed.
-    throwIf<ExceptionType::PropertyHasExclusiveValueProvider>(vp->hasFlags(ValueProviderFlags::Exclusive) && p->getExclusiveValueProvider());
-
-    lock_guard lock(*p);
-    if (p->isReadOnly())
+    P();
+    if (current && current != p)
     {
-        FATAL(!m_valueProviders, "Only default value provider is allowed on read-only properties")
+        auto dCurrent = PropertyPrivate::get(*current);
+        FATAL(dCurrent->bindingsHead, "Unrecoverable error on binding evaluation")
+
+        bindingSubscribers.insert(dCurrent->bindingsHead);
+
+        auto currentBinding = BindingPrivate::get(*dCurrent->bindingsHead);
+        currentBinding->addDependency(*p);
     }
+}
 
-    bool isDefaultVP = vp->hasFlags(ValueProviderFlags::Default) || vp->hasFlags(ValueProviderFlags::Exclusive);
-    if (isDefaultVP)
+void PropertyPrivate::notifyChanges()
+{
+    auto copy = bindingSubscribers;
+    for (auto subscriber : copy)
     {
-        // Exclusive value providers replace default value providers.
-        if (m_defaultValueProvider)
+        if (!subscriber->isEnabled())
         {
-            ScopeRelock relock(*p);
-            m_defaultValueProvider->detach();
-            m_defaultValueProvider.reset();
+            continue;
         }
+        auto dSubscriber = BindingPrivate::get(*subscriber);
+        dSubscriber->evaluateBinding();
+    }
+}
+
+void PropertyPrivate::clearAllSubscribers()
+{
+    while (!bindingSubscribers.empty())
+    {
+        auto subscriber = *bindingSubscribers.begin();
+        // The property is dying, so the binding subscribed to it shall too.
+        subscriber->detach();
+    }
+    bindingSubscribers.clear();
+}
+
+void PropertyPrivate::clearBindings()
+{
+    P();
+    // Block property change signal activation.
+    SignalBlocker block(p->changed);
+
+    while (bindingsHead)
+    {
+        auto keepAlive = bindingsHead;
+        auto pBinding = BindingPrivate::get(*bindingsHead);
+
+        eraseBinding(*bindingsHead);
+        pBinding->detachFromTarget();
+    }
+}
+
+void PropertyPrivate::removeNonPermanentBindings()
+{
+    P();
+    SignalBlocker block(p->changed);
+
+    for (auto pl = bindingsHead; pl;)
+    {
+        if (pl->isPermanent())
+        {
+            pl = BindingPrivate::get(*pl)->prev;
+            continue;
+        }
+
+        auto pd = pl;
+        // advance pl
+        pl = BindingPrivate::get(*pl)->prev;
+
+        auto ppd = BindingPrivate::get(*pd);
+
+        // Detach from the binding list.
+        eraseBinding(*pd);
+        ppd->detachFromTarget();
     }
 
-    if (!m_valueProviders)
+    // Mark the top binding as enabled, silently.
+    if (bindingsHead && bindingsHead->isAttached())
     {
-        m_valueProviders = vp;
-        m_defaultValueProvider = vp;
+        BindingPrivate::get(*bindingsHead)->enabled = true;
+    }
+}
+
+void PropertyPrivate::eraseBinding(Binding &binding)
+{
+    auto pBinding = BindingPrivate::get(binding);
+    if (bindingsHead.get() == &binding)
+    {
+        bindingsHead = pBinding->prev;
+        if (bindingsHead)
+        {
+            BindingPrivate::get(*bindingsHead)->next.reset();
+        }
     }
     else
     {
-        // Insert the value provider right after the active one.
-        vp->prev = m_valueProviders->prev;
-        vp->next = m_valueProviders;
-        if (vp->prev)
+        if (pBinding->prev)
         {
-            vp->prev->next = vp;
+            BindingPrivate::get(*pBinding->prev)->next = pBinding->next;
         }
-        m_valueProviders->prev = vp;
-
-        if (!m_defaultValueProvider && isDefaultVP)
+        if (pBinding->next)
         {
-            m_defaultValueProvider = vp;
+            BindingPrivate::get(*pBinding->next)->prev = pBinding->prev;
         }
     }
+    pBinding->prev.reset();
+    pBinding->next.reset();
 }
 
-PropertyValueProviderSharedPtr PropertyPrivate::removeValueProvider(PropertyValueProviderSharedPtr vp)
+void PropertyPrivate::addBinding(BindingSharedPtr binding)
 {
-    P_PTR(Property);
-    bool wasEnabled = vp->isEnabled();
-    vp->setEnabled(false);
-
-    lock_guard lock(*p);
-
-    if (m_valueProviders == vp)
+    BindingPrivate::get(*binding)->prev = bindingsHead;
+    if (bindingsHead)
     {
-        m_valueProviders = vp->prev;
-        if (m_valueProviders)
-        {
-            m_valueProviders->next.reset();
-        }
+        BindingPrivate::get(*bindingsHead)->next = binding;
     }
-    else
-    {
-        if (vp->prev)
-        {
-            vp->prev->next = vp->next;
-        }
-        if (vp->next)
-        {
-            vp->next->prev = vp->prev;
-        }
-    }
-    vp->prev.reset();
-    vp->next.reset();
-
-    if (wasEnabled && m_valueProviders)
-    {
-        return m_valueProviders;
-    }
-    return nullptr;
+    bindingsHead = binding;
 }
-
-void PropertyPrivate::activateValueProvider(PropertyValueProviderSharedPtr vp)
-{
-    if (m_valueProviders == vp && vp->isEnabled())
-    {
-        return;
-    }
-
-    if (!vp)
-    {
-        m_valueProviders->setEnabled(true);
-        return;
-    }
-
-    // remove the vp from the list
-    if (vp->prev)
-    {
-        vp->prev->next = vp->next;
-    }
-    if (vp->next)
-    {
-        vp->next->prev = vp->prev;
-    }
-    vp->next.reset();
-    vp->prev.reset();
-
-    // disable head
-    m_valueProviders->setEnabled(false);
-
-    // put the vp as head
-    vp->prev = m_valueProviders;
-    m_valueProviders->next = vp;
-    m_valueProviders = vp;
-}
-
-void PropertyPrivate::update(const Variant &value)
-{
-    {
-        lock_guard lock(*p_func());
-        if (value == m_data.getData())
-        {
-            return;
-        }
-        m_data.setData(value);
-    }
-    p_func()->changed.activate(Callable::ArgumentPack(value));
-}
-
 
 
 Property::Property(Instance host, PropertyType& type, AbstractPropertyData& data)
@@ -174,97 +190,126 @@ Property::Property(Instance host, PropertyType& type, AbstractPropertyData& data
     , d_ptr(pimpl::make_d_ptr<PropertyPrivate>(*this, data, type, host))
     , changed(host, type.getChangedSignalType())
 {
-    d_func()->m_type->addPropertyInstance(*this);
+    D();
+    d->dataProvider.m_property = this;
+    d->type->addPropertyInstance(*this);
 }
 
 Property::~Property()
 {
-    // Detach the value providers.
-    D_PTR(Property);
-    // Block property change signal activation.
-    changed.setBlocked(true);
-    if (d->m_valueProviders)
-    {
-        d->m_valueProviders->setEnabled(false);
-    }
-    while (d->m_valueProviders)
-    {
-        d->m_valueProviders->detach();
-    }
+    D();
+    d->clearBindings();
+    d->clearAllSubscribers();
+    d->type->removePropertyInstance(*this);
+}
 
-    d->m_type->removePropertyInstance(*this);
+AbstractPropertyData* Property::getDataProvider() const
+{
+    return &d_func()->dataProvider;
 }
 
 bool Property::isReadOnly() const
 {
-    return d_func()->m_type->getAccess() == PropertyAccess::ReadOnly;
+    return d_func()->type->getAccess() == PropertyAccess::ReadOnly;
 }
 
 Variant Property::get() const
 {
     lock_guard lock(const_cast<Property&>(*this));
-    return d_func()->m_data.getData();
+    return d_func()->dataProvider.getData();
 }
 
 void Property::set(const Variant& value)
 {
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
-    // Detach only generic value providers on property write.
-    detachValueProviders(ValueProviderFlags::Generic);
+    D();
+    // Detach bindings that are not permanent.
+    d->removeNonPermanentBindings();
 
-    auto exclusiveVp = getExclusiveValueProvider();
-    if (exclusiveVp)
-    {
-        return;
-    }
     // Set the value.
-    d_func()->update(value);
+    d->dataProvider.updateData(value);
 }
 
 void Property::reset()
 {
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
-    detachValueProviders(ValueProviderFlags::Generic);
-    detachValueProviders(ValueProviderFlags::KeepOnWrite);
 
-    auto defaultVp = getDefaultValueProvider();
-    throwIf<ExceptionType::MissingPropertyDefaultValueProvider>(!defaultVp);
-    set(defaultVp->getLocalValue());
+    D();
+    // Detach all bindings, and restore the default value.
+    d->clearBindings();
+    d->dataProvider.resetToDefault();
 }
 
-PropertyValueProviderSharedPtr Property::getDefaultValueProvider() const
+void Property::addBinding(BindingSharedPtr binding)
 {
-    lock_guard lock(const_cast<Property&>(*this));
-    return d_func()->m_defaultValueProvider;
-}
-
-PropertyValueProviderSharedPtr Property::getExclusiveValueProvider() const
-{
-    lock_guard lock(const_cast<Property&>(*this));
-    D_PTR(Property);
-
-    return (d->m_defaultValueProvider && d->m_defaultValueProvider->hasFlags(ValueProviderFlags::Exclusive))
-            ? d->m_defaultValueProvider
-            : nullptr;
-}
-
-void Property::detachValueProviders(ValueProviderFlags flags)
-{
-    D_PTR(Property);
-    SignalBlocker blockChange(changed);
-    for (auto pl = d->m_valueProviders; pl;)
+    auto pBinding = BindingPrivate::get(*binding);
+    if (pBinding->state == BindingState::Attaching)
     {
-        if (pl->getFlags() == flags)
-        {
-            auto vp = pl;
-            pl = pl->prev;
-            vp->detach();
-        }
-        else
-        {
-            pl = pl->prev;
-        }
+        return;
     }
+
+    throwIf<ExceptionType::InvalidArgument>(!binding);
+    throwIf<ExceptionType::BindingAlreadyAttached>(binding->isAttached());
+
+    D();
+    if (d->bindingsHead)
+    {
+        d->bindingsHead->setEnabled(false);
+    }
+
+    d->addBinding(binding);
+    pBinding->attachToTarget(*this);
+
+    binding->setEnabled(true);
+
+    if (!pBinding->evaluateOnEnabled)
+    {
+        pBinding->evaluateBinding();
+    }
+}
+
+void Property::removeBinding(Binding& binding)
+{
+    auto pBinding = BindingPrivate::get(binding);
+    if (pBinding->state == BindingState::Detaching)
+    {
+        return;
+    }
+
+    throwIf<ExceptionType::InvalidArgument>(!binding.isAttached());
+
+    D();
+
+    bool wasEnabled = binding.isEnabled();
+    auto keepAlive = binding.shared_from_this();
+
+    d->eraseBinding(binding);
+    pBinding->detachFromTarget();
+
+    if (wasEnabled && d->bindingsHead)
+    {
+        d->bindingsHead->setEnabled(true);
+    }
+}
+
+BindingSharedPtr Property::getCurrentBinding()
+{
+    return d_func()->bindingsHead;
+}
+
+// Moves the binding to the front.
+void PropertyPrivate::activateBinding(Binding& binding)
+{
+    throwIf<ExceptionType::InvalidArgument>(!binding.isAttached());
+
+    if (bindingsHead.get() == &binding)
+    {
+        return;
+    }
+
+    bindingsHead->setEnabled(false);
+    eraseBinding(binding);
+    addBinding(binding.shared_from_this());
 }
 
 }

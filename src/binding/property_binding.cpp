@@ -1,0 +1,82 @@
+/*
+ * Copyright (C) 2017-2019 bitWelder
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see
+ * <http://www.gnu.org/licenses/>
+ */
+
+#include <mox/property/property.hpp>
+#include <mox/config/error.hpp>
+
+#include <binding_p.hpp>
+#include <property_p.hpp>
+
+namespace mox
+{
+
+PropertyBindingPrivate::PropertyBindingPrivate(PropertyBinding* pp, Property& source, bool permanent)
+    : BindingPrivate(pp, permanent)
+    , p_ptr(pp)
+    , source(&source)
+{
+}
+
+
+PropertyBinding::PropertyBinding(Property& source, bool permanent)
+    : Binding(pimpl::make_d_ptr<PropertyBindingPrivate>(this, source, permanent))
+{
+}
+
+void PropertyBinding::evaluate()
+{
+    if (!isEnabled() || !getTarget())
+    {
+        return;
+    }
+    D_PTR(PropertyBinding);
+    auto target = PropertyPrivate::get(*getTarget());
+    target->dataProvider.updateData(d->source->get());
+}
+
+PropertyBindingSharedPtr PropertyBinding::create(Property& source, bool permanent)
+{
+    return make_polymorphic_shared_ptr<Binding>(new PropertyBinding(source, permanent));
+}
+
+PropertyBindingSharedPtr PropertyBinding::bindPermanent(Property &target, Property &source)
+{
+    if (target.isReadOnly())
+    {
+        return nullptr;
+    }
+
+    auto binding = PropertyBinding::create(source, true);
+    target.addBinding(binding);
+    return binding;
+}
+
+PropertyBindingSharedPtr PropertyBinding::bindAutoDiscard(Property &target, Property &source)
+{
+    if (target.isReadOnly())
+    {
+        return nullptr;
+    }
+
+    auto binding = PropertyBinding::create(source, false);
+    target.addBinding(binding);
+    return binding;
+}
+
+} // namespace mox
+

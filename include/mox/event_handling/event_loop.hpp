@@ -42,7 +42,7 @@ class ThreadData;
 class MOX_API EventLoop
 {
 public:
-    /// Constructor, sets this event loop as the active event loop in teh current event
+    /// Constructor, sets this event loop as the active event loop in the current event
     /// dispatcher.
     explicit EventLoop();
     /// Destructor, removes the event loop from the event dispatcher.

@@ -49,7 +49,7 @@ public:
         static inline PropertyTypeDecl<Object, std::string, PropertyAccess::ReadWrite> ObjectNameProperty{"objectName"};
     };
 
-    PropertyDecl<std::string> objectName{*this, StaticMetaClass::ObjectNameProperty, ""};
+    WritableProperty<std::string> objectName{*this, StaticMetaClass::ObjectNameProperty, ""};
 
     /// Creates a shared pointer with Object. If a \a parent is specified, the object you create
     /// is added to this object as child. You can also add the created object to any object as

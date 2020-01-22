@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 bitWelder
+ * Copyright (C) 2017-2020 bitWelder
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -16,193 +16,171 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/binding/binding.hpp>
-
-#include <property_binding_p.hpp>
+#include <binding_p.hpp>
+#include <property_p.hpp>
+#include <mox/binding/binding_group.hpp>
 
 namespace mox
 {
 
-Binding::Binding(ValueProviderFlags flags)
-    : PropertyValueProvider(flags)
+/******************************************************************************
+ * BindingPrivate
+ */
+BindingPrivate::BindingPrivate(Binding* pp, bool permanent)
+    : p_ptr(pp)
+    , isPermanent(permanent)
 {
 }
 
-BindingSharedPtr Binding::bindProperties(std::vector<Property*> properties, ValueProviderFlags flags)
-{
-    Property* readOnlyProperty = nullptr;
-    for (auto property : properties)
-    {
-        if (property->isReadOnly())
-        {
-            if (readOnlyProperty)
-            {
-                // Cannot have more than one read-only property.
-                return nullptr;
-            }
-            readOnlyProperty = property;
-        }
-    }
-
-    if (readOnlyProperty)
-    {
-        // The read-only property drives the binding, and the binding is one-way.
-        auto binding = make_polymorphic_shared<Binding, PropertyBinding>(flags, *readOnlyProperty);
-        auto pb = binding;
-        // All the other bindings are linked.
-        for (auto it = properties.begin(); it != properties.end(); ++it)
-        {
-            auto property = *it;
-            if (property == readOnlyProperty)
-            {
-                continue;
-            }
-            pb->attach(*property);
-            // Create the next binding, until we reach the last property.
-            if ((it + 1) != properties.end())
-            {
-                auto next = make_polymorphic_shared<Binding, PropertyBinding>(flags, *property);
-                pb->link(*next);
-                pb = next;
-            }
-        }
-
-        return binding;
-    }
-    else
-    {
-        // Link all the bindings, and loop the last binding to the first.
-        auto it = properties.begin();
-        auto binding = make_polymorphic_shared<Binding, PropertyBinding>(flags, **it);
-        auto pb = binding;
-        for (++it; it != properties.end(); ++it)
-        {
-            auto property = *it;
-            pb->attach(*property);
-            // Create the next binding.
-            auto next = make_polymorphic_shared<Binding, PropertyBinding>(flags, *property);
-            pb->link(*next);
-            pb = next;
-        }
-        // Attach the last binding to the first property.
-        pb->attach(**properties.begin());
-
-        return binding;
-    }
-}
-
-
-PropertyBinding::Links::Links()
-    : bindings({nullptr, nullptr})
+BindingPrivate::~BindingPrivate()
 {
 }
 
-bool PropertyBinding::Links::link(PropertyBinding& binding)
+void BindingPrivate::attachToTarget(Property& target)
 {
-    if (std::find(bindings.begin(), bindings.end(), &binding) != bindings.end())
-    {
-        return false;
-    }
+    P_PTR(Binding);
+    throwIf<ExceptionType::BindingAlreadyAttached>(p->isAttached());
 
-    if (!bindings[0])
-    {
-        bindings[0] = &binding;
-    }
-    else if (!bindings[1])
-    {
-        bindings[1] = &binding;
-    }
-    else
-    {
-        FATAL(false, "Attempt adding the 3rd link to a property binding.")
-    }
-
-    return true;
+    state = BindingState::Attaching;
+    this->target = &target;
+    p->onAttached();
+    state = BindingState::Attached;
 }
 
-bool PropertyBinding::Links::unlink(PropertyBinding& binding)
+void BindingPrivate::detachFromTarget()
 {
-    auto it = std::find(bindings.begin(), bindings.end(), &binding);
-    if (it == bindings.end())
+    P_PTR(Binding);
+    throwIf<ExceptionType::BindingNotAttached>(!p->isAttached());
+
+    state = BindingState::Detaching;
+    p->onDetached();
+    clearDependencies();
+
+    if (group)
     {
-        return false;
-    }
-    *it = &binding;
-    return true;
-}
-
-void PropertyBinding::Links::reset()
-{
-    for (auto binding : bindings)
-    {
-        if (binding)
-        {
-            binding->detach();
-        }
-    }
-    bindings.fill(nullptr);
-}
-
-bool PropertyBinding::Links::empty() const
-{
-    return std::find_if(bindings.begin(), bindings.end(), [](auto binding) { return binding != nullptr; }) == bindings.end();
-}
-
-
-PropertyBinding::PropertyBinding(ValueProviderFlags flags, Property& source)
-    : Binding(flags)
-    , m_source(&source)
-{
-}
-
-void PropertyBinding::link(PropertyBinding& binding)
-{
-    if (m_linkedBindings.link(binding))
-    {
-        binding.link(*this);
-    }
-}
-
-void PropertyBinding::unlink(PropertyBinding& binding)
-{
-    if (m_linkedBindings.unlink(binding))
-    {
-        binding.unlink(*this);
-    }
-}
-
-void PropertyBinding::onAttached()
-{
-    m_connection = m_source->changed.connect(*this, &PropertyBinding::evaluate);
-    FATAL(m_connection, "Binding connection failed.")
-}
-
-void PropertyBinding::onDetached()
-{
-    if (m_connection)
-    {
-        m_connection->disconnect();
-        m_connection.reset();
+        group->detach();
     }
 
-    if (!m_linkedBindings.empty())
+    target = nullptr;
+    enabled = false;
+    state = BindingState::Detached;
+}
+
+void BindingPrivate::addDependency(Property &dependency)
+{
+    dependencies.insert(&dependency);
+}
+
+void BindingPrivate::removeDependency(Property &dependency)
+{
+    dependencies.erase(&dependency);
+}
+
+void BindingPrivate::clearDependencies()
+{
+    auto psh = p_func()->shared_from_this();
+    for (auto dep : dependencies)
     {
-        m_linkedBindings.reset();
+        auto ddep = PropertyPrivate::get(*dep);
+        ddep->bindingSubscribers.erase(psh);
     }
+    dependencies.clear();
 }
 
-void PropertyBinding::onEnabledChanged()
+void BindingPrivate::evaluateBinding()
 {
-    evaluate();
-}
-
-void PropertyBinding::evaluate()
-{
-    if (!isEnabled())
+    if (!enabled)
     {
         return;
     }
-    update(m_source->get());
+
+    clearDependencies();
+    PropertyPrivate::Scope setCurrent(*target);
+    p_func()->evaluate();
+}
+
+/******************************************************************************
+ * Binding
+ */
+
+Binding::Binding(bool permanent)
+    : d_ptr(pimpl::make_d_ptr<BindingPrivate>(this, permanent))
+{
+}
+
+Binding::Binding(pimpl::d_ptr_type<BindingPrivate> dd)
+    : d_ptr(std::move(dd))
+{
+}
+
+Binding::~Binding()
+{
+//    std::cout << "Binding died" << std::endl;
+}
+
+bool Binding::isAttached() const
+{
+    return d_func()->target != nullptr;
+}
+
+bool Binding::isPermanent() const
+{
+    return d_func()->isPermanent;
+}
+
+bool Binding::isEnabled() const
+{
+    return d_func()->enabled;
+}
+void Binding::setEnabled(bool enabled)
+{
+    D();
+    if (d->enabled == enabled)
+    {
+        return;
+    }
+
+    d->enabled = enabled;
+
+    if (d->enabled && d->target)
+    {
+        PropertyPrivate::get(*d->target)->activateBinding(*this);
+    }
+
+    onEnabledChanged();
+
+    if (d->evaluateOnEnabled)
+    {
+        d->evaluateBinding();
+    }
+}
+
+bool Binding::doesEvaluateOnEnabled() const
+{
+    return d_func()->evaluateOnEnabled;
+}
+void Binding::setEvaluateOnEnabled(bool doEvaluate)
+{
+    d_func()->evaluateOnEnabled = doEvaluate;
+}
+
+Property* Binding::getTarget() const
+{
+    return d_func()->target;
+}
+
+void Binding::detach()
+{
+    if (!isAttached())
+    {
+        return;
+    }
+    d_func()->target->removeBinding(*this);
+}
+
+BindingGroupSharedPtr Binding::getBindingGroup()
+{
+    return d_func()->group;
 }
 
 } // mox

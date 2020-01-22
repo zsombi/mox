@@ -33,12 +33,9 @@ enum class ExceptionType
     AttempThreadJoinWithin,
     MetatypeNotRegistered,
     BadTypeConversion,
-    MissingPropertyDefaultValueProvider,
     AttempWriteReadOnlyProperty,
-    ValueProviderNotAttached,
-    ValueProviderAlreadyAttached,
-    PropertyHasDefaultValueProvider,
-    PropertyHasExclusiveValueProvider
+    BindingNotAttached,
+    BindingAlreadyAttached,
 };
 
 class MOX_API Exception : public std::exception
