@@ -38,20 +38,28 @@ PropertyBinding::PropertyBinding(Property& source, bool permanent)
 {
 }
 
+void PropertyBinding::initialize()
+{
+    BindingScope setCurrent(*this);
+    d_func()->source->get();
+}
+
 void PropertyBinding::evaluate()
 {
     if (!isEnabled() || !getTarget())
     {
         return;
     }
-    D_PTR(PropertyBinding);
+    D();
     auto target = PropertyPrivate::get(*getTarget());
     target->dataProvider.updateData(d->source->get());
 }
 
 PropertyBindingSharedPtr PropertyBinding::create(Property& source, bool permanent)
 {
-    return make_polymorphic_shared_ptr<Binding>(new PropertyBinding(source, permanent));
+    auto binding = make_polymorphic_shared_ptr<Binding>(new PropertyBinding(source, permanent));
+    binding->initialize();
+    return binding;
 }
 
 PropertyBindingSharedPtr PropertyBinding::bindPermanent(Property &target, Property &source)

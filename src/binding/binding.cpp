@@ -28,6 +28,8 @@ namespace mox
  */
 BindingPrivate::BindingPrivate(Binding* pp, bool permanent)
     : p_ptr(pp)
+    , enabled(false)
+    , evaluateOnEnabled(true)
     , isPermanent(permanent)
 {
 }
@@ -94,8 +96,12 @@ void BindingPrivate::evaluateBinding()
         return;
     }
 
+    RefCounter bindingLoop(bindingLoopCount);
+
+    throwIf<ExceptionType::BindingLoop>(bindingLoopCount > 1);
+
     clearDependencies();
-    PropertyPrivate::Scope setCurrent(*target);
+    BindingScope setCurrent(*p_func());
     p_func()->evaluate();
 }
 
@@ -118,9 +124,19 @@ Binding::~Binding()
 //    std::cout << "Binding died" << std::endl;
 }
 
+bool Binding::isValid() const
+{
+    return d_func()->state != BindingState::Invalid;
+}
+
 bool Binding::isAttached() const
 {
     return d_func()->target != nullptr;
+}
+
+BindingState Binding::getState() const
+{
+    return d_func()->state;
 }
 
 bool Binding::isPermanent() const
@@ -135,6 +151,11 @@ bool Binding::isEnabled() const
 void Binding::setEnabled(bool enabled)
 {
     D();
+    if (!isAttached())
+    {
+        return;
+    }
+
     if (d->enabled == enabled)
     {
         return;

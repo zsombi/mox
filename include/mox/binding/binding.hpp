@@ -31,6 +31,40 @@ using BindingGroupSharedPtr = std::shared_ptr<BindingGroup>;
 class Binding;
 using BindingSharedPtr = std::shared_ptr<Binding>;
 
+/// Scoping the current binding. Used in subscribing bindings to the properties
+/// present in a binding expression.
+struct BindingScope
+{
+    static inline Binding* currentBinding = nullptr;
+    explicit BindingScope(Binding& newCurrent)
+        : backup(currentBinding)
+    {
+        currentBinding = &newCurrent;
+    }
+    ~BindingScope()
+    {
+        currentBinding = backup;
+    }
+
+private:
+    Binding* backup = nullptr;
+};
+
+/// Enumeration representing the different states of a binding.
+enum class BindingState
+{
+    /// The binding is in process of attaching to a target.
+    Attaching,
+    /// The binding is attached to a target.
+    Attached,
+    /// The binding is in process of detaching from a target.
+    Detaching,
+    /// The binding detached from a target.
+    Detached,
+    /// The binding is invalid, due to a source property present in the binding being unavailable.
+    Invalid
+};
+
 class BindingPrivate;
 /// Binding class. Provides the interface for bindings on properties. You can create your own binding
 /// by deriving from this class, and implement the evaluate() method. In this method you give a value
@@ -57,9 +91,18 @@ public:
     /// binding.
     virtual void evaluate() = 0;
 
+    /// Checks the validity of the binding. A binding is marked invalid if a property in the binding
+    /// is destroyed, while the binding is still being attached.
+    /// \return The valid state of the binding.
+    bool isValid() const;
+
     /// Returns the attached state of the binding. A binding is attached when it has a target property.
     /// \return If the binding is attached, returns \e true, otherwise \e false.
     bool isAttached() const;
+
+    /// Returns the state of a binding.
+    /// \return The state of a binding.
+    BindingState getState() const;
 
     /// Returns the permanent state of the binding.
     /// \return If the binding is permanent, returns \e true, otherwise \e false.

@@ -29,14 +29,6 @@
 namespace mox
 {
 
-enum class BindingState
-{
-    Attaching,
-    Attached,
-    Detaching,
-    Detached
-};
-
 class BindingPrivate
 {
 public:
@@ -50,9 +42,10 @@ public:
     BindingGroupSharedPtr group;
     Property* target = nullptr;
     BindingState state = BindingState::Detached;
-    bool enabled = false;
-    bool evaluateOnEnabled = true;
-    bool isPermanent = false;
+    byte bindingLoopCount = 0;
+    bool enabled:1;
+    bool evaluateOnEnabled:1;
+    bool isPermanent:1;
 
     explicit BindingPrivate(Binding* pp, bool permanent);
     ~BindingPrivate();

@@ -64,6 +64,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding_group.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/property_binding.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/expression_binding.hpp
 
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event.hpp
@@ -117,6 +118,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding_group.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/binding/property_binding.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/binding/expression_binding.cpp
 
     # Event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event.cpp

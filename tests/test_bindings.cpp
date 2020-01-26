@@ -20,6 +20,7 @@
 #include <mox/binding/binding.hpp>
 #include <mox/binding/binding_group.hpp>
 #include <mox/binding/property_binding.hpp>
+#include <mox/binding/expression_binding.hpp>
 #include <mox/object.hpp>
 
 using namespace mox;
@@ -667,4 +668,228 @@ TEST_F(Bindings, test_assign_property_present_in_binding_breaks_binding)
     EXPECT_FALSE((*group)[0]->isAttached());
     EXPECT_FALSE((*group)[1]->isAttached());
     EXPECT_FALSE((*group)[2]->isAttached());
+}
+
+
+TEST_F(Bindings, test_expression_binding_create_permanent)
+{
+    WritableTest o1;
+    WritableTest o2(20);
+
+    auto binding = ExpressionBinding::create([&o2]() { return Variant(o2.writable + 2); }, true);
+    EXPECT_NOT_NULL(binding);
+    EXPECT_FALSE(binding->isEnabled());
+    EXPECT_FALSE(binding->isAttached());
+    EXPECT_TRUE(binding->isPermanent());
+
+    EXPECT_EQ(0, o1.writable);
+    o1.writable.addBinding(binding);
+    EXPECT_TRUE(binding->isEnabled());
+    EXPECT_TRUE(binding->isAttached());
+    EXPECT_EQ(22, o1.writable);
+
+    o2.writable = 30;
+    EXPECT_EQ(32, o1.writable);
+
+    o1.writable = 4;
+    EXPECT_EQ(4, o1.writable);
+
+    o2.writable = 3;
+    EXPECT_EQ(5, o1.writable);
+}
+
+TEST_F(Bindings, test_expression_binding_create_discardable)
+{
+    WritableTest o1;
+    WritableTest o2(20);
+
+    auto binding = ExpressionBinding::create([&o2]() { return Variant(o2.writable + 2); }, false);
+    EXPECT_NOT_NULL(binding);
+    EXPECT_FALSE(binding->isEnabled());
+    EXPECT_FALSE(binding->isAttached());
+    EXPECT_FALSE(binding->isPermanent());
+
+    EXPECT_EQ(0, o1.writable);
+    o1.writable.addBinding(binding);
+    EXPECT_TRUE(binding->isEnabled());
+    EXPECT_TRUE(binding->isAttached());
+    EXPECT_EQ(22, o1.writable);
+
+    o2.writable = 30;
+    EXPECT_EQ(32, o1.writable);
+
+    o1.writable = 4;
+    EXPECT_EQ(4, o1.writable);
+    EXPECT_FALSE(binding->isAttached());
+
+    o2.writable = 3;
+    EXPECT_EQ(4, o1.writable);
+}
+
+TEST_F(Bindings, test_expression_binding_with_one_property_expression)
+{
+    WritableTest o1;
+    WritableTest o2(20);
+
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, [&o2]() { return Variant(o2.writable * 2); });
+    EXPECT_NOT_NULL(binding);
+    EXPECT_TRUE(binding->isEnabled());
+    EXPECT_TRUE(binding->isAttached());
+    EXPECT_EQ(40, o1.writable);
+
+    o1.writable = 10;
+    EXPECT_EQ(10, o1.writable);
+    EXPECT_TRUE(binding->isAttached());
+
+    o2.writable = 40;
+    EXPECT_EQ(80, o1.writable);
+}
+
+TEST_F(Bindings, test_expression_binding_to_readonly_target_fails)
+{
+    ReadableTest o1;
+
+    EXPECT_THROW(ExpressionBinding::bindPermanent(o1.readable, []() { return Variant(2); }), Exception);
+}
+
+TEST_F(Bindings, test_expression_binding_with_multiple_properties)
+{
+    WritableTest o1;
+    WritableTest o2(2);
+    WritableTest o3(3);
+
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, [&o2, &o3]() { return Variant(o2.writable * o3.writable); });
+    EXPECT_NOT_NULL(binding);
+    EXPECT_TRUE(binding->isAttached());
+    EXPECT_EQ(6, o1.writable);
+
+    o2.writable = 10;
+    EXPECT_EQ(30, o1.writable);
+
+    o3.writable = o2.writable;
+    EXPECT_EQ(100, o1.writable);
+}
+
+TEST_F(Bindings, test_expression_binding_conditional_with_multiple_properties)
+{
+    WritableTest o1;
+    WritableTest o2(2);
+    WritableTest o3(3);
+    ReadableTest o4;
+
+    auto expression = [&o2, &o3, &o4]()
+    {
+        if (o4.readable % 2)
+        {
+            return o3.writable.get();
+        }
+        return o2.writable.get();
+    };
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
+    EXPECT_NOT_NULL(binding);
+    EXPECT_TRUE(binding->isAttached());
+    // o4 is 99, this makes o1 to get o3 value.
+    EXPECT_EQ(3, o1.writable);
+
+    // update o4 to divide by 2. this makes o1 to get o2.
+    o4.vpReadable.updateData(Variant(2));
+    EXPECT_EQ(2, o1.writable);
+}
+
+TEST_F(Bindings, test_binding_detached_and_invalid_when_source_property_dies)
+{
+    WritableTest o1(1);
+    auto binding = BindingSharedPtr();
+
+    {
+        WritableTest o2(2);
+        binding = PropertyBinding::bindPermanent(o1.writable, o2.writable);
+        EXPECT_TRUE(binding->isAttached());
+    }
+
+    EXPECT_FALSE(binding->isAttached());
+    // try to re-attach the binding to o1
+    EXPECT_THROW(o1.writable.addBinding(binding), Exception);
+}
+
+TEST_F(Bindings, test_expression_binding_detached_and_invalid_when_source_in_expression_dies)
+{
+    WritableTest o1(1);
+    WritableTest o2(5);
+    auto binding = BindingSharedPtr();
+    {
+        WritableTest o3(100);
+        binding = ExpressionBinding::bindPermanent(o1.writable, [&o2, &o3]() { return Variant(o2.writable + o3.writable); });
+        EXPECT_TRUE(binding->isAttached());
+        EXPECT_EQ(105, o1.writable);
+    }
+
+    EXPECT_FALSE(binding->isAttached());
+    // write to o2
+    o2.writable = 10;
+
+    // try to re-attach the binding to o1.
+    EXPECT_THROW(o1.writable.addBinding(binding), Exception);
+}
+
+TEST_F(Bindings, test_espression_binding_detect_binding_loop)
+{
+    WritableTest o1(1);
+    WritableTest o2(2);
+    WritableTest o3(3);
+
+    // o1 is bount to {o2 + 2}
+    ExpressionBinding::bindPermanent(o1.writable, [&o2]() { return Variant(o2.writable + 2); });
+    EXPECT_EQ(4, o1.writable);
+
+    // o3 is bount to o1
+    PropertyBinding::bindPermanent(o3.writable, o1.writable);
+    EXPECT_EQ(4, o3.writable);
+
+    // o2 is bount to o3. This closes the loop, and produces binding loop.
+    EXPECT_THROW(PropertyBinding::bindPermanent(o2.writable, o3.writable), Exception);
+}
+
+TEST_F(Bindings, test_remove_binding_from_wrong_target)
+{
+    WritableTest o1;
+    WritableTest o2;
+
+    auto b1 = PropertyBinding::bindPermanent(o1.writable, o2.writable);
+    auto b2 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
+    EXPECT_NOT_NULL(b1);
+    EXPECT_NOT_NULL(b2);
+
+    EXPECT_THROW(o1.writable.removeBinding(*b2), Exception);
+    EXPECT_THROW(o2.writable.removeBinding(*b1), Exception);
+}
+
+TEST_F(Bindings, test_property_binding_becomes_invalid_before_being_attached)
+{
+    WritableTest o1;
+    auto binding = BindingSharedPtr();
+
+    {
+        WritableTest o2(10);
+        binding = PropertyBinding::create(o2.writable, true);
+        EXPECT_TRUE(binding->isValid());
+        EXPECT_FALSE(binding->isAttached());
+    }
+
+    EXPECT_FALSE(binding->isValid());
+}
+
+TEST_F(Bindings, test_expression_binding_becomes_invalid_before_being_attached)
+{
+    WritableTest o1;
+    auto binding = BindingSharedPtr();
+
+    {
+        WritableTest o2(10);
+        binding = ExpressionBinding::create([&o2]() { return o2.writable.get(); }, true);
+        EXPECT_TRUE(binding->isValid());
+        EXPECT_FALSE(binding->isAttached());
+    }
+
+    EXPECT_FALSE(binding->isValid());
 }

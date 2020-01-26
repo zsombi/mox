@@ -34,25 +34,11 @@ class PropertyPrivate
 public:
     DECLARE_PUBLIC(Property)
 
-    static inline Property* current = nullptr;
-    class Scope
-    {
-        Property* backup = nullptr;
-    public:
-        explicit Scope(Property& property)
-            : backup(current)
-        {
-            current = &property;
-        }
-        ~Scope()
-        {
-            current = backup;
-        }
-    };
-
     using SubscriberCollection = std::unordered_set<BindingSharedPtr>;
 
+    /// The bindings subscribed for the property changes.
     SubscriberCollection bindingSubscribers;
+    /// The list of bindings.
     BindingSharedPtr bindingsHead;
     /// The p-object.
     Property* p_ptr;
@@ -65,15 +51,22 @@ public:
 
     /// Constructor.
     explicit PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, Instance host);
-
-    void accessed();
+    /// Informs the proeprty being accessed.
+    void notifyAccessed();
+    /// Notifies the subscribers about the property value change.
     void notifyChanges();
+    /// Clears the subscribers, and marks them all invalid.
     void clearAllSubscribers();
+    /// Clears the bindings.
     void clearBindings();
-    void removeNonPermanentBindings();
+    /// Removes detachable bindings.
+    void removeDetachableBindings();
 
+    /// Removes a binding from the list.
     void eraseBinding(Binding& binding);
+    /// Adds a binding to the list.
     void addBinding(BindingSharedPtr binding);
+    /// Activates a binding by moving the binding to the top of the list.
     void activateBinding(Binding& binding);
 };
 

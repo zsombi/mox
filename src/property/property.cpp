@@ -30,7 +30,7 @@ namespace mox
 void AbstractPropertyData::accessed() const
 {
     auto pp = PropertyPrivate::get(*m_property);
-    const_cast<PropertyPrivate*>(pp)->accessed();
+    const_cast<PropertyPrivate*>(pp)->notifyAccessed();
 }
 
 void AbstractPropertyData::updateData(const Variant& newValue)
@@ -61,17 +61,14 @@ PropertyPrivate::PropertyPrivate(Property& p, AbstractPropertyData& data, Proper
 {
 }
 
-void PropertyPrivate::accessed()
+void PropertyPrivate::notifyAccessed()
 {
     P();
-    if (current && current != p)
+    if (BindingScope::currentBinding && BindingScope::currentBinding->getTarget() != p)
     {
-        auto dCurrent = PropertyPrivate::get(*current);
-        FATAL(dCurrent->bindingsHead, "Unrecoverable error on binding evaluation")
+        bindingSubscribers.insert(BindingScope::currentBinding->shared_from_this());
 
-        bindingSubscribers.insert(dCurrent->bindingsHead);
-
-        auto currentBinding = BindingPrivate::get(*dCurrent->bindingsHead);
+        auto currentBinding = BindingPrivate::get(*BindingScope::currentBinding);
         currentBinding->addDependency(*p);
     }
 }
@@ -95,8 +92,19 @@ void PropertyPrivate::clearAllSubscribers()
     while (!bindingSubscribers.empty())
     {
         auto subscriber = *bindingSubscribers.begin();
+        auto pSubscriber = BindingPrivate::get(*subscriber);
         // The property is dying, so the binding subscribed to it shall too.
-        subscriber->detach();
+        if (subscriber->isAttached())
+        {
+            subscriber->detach();
+        }
+        else
+        {
+            eraseBinding(*subscriber);
+            pSubscriber->clearDependencies();
+        }
+        auto pBinding = BindingPrivate::get(*subscriber);
+        pBinding->state = BindingState::Invalid;
     }
     bindingSubscribers.clear();
 }
@@ -117,7 +125,7 @@ void PropertyPrivate::clearBindings()
     }
 }
 
-void PropertyPrivate::removeNonPermanentBindings()
+void PropertyPrivate::removeDetachableBindings()
 {
     P();
     SignalBlocker block(p->changed);
@@ -224,7 +232,7 @@ void Property::set(const Variant& value)
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
     D();
     // Detach bindings that are not permanent.
-    d->removeNonPermanentBindings();
+    d->removeDetachableBindings();
 
     // Set the value.
     d->dataProvider.updateData(value);
@@ -242,13 +250,14 @@ void Property::reset()
 
 void Property::addBinding(BindingSharedPtr binding)
 {
-    auto pBinding = BindingPrivate::get(*binding);
-    if (pBinding->state == BindingState::Attaching)
+    throwIf<ExceptionType::AttemptAttachingBindingToReadOnlyProperty>(isReadOnly());
+    throwIf<ExceptionType::InvalidArgument>(!binding);
+    throwIf<ExceptionType::InvalidBinding>(!binding->isValid());
+    if (binding->getState() == BindingState::Attaching)
     {
         return;
     }
 
-    throwIf<ExceptionType::InvalidArgument>(!binding);
     throwIf<ExceptionType::BindingAlreadyAttached>(binding->isAttached());
 
     D();
@@ -258,6 +267,7 @@ void Property::addBinding(BindingSharedPtr binding)
     }
 
     d->addBinding(binding);
+    auto pBinding = BindingPrivate::get(*binding);
     pBinding->attachToTarget(*this);
 
     binding->setEnabled(true);
@@ -269,21 +279,21 @@ void Property::addBinding(BindingSharedPtr binding)
 }
 
 void Property::removeBinding(Binding& binding)
-{
-    auto pBinding = BindingPrivate::get(binding);
-    if (pBinding->state == BindingState::Detaching)
+{    
+    if (binding.getState() == BindingState::Detaching)
     {
         return;
     }
 
     throwIf<ExceptionType::InvalidArgument>(!binding.isAttached());
-
-    D();
+    throwIf<ExceptionType::WrongBindingTarget>(binding.getTarget() != this);
 
     bool wasEnabled = binding.isEnabled();
     auto keepAlive = binding.shared_from_this();
 
+    D();
     d->eraseBinding(binding);
+    auto pBinding = BindingPrivate::get(binding);
     pBinding->detachFromTarget();
 
     if (wasEnabled && d->bindingsHead)

@@ -92,6 +92,14 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "The property value provider is not attached.";
         case ExceptionType::BindingAlreadyAttached:
             return "The property value provider is already attached.";
+        case ExceptionType::AttemptAttachingBindingToReadOnlyProperty:
+            return "Attempt attaching a binding to a read-only property.";
+        case ExceptionType::BindingLoop:
+            return "Binding loop detected!";
+        case ExceptionType::InvalidBinding:
+            return "The binding is invalid";
+        case ExceptionType::WrongBindingTarget:
+            return "Wrong binding target";
     }
     return nullptr;
 }
