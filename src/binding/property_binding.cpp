@@ -20,14 +20,12 @@
 #include <mox/config/error.hpp>
 
 #include <binding_p.hpp>
-#include <property_p.hpp>
 
 namespace mox
 {
 
 PropertyBindingPrivate::PropertyBindingPrivate(PropertyBinding* pp, Property& source, bool permanent)
     : BindingPrivate(pp, permanent)
-    , p_ptr(pp)
     , source(&source)
 {
 }
@@ -41,7 +39,7 @@ PropertyBinding::PropertyBinding(Property& source, bool permanent)
 void PropertyBinding::initialize()
 {
     BindingScope setCurrent(*this);
-    d_func()->source->get();
+    (void)d_func()->source->get();
 }
 
 void PropertyBinding::evaluate()
@@ -50,9 +48,9 @@ void PropertyBinding::evaluate()
     {
         return;
     }
-    D();
-    auto target = PropertyPrivate::get(*getTarget());
-    target->dataProvider.updateData(d->source->get());
+
+    auto value = d_func()->source->get();
+    updateTarget(value);
 }
 
 PropertyBindingSharedPtr PropertyBinding::create(Property& source, bool permanent)

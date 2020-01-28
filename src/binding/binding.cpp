@@ -89,20 +89,61 @@ void BindingPrivate::clearDependencies()
     dependencies.clear();
 }
 
-void BindingPrivate::evaluateBinding()
+/******************************************************************************
+ * BindingLoopDetector
+ */
+BindingLoopDetector::BindingLoopDetector(BindingPrivate& binding)
+    : BaseClass(binding)
 {
-    if (!enabled)
+    prev = last;
+    last = this;
+    if (m_value.group && m_value.group->getNormalizer())
     {
-        return;
+        ++(*m_value.group->getNormalizer());
     }
+}
+BindingLoopDetector::~BindingLoopDetector()
+{
+    FATAL(last == this, "Some other binding messed up the binding loop detection")
+    last = prev;
+    if (m_value.group && m_value.group->getNormalizer())
+    {
+        --(*m_value.group->getNormalizer());
+    }
+}
+bool BindingLoopDetector::tryNormalize(Variant& value)
+{
+    auto groupNormalizer = m_value.group ? m_value.group->getNormalizer() : nullptr;
+    if (m_value.bindingLoopCount > 1)
+    {
+        // Without group and normalizer, throw exception.
+        throwIf<ExceptionType::BindingLoop>(!groupNormalizer);
+        auto normalizer = m_value.group->getNormalizer();
 
-    RefCounter bindingLoop(bindingLoopCount);
-
-    throwIf<ExceptionType::BindingLoop>(bindingLoopCount > 1);
-
-    clearDependencies();
-    BindingScope setCurrent(*p_func());
-    p_func()->evaluate();
+        switch (normalizer->tryNormalize(*m_value.p_ptr, value, m_value.bindingLoopCount))
+        {
+            case BindingNormalizer::Normalized:
+            {
+                return true;
+            }
+            case BindingNormalizer::FailAndExit:
+            {
+                // The normalization failed, exit.
+                normalizer->reset();
+                return false;
+            }
+            case BindingNormalizer::Throw:
+            {
+                normalizer->reset();
+                throwIf<ExceptionType::BindingLoop>(true);
+            }
+        }
+    }
+    else if (groupNormalizer)
+    {
+        groupNormalizer->initialize(*m_value.p_ptr, value);
+    }
+    return true;
 }
 
 /******************************************************************************
@@ -121,7 +162,33 @@ Binding::Binding(pimpl::d_ptr_type<BindingPrivate> dd)
 
 Binding::~Binding()
 {
-//    std::cout << "Binding died" << std::endl;
+}
+
+void Binding::evaluateBinding()
+{
+    D();
+    if (!d->enabled)
+    {
+        return;
+    }
+
+    auto dTarget = PropertyPrivate::get(*d->target);
+    Variant data = dTarget->dataProvider;
+    BindingLoopDetector detector(*d);
+
+    d->clearDependencies();
+    BindingScope setCurrent(*this);
+    evaluate();
+}
+
+void Binding::updateTarget(Variant &value)
+{
+    if (!BindingLoopDetector::getCurrent()->tryNormalize(value))
+    {
+        return;
+    }
+    auto dTarget = PropertyPrivate::get(*d_func()->target);
+    dTarget->dataProvider.updateData(value);
 }
 
 bool Binding::isValid() const
@@ -172,7 +239,7 @@ void Binding::setEnabled(bool enabled)
 
     if (d->evaluateOnEnabled)
     {
-        d->evaluateBinding();
+        evaluateBinding();
     }
 }
 

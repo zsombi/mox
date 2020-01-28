@@ -89,6 +89,27 @@ public:
 };
 
 template <typename Type>
+struct RefCountable
+{
+    void operator++()
+    {
+        m_value++;
+    }
+    void operator--()
+    {
+        m_value--;
+    }
+
+    Type refCount() const
+    {
+        return m_value;
+    }
+
+private:
+    Type m_value = Type();
+};
+
+template <typename Type>
 struct RefCounter
 {
     explicit RefCounter(Type& value)
@@ -100,7 +121,7 @@ struct RefCounter
     {
         --m_value;
     }
-private:
+protected:
     Type& m_value;
 };
 

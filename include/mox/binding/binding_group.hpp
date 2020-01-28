@@ -20,6 +20,7 @@
 #define BINDING_GROUP_HPP
 
 #include <mox/config/deftypes.hpp>
+#include <mox/binding/binding_normalizer.hpp>
 #include <vector>
 
 namespace mox
@@ -41,15 +42,19 @@ public:
     ~BindingGroup();
 
     /// Adds a binding to the group.
+    /// \param binding The binding to add to the group.
     void addBinding(Binding& binding);
 
     /// Removes a binding from the group.
+    /// \param binding The binding to remove from the group. If the \a binding is also the target
+    /// binding of the binding loop normalizer set, the binding loop normalizer is reset too.
     void removeBinding(Binding& binding);
 
-    /// Removes all bindings from the group.
+    /// Removes all bindings from the group, and resets the binding loop normalizer.
     void ungroupBindings();
 
-    /// Detaches the group by detaching all the bindings from the group.
+    /// Detaches the group by detaching all the bindings from the group. Also resets the binding loop
+    /// normalizer.
     void detach();
 
     /// Checks whether the group is empty. A group is empty when there is no binding in the group.
@@ -61,8 +66,34 @@ public:
     /// Returns the binding at \a index. The method asserts if the group is empty.
     BindingSharedPtr operator[](size_t index);
 
-    /// Creates an empty binding group.
-    static BindingGroupSharedPtr create();
+    /// \name Binding loop normalization
+    /// \{
+    /// Set the binding loop normalizer of the group. The group can have only one binding normalizer
+    /// at a time.
+    /// \param targetBinding The target binding of the normalizer.
+    /// \param normalizer The binding loop normalizer to set.
+    void setNormalizer(Binding& targetBinding, BindingNormalizerPtr normalizer);
+    /// Returns the binding loop normalizer of the group.
+    /// \return The binding loop normalizer of the group, or \e nullptr if the group has no binding
+    /// loop normalizer set.
+    BindingNormalizer* getNormalizer() const;
+    /// \}
+
+    /// Creates a binding group with the bindings passed as argument.
+    /// \tparam BindingPtr The binding types.
+    /// \param bindings The binding argument list.
+    /// \return The binding group object embedding the \a bindings passed as argument.
+    template <class... BindingPtr>
+    static BindingGroupSharedPtr create(BindingPtr... bindings)
+    {
+        std::array<BindingSharedPtr, sizeof...(BindingPtr)> aa = {{bindings...}};
+        auto group = make_polymorphic_shared_ptr<BindingGroup>(new BindingGroup);
+        for (auto binding : aa)
+        {
+            group->addBinding(*binding);
+        }
+        return group;
+    }
 
     /// Creates a binding group by adding property bindings built from the \a properties. The bindings
     /// created between the properties are permanent.
@@ -116,6 +147,7 @@ protected:
 
     using BindingCollection = std::vector<BindingSharedPtr>;
     BindingCollection m_bindings;
+    BindingNormalizerPtr m_normalizer;
 };
 
 } // mox

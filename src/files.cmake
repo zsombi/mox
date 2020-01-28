@@ -62,6 +62,7 @@ set(HEADERS
 
     # Bindings
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding_normalizer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding_group.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/property_binding.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/expression_binding.hpp

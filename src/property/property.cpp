@@ -27,12 +27,6 @@
 namespace mox
 {
 
-void AbstractPropertyData::accessed() const
-{
-    auto pp = PropertyPrivate::get(*m_property);
-    const_cast<PropertyPrivate*>(pp)->notifyAccessed();
-}
-
 void AbstractPropertyData::updateData(const Variant& newValue)
 {
     if (newValue == getData())
@@ -82,8 +76,7 @@ void PropertyPrivate::notifyChanges()
         {
             continue;
         }
-        auto dSubscriber = BindingPrivate::get(*subscriber);
-        dSubscriber->evaluateBinding();
+        subscriber->evaluateBinding();
     }
 }
 
@@ -216,6 +209,11 @@ AbstractPropertyData* Property::getDataProvider() const
     return &d_func()->dataProvider;
 }
 
+void Property::notifyAccessed() const
+{
+    const_cast<PropertyPrivate*>(d_func())->notifyAccessed();
+}
+
 bool Property::isReadOnly() const
 {
     return d_func()->type->getAccess() == PropertyAccess::ReadOnly;
@@ -224,6 +222,7 @@ bool Property::isReadOnly() const
 Variant Property::get() const
 {
     lock_guard lock(const_cast<Property&>(*this));
+    notifyAccessed();
     return d_func()->dataProvider.getData();
 }
 
@@ -274,7 +273,7 @@ void Property::addBinding(BindingSharedPtr binding)
 
     if (!pBinding->evaluateOnEnabled)
     {
-        pBinding->evaluateBinding();
+        binding->evaluateBinding();
     }
 }
 

@@ -21,6 +21,7 @@
 
 #include <mox/property/property.hpp>
 #include <mox/binding/binding.hpp>
+#include <mox/binding/binding_normalizer.hpp>
 #include <mox/binding/property_binding.hpp>
 #include <mox/config/pimpl.hpp>
 
@@ -32,17 +33,18 @@ namespace mox
 class BindingPrivate
 {
 public:
-    DECLARE_PUBLIC_PTR(Binding)
+    DECLARE_PUBLIC(Binding)
 
     using Collection = std::unordered_set<Property*>;
 
     Collection dependencies;
+    Binding* p_ptr = nullptr;
     BindingSharedPtr next;
     BindingSharedPtr prev;
     BindingGroupSharedPtr group;
     Property* target = nullptr;
     BindingState state = BindingState::Detached;
-    byte bindingLoopCount = 0;
+    size_t bindingLoopCount = 0u;
     bool enabled:1;
     bool evaluateOnEnabled:1;
     bool isPermanent:1;
@@ -55,17 +57,43 @@ public:
     void addDependency(Property& dependency);
     void removeDependency(Property& dependency);
     void clearDependencies();
-    void evaluateBinding();
+
+    // for RefCounter
+    void operator++()
+    {
+        ++bindingLoopCount;
+    }
+    void operator--()
+    {
+        --bindingLoopCount;
+    }
 };
 
 class PropertyBindingPrivate : public BindingPrivate
 {
 public:
-    DECLARE_PUBLIC_PTR(PropertyBinding)
+    DECLARE_PUBLIC(PropertyBinding)
 
     explicit PropertyBindingPrivate(PropertyBinding* pp, Property& source, bool permanent);
 
     Property* source = nullptr;
+};
+
+class BindingLoopDetector : public RefCounter<BindingPrivate>
+{
+    using BaseClass =RefCounter<BindingPrivate>;
+
+    /*thread_local */static inline BindingLoopDetector* last = nullptr;
+    BindingLoopDetector* prev = nullptr;
+
+public:
+    explicit BindingLoopDetector(BindingPrivate& binding);
+    ~BindingLoopDetector();
+    bool tryNormalize(Variant& value);
+    static BindingLoopDetector* getCurrent()
+    {
+        return last;
+    }
 };
 
 }

@@ -18,6 +18,7 @@
 
 #include "test_framework.h"
 #include <mox/binding/binding.hpp>
+#include <mox/binding/binding_normalizer.hpp>
 #include <mox/binding/binding_group.hpp>
 #include <mox/binding/property_binding.hpp>
 #include <mox/binding/expression_binding.hpp>
@@ -892,4 +893,244 @@ TEST_F(Bindings, test_expression_binding_becomes_invalid_before_being_attached)
     }
 
     EXPECT_FALSE(binding->isValid());
+}
+
+
+TEST_F(Bindings, test_binding_loop_detection_needs_higher_count)
+{
+    class SimpleNormalizer : public BindingNormalizer
+    {
+    public:
+        size_t& callCount;
+    public:
+        explicit SimpleNormalizer(size_t& callCount)
+            : callCount(callCount)
+        {
+        }
+        Result tryNormalize(Binding& binding, Variant&, size_t loopCount) override
+        {
+            if (binding.shared_from_this() != getTarget())
+            {
+                return Normalized;
+            }
+            ++callCount;
+            return (loopCount <= 2) ? Normalized : Throw;
+        }
+    };
+
+    WritableTest o1;
+    WritableTest o2(10);
+
+    auto b1 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
+    auto expression = [&o2]()
+    {
+        return Variant(o2.writable % 3);
+    };
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
+
+    // This may be a binding loop, however a loop count of 2 would normalize it.
+    EXPECT_THROW(o1.writable = 3, Exception);
+    o1.writable = 1;
+
+    size_t normalizerCallCount= 0u;
+    auto group = BindingGroup::create(binding, b1);
+    group->setNormalizer(*binding, std::make_unique<SimpleNormalizer>(normalizerCallCount));
+
+    // store intermediate values of o1
+    std::vector<int> o1Values;
+    o1.writable.changed.connect([&o1Values](int value) { o1Values.push_back(value); });
+
+    // Try the binding now.
+    EXPECT_NO_THROW(o1.writable = 3);
+    EXPECT_EQ(1, normalizerCallCount);
+    EXPECT_EQ(2u, o1Values.size());
+    EXPECT_EQ(0, o1Values[0]);
+    EXPECT_EQ(3, o1Values[1]);
+}
+
+TEST_F(Bindings, test_binding_loop_normalizer_changes_value)
+{
+    WritableTest o1;
+    WritableTest o2(10);
+
+    class ComplexNormalizer : public BindingNormalizer
+    {
+        size_t& callCount;
+    public:
+        explicit ComplexNormalizer(size_t& callCount)
+            : callCount(callCount)
+        {
+        }
+        Result tryNormalize(Binding& binding, Variant& value, size_t loopCount) override
+        {
+            if (binding.shared_from_this() != getTarget())
+            {
+                return Normalized;
+            }
+            ++callCount;
+            if (loopCount == 2)
+            {
+                value = 1;
+            }
+            if (loopCount == 3)
+            {
+                value = 2;
+            }
+            return (loopCount <= 5) ? Normalized : Throw;
+        }
+    };
+
+    auto b1 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
+    auto expression = [&o2]()
+    {
+        return Variant(o2.writable % 3);
+    };
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
+
+    // This may be a binding loop, however a loop count of 2 would normalize it.
+    EXPECT_THROW(o1.writable = 3, Exception);
+    o1.writable = 1;
+
+    size_t normalizerCallCount= 0u;
+    auto group = BindingGroup::create(binding, b1);
+    group->setNormalizer(*binding, std::make_unique<ComplexNormalizer>(normalizerCallCount));
+
+    // store intermediate values of o1
+    std::vector<int> o1Values;
+    o1.writable.changed.connect([&o1Values](int value) { o1Values.push_back(value); });
+
+    // Try the binding now.
+    EXPECT_NO_THROW(o1.writable = 3);
+    EXPECT_EQ(3, normalizerCallCount);
+    EXPECT_EQ(4u, o1Values.size());
+    EXPECT_EQ(2, o1Values[0]);
+    EXPECT_EQ(1, o1Values[1]);
+    EXPECT_EQ(0, o1Values[2]);
+    EXPECT_EQ(3, o1Values[3]);
+}
+
+TEST_F(Bindings, test_binding_loop_normalize_throw_if_normalization_fails_after_4_loop_count)
+{
+    WritableTest o1;
+    WritableTest o2(10);
+
+    class ComplexNormalizer : public BindingNormalizer
+    {
+        size_t& callCount;
+    public:
+        explicit ComplexNormalizer(size_t& callCount)
+            : callCount(callCount)
+        {
+        }
+        Result tryNormalize(Binding& binding, Variant& value, size_t loopCount) override
+        {
+            if (binding.shared_from_this() != getTarget())
+            {
+                return Normalized;
+            }
+            ++callCount;
+            switch (loopCount)
+            {
+                case 2:
+                {
+                    value = 1;
+                    return Normalized;
+                }
+                case 3:
+                {
+                    value = 2;
+                    return Normalized;
+                }
+                default:
+                {
+                    return Throw;
+                }
+            }
+        }
+    };
+
+    auto b1 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
+    auto expression = [&o2]()
+    {
+        return Variant(o2.writable % 3);
+    };
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
+
+    size_t normalizerCallCount= 0u;
+    auto group = BindingGroup::create(binding, b1);
+    group->setNormalizer(*binding, std::make_unique<ComplexNormalizer>(normalizerCallCount));
+
+    // store intermediate values of o1
+    std::vector<int> o1Values;
+    o1.writable.changed.connect([&o1Values](int value) { o1Values.push_back(value); });
+
+    // The expression should throw
+    EXPECT_THROW(o1.writable = 3, Exception);
+    EXPECT_EQ(3, normalizerCallCount);
+    EXPECT_EQ(0u, o1Values.size());
+}
+
+TEST_F(Bindings, test_binding_loop_normalize_exit_if_normalization_fails_after_4_loop_count)
+{
+    WritableTest o1;
+    WritableTest o2(10);
+
+    class ComplexNormalizer : public BindingNormalizer
+    {
+        size_t& callCount;
+    public:
+        explicit ComplexNormalizer(size_t& callCount)
+            : callCount(callCount)
+        {
+        }
+        Result tryNormalize(Binding& binding, Variant& value, size_t loopCount) override
+        {
+            if (binding.shared_from_this() != getTarget())
+            {
+                return Normalized;
+            }
+            ++callCount;
+            switch (loopCount)
+            {
+                case 2:
+                {
+                    value = 1;
+                    return Normalized;
+                }
+                case 3:
+                {
+                    value = 2;
+                    return Normalized;
+                }
+                default:
+                {
+                    return FailAndExit;
+                }
+            }
+        }
+    };
+
+    auto b1 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
+    auto expression = [&o2]()
+    {
+        return Variant(o2.writable % 3);
+    };
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
+
+    size_t normalizerCallCount= 0u;
+    auto group = BindingGroup::create(binding, b1);
+    group->setNormalizer(*binding, std::make_unique<ComplexNormalizer>(normalizerCallCount));
+
+    // store intermediate values of o1
+    std::vector<int> o1Values;
+    o1.writable.changed.connect([&o1Values](int value) { o1Values.push_back(value); });
+
+    // The expression should throw
+    EXPECT_NO_THROW(o1.writable = 3);
+    EXPECT_EQ(3, normalizerCallCount);
+    EXPECT_EQ(4u, o1Values.size());
+    EXPECT_EQ(2, o1Values[0]);
+    EXPECT_EQ(1, o1Values[1]);
+    EXPECT_EQ(0, o1Values[2]);
+    EXPECT_EQ(3, o1Values[3]);
 }

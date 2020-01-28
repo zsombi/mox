@@ -34,10 +34,6 @@ public:
     /// Destructor.
     virtual ~AbstractPropertyData() = default;
 
-    /// Generic data getter.
-    /// \return The property data stored in a variant.
-    virtual Variant getData() const = 0;
-
     /// Default data setter.
     /// \return The property default data stored in a variant.
     virtual void resetToDefault() = 0;
@@ -48,12 +44,15 @@ public:
     /// \param newValue The variant holding the value to update.
     void updateData(const Variant& newValue);
 
+    virtual operator Variant() const = 0;
+
 protected:
     /// Constructor.
     explicit AbstractPropertyData() = default;
 
-    /// Informs the property data provider that the property value is being queried.
-    void accessed() const;
+    /// Generic data getter.
+    /// \return The property data stored in a variant.
+    virtual Variant getData() const = 0;
 
     /// Generic property data setter.
     /// \param value The property data as a variant.
@@ -82,7 +81,6 @@ protected:
     /// The data getter.
     Variant getData() const override
     {
-        accessed();
         return Variant(m_value);
     }
 
@@ -90,6 +88,11 @@ protected:
     void resetToDefault() override
     {
         updateData(Variant(m_defaultValue));
+    }
+
+    operator Variant() const override
+    {
+        return getData();
     }
 
 public:
@@ -105,7 +108,6 @@ public:
     /// Direct cast to value type.
     ValueType getValue() const
     {
-        accessed();
         return m_value;
     }
 };

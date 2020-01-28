@@ -87,9 +87,9 @@ public:
     /// Destructor.
     virtual ~Binding();
 
-    /// Evaluates the binding. You can override this method to provide the value for the target of the
-    /// binding.
-    virtual void evaluate() = 0;
+    /// Evaluates the binding expressions. Collects the binding dependencies (properties) and subscribes
+    /// to those to seize changes.
+    void evaluateBinding();
 
     /// Checks the validity of the binding. A binding is marked invalid if a property in the binding
     /// is destroyed, while the binding is still being attached.
@@ -142,6 +142,13 @@ protected:
     explicit Binding(bool permanent);
     /// PIMPL constructor.
     explicit Binding(pimpl::d_ptr_type<BindingPrivate> dd);
+
+    /// Evaluates the binding expressions. You can override this method to provide the value for the
+    /// target of the binding.
+    virtual void evaluate() = 0;
+
+    /// Updates the binding target value. You must call this to update the target property value.
+    void updateTarget(Variant& value);
 
     /// Overridable method called when the binding is attached to the target property.
     virtual void onAttached() {}

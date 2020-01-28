@@ -39,7 +39,8 @@ enum class ExceptionType
     AttemptAttachingBindingToReadOnlyProperty,
     BindingLoop,
     InvalidBinding,
-    WrongBindingTarget
+    WrongBindingTarget,
+    BindingNotInGroup
 };
 
 class MOX_API Exception : public std::exception

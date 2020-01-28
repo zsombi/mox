@@ -30,11 +30,6 @@ BindingGroup::~BindingGroup()
     detach();
 }
 
-BindingGroupSharedPtr BindingGroup::create()
-{
-    return BindingGroupSharedPtr(new BindingGroup);
-}
-
 void BindingGroup::addBinding(Binding& binding)
 {
 
@@ -45,13 +40,20 @@ void BindingGroup::addBinding(Binding& binding)
 
 void BindingGroup::removeBinding(Binding &binding)
 {
-    erase(m_bindings, binding.shared_from_this());
+    auto shBinding = binding.shared_from_this();
+    erase(m_bindings, shBinding);
+
+    if (m_normalizer && m_normalizer->getTarget() == shBinding)
+    {
+        m_normalizer.reset();
+    }
     auto dBinding = BindingPrivate::get(binding);
     dBinding->group.reset();
 }
 
 void BindingGroup::ungroupBindings()
 {
+    m_normalizer.reset();
     // remove the bindings from the group.
     for (auto binding : m_bindings)
     {
@@ -62,6 +64,7 @@ void BindingGroup::ungroupBindings()
 
 void BindingGroup::detach()
 {
+    m_normalizer.reset();
     for (auto binding : m_bindings)
     {
         if (binding->isAttached())
@@ -84,6 +87,25 @@ size_t BindingGroup::getBindingCount() const
 BindingSharedPtr BindingGroup::operator[](size_t index)
 {
     return m_bindings[index];
+}
+
+void BindingGroup::setNormalizer(Binding& targetBinding, BindingNormalizerPtr normalizer)
+{
+    // The target must be in the group.
+    auto finder = [tgt = targetBinding.shared_from_this()](auto binding)
+    {
+        return binding == tgt;
+    };
+    auto it = std::find_if(m_bindings.cbegin(), m_bindings.cend(), finder);
+    throwIf<ExceptionType::BindingNotInGroup>(it == m_bindings.cend());
+
+    m_normalizer = std::move(normalizer);
+    m_normalizer->m_target = targetBinding.shared_from_this();
+}
+
+BindingNormalizer* BindingGroup::getNormalizer() const
+{
+    return m_normalizer.get();
 }
 
 BindingGroupSharedPtr BindingGroup::bindProperties(const std::vector<Property*>& properties, bool permanent, bool circular)

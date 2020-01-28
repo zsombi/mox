@@ -95,6 +95,9 @@ protected:
     /// Returns the data provider of the property.
     AbstractPropertyData* getDataProvider() const;
 
+    /// Notifies avout a property accessing.
+    void notifyAccessed() const;
+
 private:
     Property() = delete;
     DISABLE_COPY_OR_MOVE(Property)
@@ -126,6 +129,7 @@ public:
     /// Cast opertator, the property getter.
     operator ValueType() const
     {
+        notifyAccessed();
         auto data = static_cast<DataType*>(getDataProvider());
         return data->getValue();
     }
@@ -158,8 +162,8 @@ public:
     /// Cast opertator, the property getter.
     operator ValueType() const
     {
-        auto dataProvider = static_cast<DataType*>(getDataProvider());
-        return dataProvider->getValue();
+        notifyAccessed();
+        return DataType::getValue();
     }
     /// Property setter.
     /// \param value The value to set.

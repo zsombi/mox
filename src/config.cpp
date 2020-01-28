@@ -100,6 +100,8 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "The binding is invalid";
         case ExceptionType::WrongBindingTarget:
             return "Wrong binding target";
+        case ExceptionType::BindingNotInGroup:
+            return "The binding is not in the group.";
     }
     return nullptr;
 }

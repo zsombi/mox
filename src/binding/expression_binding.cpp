@@ -17,7 +17,6 @@
  */
 
 #include <binding_p.hpp>
-#include <property_p.hpp>
 #include <mox/binding/expression_binding.hpp>
 
 namespace mox
@@ -42,8 +41,8 @@ void ExpressionBinding::evaluate()
         return;
     }
 
-    auto target = PropertyPrivate::get(*getTarget());
-    target->dataProvider.updateData(m_expression());
+    auto value = m_expression();
+    updateTarget(value);
 }
 
 ExpressionBindingSharedPtr ExpressionBinding::create(ExpressionType&& expression, bool permanent)
