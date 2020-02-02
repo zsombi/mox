@@ -29,21 +29,7 @@ namespace mox
 
 void AbstractPropertyData::updateData(const Variant& newValue)
 {
-    if (newValue == getData())
-    {
-        return;
-    }
-    else
-    {
-        // Use this syntax to benefit the scope for data setting time only
-        lock_guard lock(*m_property);
-        setData(newValue);
-    }
-
-    auto pp = PropertyPrivate::get(*m_property);
-    pp->notifyChanges();
-
-    m_property->changed.activate(Callable::ArgumentPack(newValue));
+    m_property->updateData(newValue);
 }
 
 
@@ -53,6 +39,12 @@ PropertyPrivate::PropertyPrivate(Property& p, AbstractPropertyData& data, Proper
     , type(&type)
     , host(host)
 {
+    dataProvider.m_property = this;
+}
+
+PropertyPrivate::~PropertyPrivate()
+{
+    TRACE("Private data for property discarded");
 }
 
 void PropertyPrivate::notifyAccessed()
@@ -69,7 +61,11 @@ void PropertyPrivate::notifyAccessed()
 
 void PropertyPrivate::notifyChanges()
 {
-    auto copy = bindingSubscribers;
+    auto copy = SubscriberCollection();
+    {
+        lock_guard lock(*p_func());
+        copy = bindingSubscribers;
+    }
     for (auto subscriber : copy)
     {
         if (!subscriber->isEnabled())
@@ -80,111 +76,97 @@ void PropertyPrivate::notifyChanges()
     }
 }
 
-void PropertyPrivate::clearAllSubscribers()
+void PropertyPrivate::unsubscribe(BindingSharedPtr binding)
 {
-    while (!bindingSubscribers.empty())
-    {
-        auto subscriber = *bindingSubscribers.begin();
-        auto pSubscriber = BindingPrivate::get(*subscriber);
-        // The property is dying, so the binding subscribed to it shall too.
-        if (subscriber->isAttached())
-        {
-            subscriber->detach();
-        }
-        else
-        {
-            eraseBinding(*subscriber);
-            pSubscriber->clearDependencies();
-        }
-        auto pBinding = BindingPrivate::get(*subscriber);
-        pBinding->state = BindingState::Invalid;
-    }
-    bindingSubscribers.clear();
+    lock_guard lock(*p_func());
+    bindingSubscribers.erase(binding);
+}
+
+Variant PropertyPrivate::fetchDataUnsafe() const
+{
+    return p_func()->getData();
 }
 
 void PropertyPrivate::clearBindings()
 {
     P();
+
     // Block property change signal activation.
     SignalBlocker block(p->changed);
-
-    while (bindingsHead)
+    lock_guard lock(*p);
+    while (!bindings.empty())
     {
-        auto keepAlive = bindingsHead;
-        auto pBinding = BindingPrivate::get(*bindingsHead);
-
-        eraseBinding(*bindingsHead);
-        pBinding->detachFromTarget();
+        ScopeRelock relock(*p);
+        bindings.front()->detach();
     }
-}
-
-void PropertyPrivate::removeDetachableBindings()
-{
-    P();
-    SignalBlocker block(p->changed);
-
-    for (auto pl = bindingsHead; pl;)
-    {
-        if (pl->isPermanent())
-        {
-            pl = BindingPrivate::get(*pl)->prev;
-            continue;
-        }
-
-        auto pd = pl;
-        // advance pl
-        pl = BindingPrivate::get(*pl)->prev;
-
-        auto ppd = BindingPrivate::get(*pd);
-
-        // Detach from the binding list.
-        eraseBinding(*pd);
-        ppd->detachFromTarget();
-    }
-
-    // Mark the top binding as enabled, silently.
-    if (bindingsHead && bindingsHead->isAttached())
-    {
-        BindingPrivate::get(*bindingsHead)->enabled = true;
-    }
-}
-
-void PropertyPrivate::eraseBinding(Binding &binding)
-{
-    auto pBinding = BindingPrivate::get(binding);
-    if (bindingsHead.get() == &binding)
-    {
-        bindingsHead = pBinding->prev;
-        if (bindingsHead)
-        {
-            BindingPrivate::get(*bindingsHead)->next.reset();
-        }
-    }
-    else
-    {
-        if (pBinding->prev)
-        {
-            BindingPrivate::get(*pBinding->prev)->next = pBinding->next;
-        }
-        if (pBinding->next)
-        {
-            BindingPrivate::get(*pBinding->next)->prev = pBinding->prev;
-        }
-    }
-    pBinding->prev.reset();
-    pBinding->next.reset();
 }
 
 void PropertyPrivate::addBinding(BindingSharedPtr binding)
 {
-    BindingPrivate::get(*binding)->prev = bindingsHead;
-    if (bindingsHead)
+    lock_guard lock(*p_func());
+    if (!bindings.empty())
     {
-        BindingPrivate::get(*bindingsHead)->next = binding;
+        bindings.back()->setEnabled(false);
     }
-    bindingsHead = binding;
+
+    bindings.push_back(binding);
 }
 
+void PropertyPrivate::removeBinding(Binding& binding)
+{
+    lock_guard lock(*p_func());
+    erase(bindings, binding.shared_from_this());
+}
+
+void PropertyPrivate::tryActivateHeadBinding()
+{
+    auto binding = BindingSharedPtr();
+    {
+        lock_guard lock(*p_func());
+        if (bindings.empty())
+        {
+            return;
+        }
+        binding = bindings.back();
+    }
+    binding->setEnabled(true);
+}
+
+// Moves the binding to the front.
+void PropertyPrivate::activateBinding(Binding& binding)
+{
+    lock_guard lock(*p_func());
+    if (!bindings.empty() && bindings.back().get() == &binding)
+    {
+        return;
+    }
+    bindings.back()->setEnabled(false);
+
+    auto shBinding = binding.shared_from_this();
+    erase(bindings, shBinding);
+    bindings.push_back(shBinding);
+}
+
+void PropertyPrivate::updateData(const Variant& newValue)
+{
+    P();
+    {
+        lock_guard lock(*p);
+        if (newValue == p->getData())
+        {
+            return;
+        }
+        p->setData(newValue);
+    }
+
+    notifyChanges();
+
+    p->changed.activate(Callable::ArgumentPack(newValue));
+}
+
+/******************************************************************************
+ * Property - public API
+ */
 
 Property::Property(Instance host, PropertyType& type, AbstractPropertyData& data)
     : SharedLock<ObjectLock>(*host.as<ObjectLock>())
@@ -192,133 +174,138 @@ Property::Property(Instance host, PropertyType& type, AbstractPropertyData& data
     , changed(host, type.getChangedSignalType())
 {
     D();
-    d->dataProvider.m_property = this;
     d->type->addPropertyInstance(*this);
 }
 
 Property::~Property()
 {
     D();
-    d->clearBindings();
-    d->clearAllSubscribers();
+
+    lock_guard lock(*this);
+    // First make it invalid. Remove the instance from the property type, and reset the host.
     d->type->removePropertyInstance(*this);
+    d->type = nullptr;
+    d->host.reset();
+
+    {
+        ScopeRelock relock(*this);
+        d->clearBindings();
+    }
+
+    // Clear subscribers
+    while (!d->bindingSubscribers.empty())
+    {
+        auto subscriber = *d->bindingSubscribers.begin();
+        auto pSubscriber = BindingPrivate::get(*subscriber);
+        // The property is dying, so the binding subscribed to it shall too.
+        if (subscriber->isAttached())
+        {
+            ScopeRelock relock(*this);
+            subscriber->detach();
+        }
+        else
+        {
+            erase(d->bindings, subscriber);
+            {
+                ScopeRelock relock(*this);
+                pSubscriber->clearDependencies();
+            }
+        }
+        pSubscriber->invalidate();
+    }
+    d->bindingSubscribers.clear();
+    TRACE("Property died");
 }
 
 AbstractPropertyData* Property::getDataProvider() const
 {
+    FATAL(isValid(), "Invalid property accessed")
     return &d_func()->dataProvider;
 }
 
 void Property::notifyAccessed() const
 {
+    FATAL(isValid(), "Invalid property accessed")
     const_cast<PropertyPrivate*>(d_func())->notifyAccessed();
+}
+
+void Property::update(const Variant &newValue)
+{
+    FATAL(isValid(), "Invalid property accessed")
+    d_func()->updateData(newValue);
+}
+
+bool Property::isValid() const
+{
+    return d_ptr && d_func()->type != nullptr;
 }
 
 bool Property::isReadOnly() const
 {
-    return d_func()->type->getAccess() == PropertyAccess::ReadOnly;
+    return d_ptr && (d_func()->type->getAccess() == PropertyAccess::ReadOnly);
 }
 
 Variant Property::get() const
 {
+    FATAL(isValid(), "Invalid property accessed")
     lock_guard lock(const_cast<Property&>(*this));
     notifyAccessed();
-    return d_func()->dataProvider.getData();
+    return getData();
 }
 
 void Property::set(const Variant& value)
 {
+    FATAL(isValid(), "Invalid property accessed")
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
     D();
+
     // Detach bindings that are not permanent.
-    d->removeDetachableBindings();
+    {
+        // lock as we mangle property data
+        lock_guard lock(*this);
+        SignalBlocker block(changed);
+
+        auto copy = d->bindings;
+        for (auto it = copy.begin(); it != copy.end(); ++it)
+        {
+            auto binding = *it;
+            if (binding->isPermanent())
+            {
+                continue;
+            }
+
+            ScopeRelock relock(*this);
+            binding->detach();
+        }
+
+        // Mark the top binding as enabled, silently.
+        if (!d->bindings.empty() && d->bindings.back()->isAttached())
+        {
+            BindingPrivate::get(*d->bindings.back())->setEnabled(true);
+        }
+    }
 
     // Set the value.
-    d->dataProvider.updateData(value);
+    d->updateData(value);
 }
 
 void Property::reset()
 {
+    FATAL(isValid(), "Invalid property accessed")
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
 
     D();
     // Detach all bindings, and restore the default value.
     d->clearBindings();
-    d->dataProvider.resetToDefault();
-}
-
-void Property::addBinding(BindingSharedPtr binding)
-{
-    throwIf<ExceptionType::AttemptAttachingBindingToReadOnlyProperty>(isReadOnly());
-    throwIf<ExceptionType::InvalidArgument>(!binding);
-    throwIf<ExceptionType::InvalidBinding>(!binding->isValid());
-    if (binding->getState() == BindingState::Attaching)
-    {
-        return;
-    }
-
-    throwIf<ExceptionType::BindingAlreadyAttached>(binding->isAttached());
-
-    D();
-    if (d->bindingsHead)
-    {
-        d->bindingsHead->setEnabled(false);
-    }
-
-    d->addBinding(binding);
-    auto pBinding = BindingPrivate::get(*binding);
-    pBinding->attachToTarget(*this);
-
-    binding->setEnabled(true);
-
-    if (!pBinding->evaluateOnEnabled)
-    {
-        binding->evaluateBinding();
-    }
-}
-
-void Property::removeBinding(Binding& binding)
-{    
-    if (binding.getState() == BindingState::Detaching)
-    {
-        return;
-    }
-
-    throwIf<ExceptionType::InvalidArgument>(!binding.isAttached());
-    throwIf<ExceptionType::WrongBindingTarget>(binding.getTarget() != this);
-
-    bool wasEnabled = binding.isEnabled();
-    auto keepAlive = binding.shared_from_this();
-
-    D();
-    d->eraseBinding(binding);
-    auto pBinding = BindingPrivate::get(binding);
-    pBinding->detachFromTarget();
-
-    if (wasEnabled && d->bindingsHead)
-    {
-        d->bindingsHead->setEnabled(true);
-    }
+    resetToDefaultData();
 }
 
 BindingSharedPtr Property::getCurrentBinding()
 {
-    return d_func()->bindingsHead;
-}
-
-// Moves the binding to the front.
-void PropertyPrivate::activateBinding(Binding& binding)
-{
-    throwIf<ExceptionType::InvalidArgument>(!binding.isAttached());
-
-    if (bindingsHead.get() == &binding)
-    {
-        return;
-    }
-
-    bindingsHead->setEnabled(false);
-    eraseBinding(binding);
-    addBinding(binding.shared_from_this());
+    FATAL(isValid(), "Invalid property accessed")
+    D();
+    lock_guard lock(*this);
+    return !d->bindings.empty() && d->bindings.back()->isEnabled() ? d->bindings.back() : nullptr;
 }
 
 }

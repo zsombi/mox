@@ -10,11 +10,52 @@
 void UnitTest::SetUp()
 {
     ::testing::Test::SetUp();
+    mox::registerMetaType<TestApp>();
+    mox::registerMetaType<TestThreadLoop>();
+    mox::registerMetaType<TestThreadLoop*>();
 }
 void UnitTest::TearDown()
 {
     ::testing::Test::TearDown();
 }
+
+/******************************************************************************
+ * TestThreadLoop
+ */
+std::shared_ptr<TestThreadLoop> TestThreadLoop::create(Notifier&& notifier, Object* parent)
+{
+    auto thread = createObject(new TestThreadLoop(std::forward<Notifier>(notifier)), parent);
+
+    thread->init();
+
+    return thread;
+}
+
+TestThreadLoop::~TestThreadLoop()
+{
+    m_deathNotifier.set_value();
+}
+
+TestThreadLoop::TestThreadLoop(Notifier&& notifier)
+{
+    m_deathNotifier.swap(notifier);
+}
+
+void TestThreadLoop::init()
+{
+    started.connect(*this, &TestThreadLoop::onStarted);
+    stopped.connect(*this, &TestThreadLoop::onStopped);
+}
+
+void TestThreadLoop::onStarted()
+{
+    ++threadCount;
+}
+void TestThreadLoop::onStopped()
+{
+    --threadCount;
+}
+
 /******************************************************************************
  *
  */

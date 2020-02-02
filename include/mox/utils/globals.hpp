@@ -40,7 +40,7 @@
     }
 
 
-#ifdef DEBUG
+#if defined(DEBUG) && !defined(MOX_NO_DEBUG_LOGS)
 static inline std::string dbg_fileName(const char* path)
 {
     std::string fname(path);

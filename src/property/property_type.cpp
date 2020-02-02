@@ -55,17 +55,16 @@ const VariantDescriptor& PropertyType::getValueType() const
 void PropertyType::addPropertyInstance(Property& property)
 {
     lock_guard lock(*this);
-    FATAL(m_instances.find(PropertyPrivate::get(property)->host) == m_instances.end(), "Property instance already registered!")
+    FATAL(m_instances.find(PropertyPrivate::get(property)->getHost()) == m_instances.end(), "Property instance already registered!")
 
-    m_instances.insert(std::make_pair((intptr_t)PropertyPrivate::get(property)->host, &property));
+    m_instances.insert(std::make_pair((intptr_t)PropertyPrivate::get(property)->getHost(), &property));
 }
 
 void PropertyType::removePropertyInstance(Property& property)
 {
     lock_guard lock(*this);
-    auto pv = std::make_pair((intptr_t)PropertyPrivate::get(property)->host, &property);
+    auto pv = std::make_pair((intptr_t)PropertyPrivate::get(property)->getHost(), &property);
     mox::erase(m_instances, pv);
-    PropertyPrivate::get(property)->host.reset();
 }
 
 Variant PropertyType::get(Instance instance) const

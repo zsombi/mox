@@ -20,50 +20,7 @@
 #include <mox/object.hpp>
 #include "test_framework.h"
 
-class TestThread;
-using TestThreadSharedPtr = std::shared_ptr<TestThread>;
-
-using Notifier = std::promise<void>;
-using Watcher = std::future<void>;
-
 static const mox::EventType evQuit = mox::Event::registerNewType();
-
-class TestThread : public mox::ThreadLoop
-{
-    Notifier m_deathNotifier;
-public:
-    static inline std::atomic<int> threadCount = 0;
-
-    static TestThreadSharedPtr create(Notifier&& notifier, Object* parent = nullptr)
-    {
-        auto thread = createObject(new TestThread(std::forward<Notifier>(notifier)), parent);
-
-        thread->started.connect(*thread, &TestThread::onStarted);
-        thread->stopped.connect(*thread, &TestThread::onStopped);
-
-        return thread;
-    }
-
-    ~TestThread() override
-    {
-        m_deathNotifier.set_value();
-    }
-
-protected:
-    explicit TestThread(Notifier&& notifier)
-    {
-        m_deathNotifier.swap(notifier);
-    }
-
-    void onStarted()
-    {
-        ++threadCount;
-    }
-    void onStopped()
-    {
-        --threadCount;
-    }
-};
 
 class Quitter : public mox::Object
 {
@@ -93,8 +50,6 @@ protected:
     {
         UnitTest::SetUp();
 
-        mox::registerMetaType<TestThread>();
-        mox::registerMetaType<TestThread*>();
         mox::registerMetaClass<Quitter>();
     }
 };
@@ -142,14 +97,14 @@ TEST_F(Threads, test_parented_thread_deletes_before_quiting)
         mox::Application mainThread;
 
         {
-            auto thread = TestThread::create(std::move(notifyDeath), mainThread.getRootObject().get());
+            auto thread = TestThreadLoop::create(std::move(notifyDeath), mainThread.getRootObject().get());
             thread->start();
         }
-        EXPECT_EQ(1, TestThread::threadCount);
+        EXPECT_EQ(1, TestThreadLoop::threadCount);
     }
 //    std::cout << "??" << std::endl;
     watchDeath.wait();
-    EXPECT_EQ(0, TestThread::threadCount);
+    EXPECT_EQ(0, TestThreadLoop::threadCount);
 }
 
 TEST_F(Threads, test_parented_detached_thread_deletes_before_quiting)
@@ -162,7 +117,7 @@ TEST_F(Threads, test_parented_detached_thread_deletes_before_quiting)
     Notifier notifyDeath;
     Watcher watchDeath = notifyDeath.get_future();
     {
-        auto thread = TestThread::create(std::move(notifyDeath), app.getRootObject().get());
+        auto thread = TestThreadLoop::create(std::move(notifyDeath), app.getRootObject().get());
         auto slot = [&notify]()
         {
             notify.set_value();
@@ -170,11 +125,11 @@ TEST_F(Threads, test_parented_detached_thread_deletes_before_quiting)
         thread->stopped.connect(slot);
         thread->start();
     }
-    EXPECT_EQ(1, TestThread::threadCount);
+    EXPECT_EQ(1, TestThreadLoop::threadCount);
     app.runOnce();
     notifyWait.wait();
     watchDeath.wait();
-    EXPECT_EQ(0, TestThread::threadCount);
+    EXPECT_EQ(0, TestThreadLoop::threadCount);
 }
 
 TEST_F(Threads, test_quit_application_from_thread_kills_thread)
@@ -183,7 +138,7 @@ TEST_F(Threads, test_quit_application_from_thread_kills_thread)
     Notifier notifyDeath;
     Watcher watchDeath = notifyDeath.get_future();
     {
-        auto thread = TestThread::create(std::move(notifyDeath));
+        auto thread = TestThreadLoop::create(std::move(notifyDeath));
         auto onEvQuit = [](auto&)
         {
             mox::Application::instance().quit();
@@ -212,7 +167,7 @@ TEST_F(Threads, test_threads2)
     Watcher watchDeath = notifyDeath.get_future();
 
     {
-        auto thread = TestThread::create(std::move(notifyDeath));
+        auto thread = TestThreadLoop::create(std::move(notifyDeath));
 
         auto quitEventHandler = [](mox::Event& event)
         {
@@ -245,7 +200,7 @@ TEST_F(Threads, test_threads2)
     }
 
     EXPECT_EQ(101, mainThread.run());
-    EXPECT_EQ(0, TestThread::threadCount);
+    EXPECT_EQ(0, TestThreadLoop::threadCount);
     watchDeath.wait();
 }
 
@@ -257,7 +212,7 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
     Notifier notifyDeath;
     Watcher watchDeath = notifyDeath.get_future();
     {
-        auto thread = TestThread::create(std::move(notifyDeath));
+        auto thread = TestThreadLoop::create(std::move(notifyDeath));
         thread->stopped.connect(*mainThread.castRootObject<Quitter>(), &Quitter::quit);
 
         auto quitEventHandler = [](mox::Event& event)
@@ -270,7 +225,7 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
         thread->addEventHandler(evQuit, quitEventHandler);
 
         thread->start();
-        EXPECT_EQ(1, TestThread::threadCount);
+        EXPECT_EQ(1, TestThreadLoop::threadCount);
 
         auto onIdle = [thread]()
         {
@@ -282,7 +237,7 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
 
     EXPECT_EQ(10, mainThread.run());
     watchDeath.wait();
-    EXPECT_EQ(0, TestThread::threadCount);
+    EXPECT_EQ(0, TestThreadLoop::threadCount);
 }
 
 TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
@@ -293,11 +248,11 @@ TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
     Notifier notifyDeath;
     Watcher watchDeath = notifyDeath.get_future();
     {
-        auto thread = TestThread::create(std::move(notifyDeath));
+        auto thread = TestThreadLoop::create(std::move(notifyDeath));
         thread->stopped.connect(*mainThread.castRootObject<Quitter>(), "quit");
 
         thread->start();
-        EXPECT_EQ(1, TestThread::threadCount);
+        EXPECT_EQ(1, TestThreadLoop::threadCount);
 
         auto onIdle = [thread]()
         {
@@ -309,5 +264,5 @@ TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
 
     EXPECT_EQ(10, mainThread.run());
     watchDeath.wait();
-    EXPECT_EQ(0, TestThread::threadCount);
+    EXPECT_EQ(0, TestThreadLoop::threadCount);
 }

@@ -38,36 +38,6 @@ BindingPrivate::~BindingPrivate()
 {
 }
 
-void BindingPrivate::attachToTarget(Property& target)
-{
-    P_PTR(Binding);
-    throwIf<ExceptionType::BindingAlreadyAttached>(p->isAttached());
-
-    state = BindingState::Attaching;
-    this->target = &target;
-    p->onAttached();
-    state = BindingState::Attached;
-}
-
-void BindingPrivate::detachFromTarget()
-{
-    P_PTR(Binding);
-    throwIf<ExceptionType::BindingNotAttached>(!p->isAttached());
-
-    state = BindingState::Detaching;
-    p->onDetached();
-    clearDependencies();
-
-    if (group)
-    {
-        group->detach();
-    }
-
-    target = nullptr;
-    enabled = false;
-    state = BindingState::Detached;
-}
-
 void BindingPrivate::addDependency(Property &dependency)
 {
     dependencies.insert(&dependency);
@@ -84,9 +54,14 @@ void BindingPrivate::clearDependencies()
     for (auto dep : dependencies)
     {
         auto ddep = PropertyPrivate::get(*dep);
-        ddep->bindingSubscribers.erase(psh);
+        ddep->unsubscribe(psh);
     }
     dependencies.clear();
+}
+
+void BindingPrivate::invalidate()
+{
+    state = BindingState::Invalid;
 }
 
 /******************************************************************************
@@ -164,6 +139,73 @@ Binding::~Binding()
 {
 }
 
+void Binding::attach(Property& target)
+{
+    throwIf<ExceptionType::InvalidArgument>(!target.isValid());
+    throwIf<ExceptionType::AttemptAttachingBindingToReadOnlyProperty>(target.isReadOnly());
+    throwIf<ExceptionType::InvalidBinding>(!isValid());
+
+    if (getState() == BindingState::Attaching)
+    {
+        return;
+    }
+    throwIf<ExceptionType::BindingAlreadyAttached>(isAttached());
+
+    auto dTarget = PropertyPrivate::get(target);
+    dTarget->addBinding(shared_from_this());
+
+    D();
+    d->target = &target;
+
+    d->state = BindingState::Attaching;
+    onAttached();
+    d->state = BindingState::Attached;
+
+    setEnabled(true);
+
+    if (!d->evaluateOnEnabled)
+    {
+        evaluateBinding();
+    }
+}
+
+void Binding::detach()
+{
+    if (getState() == BindingState::Detaching)
+    {
+        return;
+    }
+
+    throwIf<ExceptionType::InvalidArgument>(!isAttached());
+
+    bool wasEnabled = isEnabled();
+    auto keepAlive = shared_from_this();
+
+    auto dTarget = PropertyPrivate::get(*getTarget());
+    dTarget->removeBinding(*this);
+
+    // Detach from target.
+    D();
+    d->state = BindingState::Detaching;
+    onDetached();
+    d->clearDependencies();
+
+    if (d->group)
+    {
+        d->group->detach();
+    }
+
+    d->target = nullptr;
+    d->enabled = false;
+    d->state = BindingState::Detached;
+
+    // If this was the enabled one, enable the head binding of the property
+    if (wasEnabled)
+    {
+        dTarget->tryActivateHeadBinding();
+    }
+}
+
 void Binding::evaluateBinding()
 {
     D();
@@ -173,7 +215,7 @@ void Binding::evaluateBinding()
     }
 
     auto dTarget = PropertyPrivate::get(*d->target);
-    Variant data = dTarget->dataProvider;
+    Variant data = dTarget->fetchDataUnsafe();
     BindingLoopDetector detector(*d);
 
     d->clearDependencies();
@@ -188,7 +230,7 @@ void Binding::updateTarget(Variant &value)
         return;
     }
     auto dTarget = PropertyPrivate::get(*d_func()->target);
-    dTarget->dataProvider.updateData(value);
+    dTarget->updateData(value);
 }
 
 bool Binding::isValid() const
@@ -255,15 +297,6 @@ void Binding::setEvaluateOnEnabled(bool doEvaluate)
 Property* Binding::getTarget() const
 {
     return d_func()->target;
-}
-
-void Binding::detach()
-{
-    if (!isAttached())
-    {
-        return;
-    }
-    d_func()->target->removeBinding(*this);
 }
 
 BindingGroupSharedPtr Binding::getBindingGroup()

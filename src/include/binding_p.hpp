@@ -35,28 +35,13 @@ class BindingPrivate
 public:
     DECLARE_PUBLIC(Binding)
 
-    using Collection = std::unordered_set<Property*>;
-
-    Collection dependencies;
-    Binding* p_ptr = nullptr;
-    BindingSharedPtr next;
-    BindingSharedPtr prev;
-    BindingGroupSharedPtr group;
-    Property* target = nullptr;
-    BindingState state = BindingState::Detached;
-    size_t bindingLoopCount = 0u;
-    bool enabled:1;
-    bool evaluateOnEnabled:1;
-    bool isPermanent:1;
-
     explicit BindingPrivate(Binding* pp, bool permanent);
     ~BindingPrivate();
 
-    void attachToTarget(Property& target);
-    void detachFromTarget();
     void addDependency(Property& dependency);
     void removeDependency(Property& dependency);
     void clearDependencies();
+    void invalidate();
 
     // for RefCounter
     void operator++()
@@ -67,6 +52,30 @@ public:
     {
         --bindingLoopCount;
     }
+
+    inline void setGroup(BindingGroupSharedPtr grp)
+    {
+        group = grp;
+    }
+    inline void setEnabled(bool enabled)
+    {
+        this->enabled = enabled;
+    }
+
+protected:
+    using Collection = std::unordered_set<Property*>;
+
+    Collection dependencies;
+    Binding* p_ptr = nullptr;
+    BindingGroupSharedPtr group;
+    Property* target = nullptr;
+    BindingState state = BindingState::Detached;
+    size_t bindingLoopCount = 0u;
+    bool enabled:1;
+    bool evaluateOnEnabled:1;
+    bool isPermanent:1;
+
+    friend class BindingLoopDetector;
 };
 
 class PropertyBindingPrivate : public BindingPrivate
@@ -81,7 +90,7 @@ public:
 
 class BindingLoopDetector : public RefCounter<BindingPrivate>
 {
-    using BaseClass =RefCounter<BindingPrivate>;
+    using BaseClass = RefCounter<BindingPrivate>;
 
     /*thread_local */static inline BindingLoopDetector* last = nullptr;
     BindingLoopDetector* prev = nullptr;

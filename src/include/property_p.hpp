@@ -27,19 +27,15 @@
 namespace mox
 {
 
-class BindingSubscriber;
-
 class PropertyPrivate
 {
-public:
-    DECLARE_PUBLIC(Property)
-
     using SubscriberCollection = std::unordered_set<BindingSharedPtr>;
+    using BindingCollection = std::vector<BindingSharedPtr>;
 
     /// The bindings subscribed for the property changes.
     SubscriberCollection bindingSubscribers;
     /// The list of bindings.
-    BindingSharedPtr bindingsHead;
+    BindingCollection bindings;
     /// The p-object.
     Property* p_ptr;
     /// The property data.
@@ -49,25 +45,45 @@ public:
     /// The host object of the property.
     Instance host;
 
+public:
+    DECLARE_PUBLIC(Property)
+
     /// Constructor.
     explicit PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, Instance host);
+    ~PropertyPrivate();
+
+    /// Thread-safe functions.
+    /// Thread-safe. Adds a binding to the property. Called by Binding::attach().
+    void addBinding(BindingSharedPtr binding);
+    /// Thread-safe. Removes the binding from the property. If the binding was the active binding of the property,
+    /// the next binding in the binding stack is activated.
+    /// \param binding The binding to remove.
+    void removeBinding(Binding& binding);
+    /// Tries to activate the binding on head.
+    void tryActivateHeadBinding();
+    /// Activates a binding by moving the binding to the top of the list.
+    void activateBinding(Binding& binding);
+    /// Updates the property data. Doe snot
+    void updateData(const Variant& value);
+    /// Unsubscribes a binding from the property.
+    void unsubscribe(BindingSharedPtr binding);
+
+    /// Non thread-safe.
+    Variant fetchDataUnsafe() const;
+    inline const Instance& getHost() const
+    {
+        return host;
+    }
+
+private:
+    /// Clears the bindings.
+    void clearBindings();
+
+    /// Non thread-safe functions.
     /// Informs the proeprty being accessed.
     void notifyAccessed();
     /// Notifies the subscribers about the property value change.
     void notifyChanges();
-    /// Clears the subscribers, and marks them all invalid.
-    void clearAllSubscribers();
-    /// Clears the bindings.
-    void clearBindings();
-    /// Removes detachable bindings.
-    void removeDetachableBindings();
-
-    /// Removes a binding from the list.
-    void eraseBinding(Binding& binding);
-    /// Adds a binding to the list.
-    void addBinding(BindingSharedPtr binding);
-    /// Activates a binding by moving the binding to the top of the list.
-    void activateBinding(Binding& binding);
 };
 
 }

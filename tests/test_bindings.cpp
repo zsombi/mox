@@ -26,13 +26,25 @@
 
 using namespace mox;
 
-class WritableTest : public Object
+template <class LockableObject>
+class WritablePropertyHolder
 {
 public:
-    static inline PropertyTypeDecl<WritableTest, int, PropertyAccess::ReadWrite> WritablePropertyType{"writable"};
-    WritableProperty<int> writable{*this, WritablePropertyType, 0};
+    static inline PropertyTypeDecl<LockableObject, int, PropertyAccess::ReadWrite> WritablePropertyType{"writable"};
+    WritableProperty<int> writable;
+
+    explicit WritablePropertyHolder(LockableObject& lockable)
+        : writable(lockable, WritablePropertyType, 0)
+    {
+    }
+};
+
+class WritableTest : public Object, public WritablePropertyHolder<WritableTest>
+{
+public:
 
     explicit WritableTest(int initialValue = 0)
+        : WritablePropertyHolder<WritableTest>(static_cast<WritableTest&>(*this))
     {
         writable = initialValue;
     }
@@ -49,6 +61,40 @@ public:
     explicit ReadableTest() = default;
 };
 
+class BindingThread : public TestThreadLoop, public WritablePropertyHolder<BindingThread>
+{
+    static inline Notifier dummyDeath;
+    static inline Watcher dummyWatch;
+protected:
+    explicit BindingThread(Notifier&& notifier)
+        : TestThreadLoop(std::forward<Notifier>(notifier))
+        , WritablePropertyHolder<BindingThread>(static_cast<BindingThread&>(*this))
+    {
+        writable = 20;
+
+        addEventHandler(evUpdate, std::bind(&BindingThread::onUpdateEvent, this, std::placeholders::_1));
+    }
+
+    void onUpdateEvent(Event&)
+    {
+        ++writable;
+    }
+
+public:
+    static inline EventType const evUpdate = Event::registerNewType();
+
+    static std::shared_ptr<BindingThread> create()
+    {
+        dummyDeath = Notifier();
+        dummyWatch = dummyDeath.get_future();
+
+        auto thread = createObject(new BindingThread(std::move(dummyDeath)), nullptr);
+        thread->init();
+        return thread;
+    }
+};
+
+
 
 class Bindings : public UnitTest
 {
@@ -56,6 +102,8 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
+
+        registerMetaClass<BindingThread>();
     }
 };
 
@@ -684,7 +732,7 @@ TEST_F(Bindings, test_expression_binding_create_permanent)
     EXPECT_TRUE(binding->isPermanent());
 
     EXPECT_EQ(0, o1.writable);
-    o1.writable.addBinding(binding);
+    binding->attach(o1.writable);
     EXPECT_TRUE(binding->isEnabled());
     EXPECT_TRUE(binding->isAttached());
     EXPECT_EQ(22, o1.writable);
@@ -711,7 +759,7 @@ TEST_F(Bindings, test_expression_binding_create_discardable)
     EXPECT_FALSE(binding->isPermanent());
 
     EXPECT_EQ(0, o1.writable);
-    o1.writable.addBinding(binding);
+    binding->attach(o1.writable);
     EXPECT_TRUE(binding->isEnabled());
     EXPECT_TRUE(binding->isAttached());
     EXPECT_EQ(22, o1.writable);
@@ -810,7 +858,7 @@ TEST_F(Bindings, test_binding_detached_and_invalid_when_source_property_dies)
 
     EXPECT_FALSE(binding->isAttached());
     // try to re-attach the binding to o1
-    EXPECT_THROW(o1.writable.addBinding(binding), Exception);
+    EXPECT_THROW(binding->attach(o1.writable), Exception);
 }
 
 TEST_F(Bindings, test_expression_binding_detached_and_invalid_when_source_in_expression_dies)
@@ -830,7 +878,7 @@ TEST_F(Bindings, test_expression_binding_detached_and_invalid_when_source_in_exp
     o2.writable = 10;
 
     // try to re-attach the binding to o1.
-    EXPECT_THROW(o1.writable.addBinding(binding), Exception);
+    EXPECT_THROW(binding->attach(o1.writable), Exception);
 }
 
 TEST_F(Bindings, test_espression_binding_detect_binding_loop)
@@ -849,20 +897,6 @@ TEST_F(Bindings, test_espression_binding_detect_binding_loop)
 
     // o2 is bount to o3. This closes the loop, and produces binding loop.
     EXPECT_THROW(PropertyBinding::bindPermanent(o2.writable, o3.writable), Exception);
-}
-
-TEST_F(Bindings, test_remove_binding_from_wrong_target)
-{
-    WritableTest o1;
-    WritableTest o2;
-
-    auto b1 = PropertyBinding::bindPermanent(o1.writable, o2.writable);
-    auto b2 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
-    EXPECT_NOT_NULL(b1);
-    EXPECT_NOT_NULL(b2);
-
-    EXPECT_THROW(o1.writable.removeBinding(*b2), Exception);
-    EXPECT_THROW(o2.writable.removeBinding(*b1), Exception);
 }
 
 TEST_F(Bindings, test_property_binding_becomes_invalid_before_being_attached)
@@ -1133,4 +1167,106 @@ TEST_F(Bindings, test_binding_loop_normalize_exit_if_normalization_fails_after_4
     EXPECT_EQ(1, o1Values[1]);
     EXPECT_EQ(0, o1Values[2]);
     EXPECT_EQ(3, o1Values[3]);
+}
+
+TEST_F(Bindings, test_property_binding_between_threads)
+{
+    WritableTest o1(10);
+    auto binding = BindingSharedPtr();
+
+    TestApp app;
+
+    std::function<void()> kickThreadUpdate;
+    std::function<void()> killThread;
+
+    {
+        auto thread = BindingThread::create();
+        EXPECT_EQ(20, thread->writable);
+
+        binding = PropertyBinding::bindPermanent(o1.writable, thread->writable);
+        EXPECT_TRUE(binding->isAttached());
+        EXPECT_EQ(20, o1.writable);
+
+        // start the thread
+        thread->start();
+
+        kickThreadUpdate = [threadObject = thread.get()]() { postEvent<Event>(BindingThread::evUpdate, threadObject->shared_from_this()); };
+        killThread = [threadObject = thread.get()]() { threadObject->exitAndJoin(0); };
+    }
+
+    // Wait for an update from the o1 property change.
+    Notifier updated;
+    Watcher updateWatch = updated.get_future();
+    auto onWritableChanged = [&updated]()
+    {
+        updated.set_value();
+    };
+    o1.writable.changed.connect(onWritableChanged);
+    kickThreadUpdate();
+    updateWatch.wait();
+
+    EXPECT_EQ(21, o1.writable);
+
+    // Stop the thread.
+    killThread();
+
+    // Despite stopped, teh thread object is still alive. This is reflected in teh binding being valid. And attached.
+    EXPECT_TRUE(binding->isAttached());
+    EXPECT_TRUE(binding->isValid());
+    // Run once the app. This will stop wrap up the root object, to which all orphan threads are parented.
+    app.runOnce();
+    // The binding is no longer valid, nor attached.
+    EXPECT_FALSE(binding->isValid());
+    EXPECT_FALSE(binding->isAttached());
+}
+
+TEST_F(Bindings, test_expression_binding_between_threads)
+{
+    WritableTest o1(10);
+    auto binding = BindingSharedPtr();
+
+    TestApp app;
+
+    std::function<void()> kickThreadUpdate;
+    std::function<void()> killThread;
+
+    {
+        auto thread = BindingThread::create();
+        EXPECT_EQ(20, thread->writable);
+        // Note:!! Beware of the capture of teh expression lambda!! Do not copy the thread handler as the lambda will hold the pointer reference!
+        binding = ExpressionBinding::bindPermanent(o1.writable, [thrd = thread.get()]() { return thrd->writable.get(); });
+        EXPECT_TRUE(binding->isAttached());
+        EXPECT_EQ(20, o1.writable);
+
+        // start the thread
+        thread->start();
+
+        kickThreadUpdate = [threadObject = thread.get()]() { postEvent<Event>(BindingThread::evUpdate, threadObject->shared_from_this()); };
+        killThread = [threadObject = thread.get()]() { threadObject->exitAndJoin(0); };
+    }
+
+    // Wait for an update from the o1 property change.
+    Notifier updated;
+    Watcher updateWatch = updated.get_future();
+    auto onWritableChanged = [&updated]()
+    {
+        updated.set_value();
+    };
+    o1.writable.changed.connect(onWritableChanged);
+    kickThreadUpdate();
+    updateWatch.wait();
+
+    EXPECT_EQ(21, o1.writable);
+
+    // Stop the thread.
+    killThread();
+
+    // Despite stopped, teh thread object is still alive. This is reflected in teh binding being valid. And attached.
+    EXPECT_TRUE(binding->isAttached());
+    EXPECT_TRUE(binding->isValid());
+    // Run once the app. This will stop wrap up the root object, to which all orphan threads are parented.
+    app.runOnce();
+    // The binding is no longer valid, nor attached.
+    EXPECT_FALSE(binding->isValid());
+    EXPECT_FALSE(binding->isAttached());
 }

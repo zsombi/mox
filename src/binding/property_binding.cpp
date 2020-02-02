@@ -68,7 +68,7 @@ PropertyBindingSharedPtr PropertyBinding::bindPermanent(Property &target, Proper
     }
 
     auto binding = PropertyBinding::create(source, true);
-    target.addBinding(binding);
+    binding->attach(target);
     return binding;
 }
 
@@ -80,7 +80,7 @@ PropertyBindingSharedPtr PropertyBinding::bindAutoDiscard(Property &target, Prop
     }
 
     auto binding = PropertyBinding::create(source, false);
-    target.addBinding(binding);
+    binding->attach(target);
     return binding;
 }
 

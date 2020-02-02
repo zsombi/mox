@@ -27,6 +27,7 @@
 #include <mox/utils/globals.hpp>
 
 #include <functional>
+#include <thread>
 
 namespace mox
 {
@@ -39,7 +40,10 @@ using std::lock_guard;
 class MOX_API ObjectLock
 {
     mutable std::mutex m_mutex;
+#ifdef DEBUG
     mutable atomic_int32_t m_lockCount;
+    mutable std::atomic<std::thread::id> m_owner;
+#endif
 public:
     explicit ObjectLock();
     virtual ~ObjectLock();

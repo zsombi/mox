@@ -55,14 +55,14 @@ ExpressionBindingSharedPtr ExpressionBinding::create(ExpressionType&& expression
 ExpressionBindingSharedPtr ExpressionBinding::bindPermanent(Property& target, ExpressionType&& expression)
 {
     auto binding = create(std::forward<ExpressionType>(expression), true);
-    target.addBinding(binding);
+    binding->attach(target);
     return binding;
 }
 
 ExpressionBindingSharedPtr ExpressionBinding::bindAutoDetach(Property& target, ExpressionType&& expression)
 {
     auto binding = create(std::forward<ExpressionType>(expression), false);
-    target.addBinding(binding);
+    binding->attach(target);
     return binding;
 }
 

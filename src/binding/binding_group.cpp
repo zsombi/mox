@@ -35,7 +35,7 @@ void BindingGroup::addBinding(Binding& binding)
 
     m_bindings.push_back(binding.shared_from_this());
     auto dBinding = BindingPrivate::get(binding);
-    dBinding->group = shared_from_this();
+    dBinding->setGroup(shared_from_this());
 }
 
 void BindingGroup::removeBinding(Binding &binding)
@@ -48,7 +48,7 @@ void BindingGroup::removeBinding(Binding &binding)
         m_normalizer.reset();
     }
     auto dBinding = BindingPrivate::get(binding);
-    dBinding->group.reset();
+    dBinding->setGroup(nullptr);
 }
 
 void BindingGroup::ungroupBindings()
@@ -57,7 +57,7 @@ void BindingGroup::ungroupBindings()
     // remove the bindings from the group.
     for (auto binding : m_bindings)
     {
-        BindingPrivate::get(*binding)->group.reset();
+        BindingPrivate::get(*binding)->setGroup(nullptr);
     }
     m_bindings.clear();
 }
@@ -144,7 +144,7 @@ BindingGroupSharedPtr BindingGroup::bindProperties(const std::vector<Property*>&
             // Create a binding with the read-only property and add i to the group, as well as to the target property.
             auto binding = PropertyBinding::create(*readOnly, permanent);
             group->addBinding(*binding);
-            property->addBinding(binding);
+            binding->attach(*property);
         }
     }
     else
@@ -162,7 +162,7 @@ BindingGroupSharedPtr BindingGroup::bindProperties(const std::vector<Property*>&
                 continue;
             }
             // Add the binding to the target property, and after that to the group.
-            property->addBinding(binding);
+            binding->attach(*property);
             group->addBinding(*binding);
 
             // Create a new binding with the property.
@@ -171,7 +171,7 @@ BindingGroupSharedPtr BindingGroup::bindProperties(const std::vector<Property*>&
         // If the binding is circular (two-way), add the binding first property.
         if (circular)
         {
-            (*properties.rbegin())->addBinding(binding);
+            binding->attach(*(*properties.rbegin()));
             group->addBinding(*binding);
         }
     }

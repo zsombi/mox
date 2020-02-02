@@ -87,6 +87,16 @@ public:
     /// Destructor.
     virtual ~Binding();
 
+    /// Attaches the binding to a \a target property.
+    /// \param target The target property.
+    /// \throws ExceptionType::InvalidBinding, ExceptionType::InvalidArgument, ExceptionType::BindingAlreadyAttached,
+    /// ExceptionType::AttemptAttachingBindingToReadOnlyProperty
+    void attach(Property& target);
+
+    /// Detaches the binding from the target. If the binding is already detached, the calling this method
+    /// has no effect.
+    void detach();
+
     /// Evaluates the binding expressions. Collects the binding dependencies (properties) and subscribes
     /// to those to seize changes.
     void evaluateBinding();
@@ -128,10 +138,6 @@ public:
     /// \return If the binding is attached, returns the target property of the binding. If the property is
     /// detached, returns \e nullptr.
     Property* getTarget() const;
-
-    /// Detaches the binding from the target. If the binding is already detached, the calling this method
-    /// has no effect.
-    void detach();
 
     /// Returns the group where this binding belongs to. If the binding has no group, the binding is solitaire.
     /// \return The binding group of this binding.

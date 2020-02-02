@@ -25,6 +25,7 @@
 #include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/module/application.hpp>
+#include <mox/module/thread_loop.hpp>
 #include <mox/config/error.hpp>
 
 class UnitTest : public ::testing::Test
@@ -52,6 +53,28 @@ public:
         threadData()->eventDispatcher()->addIdleTask(idleTask);
         return run();
     }
+};
+
+using Notifier = std::promise<void>;
+using Watcher = std::future<void>;
+
+class TestThreadLoop : public mox::ThreadLoop
+{
+    Notifier m_deathNotifier;
+public:
+    static inline std::atomic_int threadCount = 0;
+
+    static std::shared_ptr<TestThreadLoop> create(Notifier&& notifier, Object* parent = nullptr);
+
+    ~TestThreadLoop() override;
+
+protected:
+    explicit TestThreadLoop(Notifier&& notifier);
+
+    void init();
+
+    void onStarted();
+    void onStopped();
 };
 
 #define SLEEP(msec)             std::this_thread::sleep_for(std::chrono::milliseconds(msec))

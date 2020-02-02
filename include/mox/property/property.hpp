@@ -57,6 +57,10 @@ public:
     /// Destructor.
     virtual ~Property();
 
+    /// Checks the validity of a property. A property is valid if its type is set.
+    /// \return If teh property is valid, returns \e true, otherwise \e false.
+    bool isValid() const;
+
     /// Returns the read-only state of the property.
     /// \return The read-only state of the property.
     bool isReadOnly() const;
@@ -72,21 +76,9 @@ public:
     /// Resets the property value to the default. All property bindings are removed.
     void reset();
 
-    /// Bindings
-    /// \{
-    /// Adds a binding to the property. The binding becomes the active binding of the property.
-    /// \property binding The binding to add.
-    void addBinding(BindingSharedPtr binding);
-
-    /// Removes the binding from the property. If the binding was the active binding of the property,
-    /// the next binding in the binding stack is activated.
-    /// \param binding The binding to remove.
-    void removeBinding(Binding& binding);
-
     /// Returns the current binding of the property.
     /// \return the current binding, nullptr if the property has no bindings.
     BindingSharedPtr getCurrentBinding();
-    /// \}
 
 protected:
     /// Constructor.
@@ -95,8 +87,14 @@ protected:
     /// Returns the data provider of the property.
     AbstractPropertyData* getDataProvider() const;
 
-    /// Notifies avout a property accessing.
+    /// Notifies about a property accessing.
     void notifyAccessed() const;
+
+    void update(const Variant& newValue);
+
+    virtual Variant getData() const = 0;
+    virtual void setData(const Variant&) = 0;
+    virtual void resetToDefaultData() {}
 
 private:
     Property() = delete;
@@ -112,6 +110,17 @@ class ReadOnlyProperty : public Property
     using DataType = PropertyData<ValueType>;
     using ThisType = ReadOnlyProperty<ValueType>;
 
+    ValueType m_value;
+
+    Variant getData() const override
+    {
+        return Variant(m_value);
+    }
+    void setData(const Variant& data) override
+    {
+        m_value = (ValueType)data;
+    }
+
 public:
     /// Constructs the property with the host, type and data provider. The data provider holds the default
     /// value of the property.
@@ -124,14 +133,15 @@ public:
         : Property(&host, type, dataProvider)
     {
         static_assert(std::is_base_of_v<DataType, DataProvider>, "The data provider must be derived from PropertyData<>");
+        dataProvider.initialize();
     }
 
     /// Cast opertator, the property getter.
     operator ValueType() const
     {
+        lock_guard lock(const_cast<ThisType&>(*this));
         notifyAccessed();
-        auto data = static_cast<DataType*>(getDataProvider());
-        return data->getValue();
+        return m_value;
     }
 };
 
@@ -140,10 +150,26 @@ public:
 /// value provider for the property.
 /// \tparam ValueType The value type of the property.
 template <typename ValueType>
-class WritableProperty : protected PropertyData<ValueType>, public Property
+class WritableProperty : protected AbstractPropertyData, public Property
 {
-    using DataType = PropertyData<ValueType>;
+    using DataType = AbstractPropertyData;
     using ThisType = WritableProperty<ValueType>;
+
+    ValueType m_value;
+    ValueType m_defaultValue;
+
+    Variant getData() const override
+    {
+        return Variant(m_value);
+    }
+    void setData(const Variant& value) override
+    {
+        m_value = (ValueType)value;
+    }
+    void resetToDefaultData() override
+    {
+        update(Variant(m_defaultValue));
+    }
 
 public:
 
@@ -154,16 +180,18 @@ public:
     /// \param defaultValue The default value of the property.
     template <class PropertyHost>
     explicit WritableProperty(PropertyHost& host, PropertyType& type, const ValueType& defaultValue = ValueType())
-        : DataType(defaultValue)
-        , Property(&host, type, *this)
+        : Property(&host, type, *this)
+        , m_value(defaultValue)
+        , m_defaultValue(defaultValue)
     {
     }
 
     /// Cast opertator, the property getter.
     operator ValueType() const
     {
+        lock_guard lock(const_cast<ThisType&>(*this));
         notifyAccessed();
-        return DataType::getValue();
+        return m_value;
     }
     /// Property setter.
     /// \param value The value to set.
@@ -181,21 +209,17 @@ public:
     }
 
     /// Prefix increment operator.
-    auto& operator++()
+    void operator++()
     {
         static_assert (std::is_integral_v<ValueType>, "Increment operator is available for integral types");
-        auto value = this->getValue();
-        set(Variant(++value));
-        return *this;
+        *this = m_value + 1;
     }
 
     /// Prefix decrement operator.
-    auto& operator--()
+    void operator--()
     {
         static_assert (std::is_integral_v<ValueType>, "Increment operator is available for integral types");
-        auto value = this->getValue();
-        set(Variant(--value));
-        return *this;
+        *this = m_value - 1;
     }
 };
 

@@ -17,9 +17,12 @@
  */
 
 #include <mox/utils/locks.hpp>
+#include <thread>
 
 namespace mox
 {
+
+#ifdef DEBUG
 
 ObjectLock::ObjectLock()
 {
@@ -29,14 +32,23 @@ ObjectLock::ObjectLock()
 ObjectLock::~ObjectLock()
 {
     FATAL(m_lockCount.load() == 0, "Destroying unlocked object! LockCount is " << m_lockCount.load())
+    m_lockCount.store(-1);
 }
 
 void ObjectLock::lock()
 {
-//    m_mutex.lock();
+    FATAL(m_lockCount >= 0, "Invalid ObjectLock")
+
     if (!try_lock())
     {
-        FATAL(false, "Already locked ObjectLock! LockCount is " << m_lockCount)
+        // Is this the same owner?
+        if (m_owner == std::this_thread::get_id())
+        {
+            FATAL(false, "Already locked ObjectLock! LockCount is " << m_lockCount)
+        }
+        m_mutex.lock();
+        m_owner = std::this_thread::get_id();
+        m_lockCount++;
     }
 }
 
@@ -45,6 +57,7 @@ void ObjectLock::unlock()
     FATAL(m_lockCount > 0, "Cannot unlock ObjectLock if not locked! LockCount is " << m_lockCount)
     m_mutex.unlock();
     m_lockCount--;
+    m_owner = std::thread::id();
 }
 
 bool ObjectLock::try_lock()
@@ -53,8 +66,36 @@ bool ObjectLock::try_lock()
     if (result)
     {
         m_lockCount++;
+        m_owner = std::this_thread::get_id();
     }
     return result;
 }
+
+#else
+
+ObjectLock::ObjectLock()
+{
+}
+
+ObjectLock::~ObjectLock()
+{
+}
+
+void ObjectLock::lock()
+{
+    m_mutex.lock();
+}
+
+void ObjectLock::unlock()
+{
+    m_mutex.unlock();
+}
+
+bool ObjectLock::try_lock()
+{
+    return m_mutex.try_lock();
+}
+
+#endif
 
 }
