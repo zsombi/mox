@@ -71,8 +71,6 @@ protected:
         , WritablePropertyHolder<BindingThread>(static_cast<BindingThread&>(*this))
     {
         writable = 20;
-
-        addEventHandler(evUpdate, std::bind(&BindingThread::onUpdateEvent, this, std::placeholders::_1));
     }
 
     void onUpdateEvent(Event&)
@@ -89,6 +87,7 @@ public:
         dummyWatch = dummyDeath.get_future();
 
         auto thread = createObject(new BindingThread(std::move(dummyDeath)), nullptr);
+        thread->addEventHandler(evUpdate, std::bind(&BindingThread::onUpdateEvent, thread.get(), std::placeholders::_1));
         thread->init();
         return thread;
     }
@@ -1190,7 +1189,7 @@ TEST_F(Bindings, test_property_binding_between_threads)
         // start the thread
         thread->start();
 
-        kickThreadUpdate = [threadObject = thread.get()]() { postEvent<Event>(BindingThread::evUpdate, threadObject->shared_from_this()); };
+        kickThreadUpdate = [threadObject = thread.get()]() { ThreadLoop::postEvent<Event>(threadObject->asShared(), BindingThread::evUpdate); };
         killThread = [threadObject = thread.get()]() { threadObject->exitAndJoin(0); };
     }
 
@@ -1210,7 +1209,7 @@ TEST_F(Bindings, test_property_binding_between_threads)
     // Stop the thread.
     killThread();
 
-    // Despite stopped, teh thread object is still alive. This is reflected in teh binding being valid. And attached.
+    // Despite stopped, the thread object is still alive. This is reflected in the binding being valid. And attached.
     EXPECT_TRUE(binding->isAttached());
     EXPECT_TRUE(binding->isValid());
     // Run once the app. This will stop wrap up the root object, to which all orphan threads are parented.
@@ -1233,7 +1232,7 @@ TEST_F(Bindings, test_expression_binding_between_threads)
     {
         auto thread = BindingThread::create();
         EXPECT_EQ(20, thread->writable);
-        // Note:!! Beware of the capture of teh expression lambda!! Do not copy the thread handler as the lambda will hold the pointer reference!
+        // Note:!! Beware of the capture of the expression lambda!! Do not copy the thread handler as the lambda will hold the pointer reference!
         binding = ExpressionBinding::bindPermanent(o1.writable, [thrd = thread.get()]() { return thrd->writable.get(); });
         EXPECT_TRUE(binding->isAttached());
         EXPECT_EQ(20, o1.writable);
@@ -1241,7 +1240,7 @@ TEST_F(Bindings, test_expression_binding_between_threads)
         // start the thread
         thread->start();
 
-        kickThreadUpdate = [threadObject = thread.get()]() { postEvent<Event>(BindingThread::evUpdate, threadObject->shared_from_this()); };
+        kickThreadUpdate = [threadObject = thread.get()]() { ThreadLoop::postEvent<Event>(threadObject->asShared(), BindingThread::evUpdate); };
         killThread = [threadObject = thread.get()]() { threadObject->exitAndJoin(0); };
     }
 
@@ -1261,7 +1260,7 @@ TEST_F(Bindings, test_expression_binding_between_threads)
     // Stop the thread.
     killThread();
 
-    // Despite stopped, teh thread object is still alive. This is reflected in teh binding being valid. And attached.
+    // Despite stopped, the thread object is still alive. This is reflected in the binding being valid. And attached.
     EXPECT_TRUE(binding->isAttached());
     EXPECT_TRUE(binding->isValid());
     // Run once the app. This will stop wrap up the root object, to which all orphan threads are parented.

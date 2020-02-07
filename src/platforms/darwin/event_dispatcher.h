@@ -19,9 +19,8 @@
 #ifndef EVENT_LOOP_H
 #define EVENT_LOOP_H
 
-#include <mox/event_handling/event_dispatcher.hpp>
+#include <mox/event_handling/run_loop.hpp>
 #include <mox/event_handling/socket_notifier.hpp>
-#include <mox/timer.hpp>
 #include <mox/utils/containers.hpp>
 #include <mox/platforms/adaptation.hpp>
 
@@ -31,9 +30,9 @@
 namespace mox
 {
 
-class CFEventDispatcher;
+class FoundationRunLoop;
 
-template <class T = CFEventDispatcher>
+template <class T = FoundationRunLoop>
 class RunLoopSource
 {
 public:
@@ -96,7 +95,7 @@ private:
     CFRunLoopSourceRef m_sourceRef;
 };
 
-template <class T = CFEventDispatcher>
+template <class T = FoundationRunLoop>
 class RunLoopObserver
 {
 public:
@@ -157,48 +156,48 @@ private:
 class CFTimerSource : public TimerSource
 {
 public:
-    struct TimerRecord
+    struct CFTimerRecord
     {
         CFRunLoopTimerRef timerRef = nullptr;
-        TimerPtr timerHandler;
+        TimerSource::TimerPtr timerHandler;
 
-        TimerRecord(Timer& handler);
-        ~TimerRecord();
+        CFTimerRecord(TimerRecord& handler);
+        ~CFTimerRecord();
 
         void create(CFTimerSource& source);
     };
 
-    using TimerRecordPtr = std::unique_ptr<TimerRecord>;
+    using CFTimerRecordPtr = std::unique_ptr<CFTimerRecord>;
 
     explicit CFTimerSource(std::string_view name)
         : TimerSource(name)
     {
     }
 
-    void addTimer(Timer& timer) final;
-    void removeTimer(Timer &timer) final;
-    void shutDown() final;
+    void addTimer(TimerRecord& timer) final;
+    void removeTimer(TimerRecord& timer) final;
+    void clean() final;
     size_t timerCount() const final;
 
     void activate();
 
     struct NullTimer
     {
-        bool operator()(TimerRecordPtr const& timer) const
+        bool operator()(CFTimerRecordPtr const& timer) const
         {
-            return timer->timerHandler == nullptr;
+            return !timer || timer->timerHandler == nullptr;
         }
     };
 
-    SharedVector<TimerRecordPtr, NullTimer> timers;
+    SharedVector<CFTimerRecordPtr, NullTimer> timers;
 };
 
-class CFPostEventSource : public PostEventSource
+class CFPostEventSource : public EventSource
 {
 public:
     explicit CFPostEventSource(std::string_view name);
     ~CFPostEventSource() final;
-    void setEventDispatcher(EventDispatcher& eventDispatcher) final;
+    void setRunLoop(RunLoop& eventDispatcher) final;
 
     void wakeUp() override;
 
@@ -212,9 +211,9 @@ public:
     ~CFSocketNotifierSource() final;
 
     void prepare() final;
-    void shutDown() final;
-    void addNotifier(SocketNotifier &notifier) final;
-    void removeNotifier(SocketNotifier &notifier) final;
+    void clean() final;
+    void addNotifier(Notifier &notifier) final;
+    void removeNotifier(Notifier &notifier) final;
 
     void enableSockets();
 
@@ -224,16 +223,16 @@ public:
         CFSocketNotifierSource& socketSource;
         CFSocketRef cfSocket = nullptr;
         CFRunLoopSourceRef cfSource = nullptr;
-        SharedVector<SocketNotifierSharedPtr> notifiers;
-        SocketNotifier::Handler handler = -1;
+        SharedVector<NotifierPtr> notifiers;
+        SocketNotifier::EventTarget handler = -1;
         int readNotifierCount = 0;
         int writeNotifierCount = 0;
 
-        Socket(CFSocketNotifierSource& socketSource, SocketNotifier& notifier);
+        Socket(CFSocketNotifierSource& socketSource, Notifier& notifier);
         ~Socket();
-        void addNotifier(SocketNotifier& notifier);
+        void addNotifier(Notifier& notifier);
         // Returns true if the socket is releasable
-        bool removeNotifier(SocketNotifier& notifier);
+        bool removeNotifier(Notifier& notifier);
 
         static void callback(CFSocketRef s, CFSocketCallBackType callbackType, CFDataRef, const void *, void *info);
     };
@@ -242,15 +241,16 @@ public:
     std::vector<std::unique_ptr<Socket>> sockets;
 };
 
-class CFEventDispatcher : public EventDispatcher
+class FoundationRunLoop : public RunLoop
 {
 public:
-    explicit CFEventDispatcher(ThreadData& threadData);
-    ~CFEventDispatcher() override;
+    explicit FoundationRunLoop();
+    ~FoundationRunLoop() override;
 
-    bool isProcessingEvents() const override;
-    void processEvents(ProcessFlags flags) override;
-    void stop() override;
+    bool isRunning() const override;
+    void execute(ProcessFlags flags) override;
+    void stopExecution() override;
+    void shutDown() override {}
     void wakeUp() override;
     size_t runningTimerCount() const override;
 

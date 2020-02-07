@@ -92,6 +92,35 @@ public:
     }
 };
 
+template <typename Lockable>
+class AdaptiveLock
+{
+    DISABLE_MOVE(AdaptiveLock)
+
+public:
+    void lock()
+    {
+        FATAL(m_sharedLockable, "No lockable adapted")
+        m_sharedLockable->lock();
+    }
+
+    void unlock()
+    {
+        FATAL(m_sharedLockable, "No lockable adapted")
+        m_sharedLockable->unlock();
+    }
+
+    bool try_lock()
+    {
+        FATAL(m_sharedLockable, "No lockable adapted")
+        return m_sharedLockable->try_lock();
+    }
+
+protected:
+    explicit AdaptiveLock() = default;
+    mutable Lockable m_sharedLockable = nullptr;
+};
+
 template <typename Type>
 struct RefCountable
 {

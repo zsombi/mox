@@ -21,7 +21,6 @@
 
 #include <mox/module/module.hpp>
 #include <mox/object.hpp>
-#include <mox/event_handling/event_loop.hpp>
 
 #include <mox/signal/signal.hpp>
 
@@ -96,6 +95,28 @@ public:
     /// \return The thread object.
     static ThreadLoopSharedPtr thisThread();
 
+    /// Adds an idle task to the current thread.
+    /// \param idleTask The idle task to add.
+    static void addIdleTask(RunLoop::IdleFunction idleTask);
+    /// Post an event to the current thread's run loop.
+    /// \param event The event to post.
+    /// \return If the event is posted with success, returns \e true, otherwise \e false.
+    static bool postEvent(EventPtr event);
+
+    /// Template function, creates an event and posts to \a target
+    /// \tparam EventClass The event class type.
+    /// \tparam TargetPtr The target pointer type.
+    /// \tparam Arguments The argument types.
+    /// \param target The target of the event.
+    /// \param args The variadic arguments passed.
+    /// \return If the event is posted with success, returns \e true, otherwise \e false.
+    template <class EventClass, typename TargetPtr, typename... Arguments>
+    static bool postEvent(TargetPtr target, Arguments&&... args)
+    {
+        auto event = make_event<EventClass>(target, std::forward<Arguments>(args)...);
+        return postEvent(std::move(event));
+    }
+
     /// \name Metadata
     /// \{
     /// The static metaclass of the thread loop.
@@ -117,6 +138,9 @@ protected:
     /// Registers the module.
     void registerModule() override;
 
+    /// Prepares the thread for starting.
+    void prepare();
+
     /// Runs the thread loop.
     virtual int run();
 
@@ -124,13 +148,18 @@ protected:
     /// to other thread.
     Object::VisitResult moveToThread(ThreadDataSharedPtr threadData) override;
 
-    atomic<Status> m_status = Status::Inactive;
+    mutable RunLoopSharedPtr m_runLoop;
     mutable std::thread m_thread;
+    atomic<Status> m_status = Status::Inactive;
+    atomic<int> m_exitCode = 0;
 
 private:
     void moveToThread();
     void quitHandler(Event& event);
     void threadMain(std::promise<void> notifier);
+
+    friend class SocketNotifier;
+    friend class Timer;
 };
 
 }

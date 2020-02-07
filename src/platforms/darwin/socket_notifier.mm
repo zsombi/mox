@@ -21,18 +21,28 @@
 namespace mox
 {
 
+namespace
+{
+
+bool hasMode(const SocketNotifierSource::Notifier& notifier, SocketNotifierSource::Notifier::Modes mode)
+{
+    return (notifier.getModes() & mode) == mode;
+}
+
+}
+
 /******************************************************************************
  *
  */
-SocketNotifier::Modes SocketNotifier::supportedModes()
+SocketNotifierSource::Notifier::Modes SocketNotifierSource::supportedModes()
 {
-    return Modes::Read | Modes::Write | Modes::Error;
+    return SocketNotifierSource::Notifier::Modes::Read | SocketNotifierSource::Notifier::Modes::Write | SocketNotifierSource::Notifier::Modes::Error;
 }
 
 /******************************************************************************
  * CFSocketNotifiers::Socket
  */
-CFSocketNotifierSource::Socket::Socket(CFSocketNotifierSource& socketSource, SocketNotifier& notifier)
+CFSocketNotifierSource::Socket::Socket(CFSocketNotifierSource& socketSource, Notifier& notifier)
     : socketSource(socketSource)
     , cfSource(nullptr)
     , handler(notifier.handler())
@@ -54,7 +64,7 @@ CFSocketNotifierSource::Socket::~Socket()
 {
     if (CFSocketIsValid(cfSocket))
     {
-        CFEventDispatcher* loop = static_cast<CFEventDispatcher*>(socketSource.eventDispatcher().get());
+        FoundationRunLoop* loop = static_cast<FoundationRunLoop*>(socketSource.getRunLoop().get());
         CFRunLoopRemoveSource(loop->runLoop, cfSource, kCFRunLoopCommonModes);
         CFSocketDisableCallBacks(cfSocket, kCFSocketReadCallBack);
         CFSocketDisableCallBacks(cfSocket, kCFSocketWriteCallBack);
@@ -66,10 +76,10 @@ CFSocketNotifierSource::Socket::~Socket()
     CFRelease(cfSocket);
 }
 
-void CFSocketNotifierSource::Socket::addNotifier(SocketNotifier &notifier)
+void CFSocketNotifierSource::Socket::addNotifier(Notifier& notifier)
 {
     notifiers.push_back(notifier.shared_from_this());
-    if (notifier.hasReadMode())
+    if (hasMode(notifier, SocketNotifierSource::Notifier::Modes::Read))
     {
         if (!readNotifierCount)
         {
@@ -78,7 +88,7 @@ void CFSocketNotifierSource::Socket::addNotifier(SocketNotifier &notifier)
         }
         ++readNotifierCount;
     }
-    if (notifier.hasWriteMode())
+    if (hasMode(notifier, SocketNotifierSource::Notifier::Modes::Write))
     {
         if (!writeNotifierCount)
         {
@@ -89,9 +99,9 @@ void CFSocketNotifierSource::Socket::addNotifier(SocketNotifier &notifier)
     }
 }
 
-bool CFSocketNotifierSource::Socket::removeNotifier(SocketNotifier& notifier)
+bool CFSocketNotifierSource::Socket::removeNotifier(Notifier& notifier)
 {
-    auto notifierLookup = [&notifier](SocketNotifierSharedPtr n)
+    auto notifierLookup = [&notifier](SocketNotifierSource::NotifierPtr n)
     {
         return n.get() == &notifier;
     };
@@ -104,8 +114,8 @@ bool CFSocketNotifierSource::Socket::removeNotifier(SocketNotifier& notifier)
     lock_guard lock(notifiers);
     notifiers[*index].reset();
 
-    bool isRead = notifier.hasReadMode();
-    bool isWrite = notifier.hasWriteMode();
+    bool isRead = hasMode(notifier, SocketNotifierSource::Notifier::Modes::Read);
+    bool isWrite = hasMode(notifier, SocketNotifierSource::Notifier::Modes::Write);
 
     if (isRead && (readNotifierCount > 0))
     {
@@ -140,7 +150,7 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
         return;
     }
 
-    auto process = [&callbackType](SocketNotifierSharedPtr notifier)
+    auto process = [&callbackType](SocketNotifierSource::NotifierPtr notifier)
     {
         if (!notifier)
         {
@@ -150,17 +160,17 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
         {
             case kCFSocketReadCallBack:
             {
-                if (notifier->hasReadMode())
+                if (hasMode(*notifier, SocketNotifierSource::Notifier::Modes::Read))
                 {
-                    notifier->activated(notifier, SocketNotifier::Modes::Read);
+                    notifier->signal(SocketNotifierSource::Notifier::Modes::Read);
                 }
                 break;
             }
             case kCFSocketWriteCallBack:
             {
-                if (notifier->hasWriteMode())
+                if (hasMode(*notifier, SocketNotifierSource::Notifier::Modes::Write))
                 {
-                    notifier->activated(notifier, SocketNotifier::Modes::Write);
+                    notifier->signal(SocketNotifierSource::Notifier::Modes::Write);
                 }
                 break;
             }
@@ -197,7 +207,7 @@ void CFSocketNotifierSource::enableSockets()
             socket->cfSource = CFSocketCreateRunLoopSource(kCFAllocatorDefault, socket->cfSocket, 0);
             if (socket->cfSource)
             {
-                CFEventDispatcher* loop = static_cast<CFEventDispatcher*>(m_eventDispatcher.lock().get());
+                FoundationRunLoop* loop = static_cast<FoundationRunLoop*>(m_runLoop.lock().get());
                 FATAL(loop, "The event loop is destroyed!")
                 CFRunLoopAddSource(loop->runLoop, socket->cfSource, loop->currentMode);
             }
@@ -210,13 +220,8 @@ void CFSocketNotifierSource::enableSockets()
     }
 }
 
-void CFSocketNotifierSource::addNotifier(SocketNotifier& notifier)
+void CFSocketNotifierSource::addNotifier(Notifier& notifier)
 {
-    if ((notifier.modes() & SocketNotifier::Modes::Exception) == SocketNotifier::Modes::Exception)
-    {
-        return;
-    }
-
     auto lookup = [fd = notifier.handler()](const SocketPtr& socket)
     {
         return socket->handler == fd;
@@ -234,7 +239,7 @@ void CFSocketNotifierSource::addNotifier(SocketNotifier& notifier)
     }
 }
 
-void CFSocketNotifierSource::removeNotifier(SocketNotifier& notifier)
+void CFSocketNotifierSource::removeNotifier(Notifier& notifier)
 {
     auto lookup = [fd = notifier.handler()](const SocketPtr& socket)
     {
@@ -257,7 +262,7 @@ void CFSocketNotifierSource::prepare()
 {
 }
 
-void CFSocketNotifierSource::shutDown()
+void CFSocketNotifierSource::clean()
 {
     TRACE("Shutting down sockets")
     sockets.clear();

@@ -25,6 +25,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/platforms/adaptation.hpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/globals.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/algorithm.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/locks.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/flat_set.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/flat_map.hpp
@@ -69,13 +70,11 @@ set(HEADERS
 
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_handler.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_queue.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/socket_notifier.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_sources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_dispatcher.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_loop.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/run_loop_sources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/run_loop.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_handling_declarations.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/socket_notifier.hpp
 
     #modules
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/module.hpp
@@ -123,12 +122,10 @@ set(SOURCES
 
     # Event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_handler.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_queue.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/socket_notifier.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_sources.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_dispatcher.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/run_loop_sources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/run_loop.cpp
 
     # object
     ${CMAKE_CURRENT_SOURCE_DIR}/timer.cpp

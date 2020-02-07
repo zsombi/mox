@@ -35,57 +35,35 @@ class EventHandlingProvider;
 using EventHandlerSharedPtr = std::shared_ptr<EventHandlingProvider>;
 using EventHandlerWeakPtr = std::weak_ptr<EventHandlingProvider>;
 
-class EventDispatcher;
-using EventDispatcherSharedPtr = std::shared_ptr<EventDispatcher>;
-using EventDispatcherWeakPtr = std::weak_ptr<EventDispatcher>;
+class RunLoop;
+using RunLoopSharedPtr = std::shared_ptr<RunLoop>;
+using RunLoopWeakPtr = std::weak_ptr<RunLoop>;
 
 class SocketNotifier;
 using SocketNotifierSharedPtr = std::shared_ptr<SocketNotifier>;
 using SocketNotifierWeakPtr = std::weak_ptr<SocketNotifier>;
 
-class AbstractEventSource;
-using AbstractEventSourceSharedPtr = std::shared_ptr<AbstractEventSource>;
+class AbstractRunLoopSource;
+using AbstractRunLoopSourceSharedPtr = std::shared_ptr<AbstractRunLoopSource>;
 
 class TimerSource;
 using TimerSourcePtr = std::shared_ptr<TimerSource>;
 using TimerSourceWeakPtr = std::weak_ptr<TimerSource>;
 
-class PostEventSource;
-using PostEventSourcePtr = std::shared_ptr<PostEventSource>;
+class EventSource;
+using EventSourcePtr = std::shared_ptr<EventSource>;
 
 class SocketNotifierSource;
 using SocketNotifierSourcePtr = std::shared_ptr<SocketNotifierSource>;
 using SocketNotifierSourceWeakPtr = std::weak_ptr<SocketNotifierSource>;
 
-class EventLoop;
-using EventLoopPtr = EventLoop*;
-
 /// The event processing flags.
 enum class ProcessFlags
 {
-    /// Run the event processing one loop cycle, till the first time the idle is reached.
-    RunOnce = 0x01,
+    /// Process all events.
     ProcessAll = 0xFF
 };
 ENABLE_ENUM_OPERATORS(ProcessFlags);
-
-class no_event_dispatcher : public std::exception
-{
-public:
-    const char* what() const EXCEPTION_NOEXCEPT override
-    {
-        return "No EventDispatcher is set on the thread";
-    }
-};
-
-class no_event_loop : public std::exception
-{
-public:
-    const char* what() const EXCEPTION_NOEXCEPT override
-    {
-        return "No EventLoop is set on the thread to handle posted events";
-    }
-};
 
 }
 

@@ -28,13 +28,7 @@
 namespace mox
 {
 
-template <typename EventClass, typename... Arguments>
-auto make_event(Arguments&&... arguments)
-{
-    return std::make_unique<EventClass>(std::forward<Arguments>(arguments)...);
-}
-
-struct EventQueueComparator
+struct MOX_API EventQueueComparator
 {
     bool operator()(const EventPtr& lhs, const EventPtr& rhs) const;
 };
@@ -45,8 +39,6 @@ using EventQueueBase = std::priority_queue<EventPtr, std::vector<EventPtr>, Even
 class MOX_API EventQueue : protected EventQueueBase, public mox::ObjectLock
 {
 public:
-    /// Event dispatcher function.
-    using EventDispatcherFunction = std::function<bool(Event&)>;
     /// Constructor.
     explicit EventQueue() = default;
 
@@ -60,14 +52,27 @@ public:
     /// Returns \e true if the event queue is empty, \e false otherwise.
     bool empty() const;
     /// Pushes an \a event to the event queue. Updates the timestamp of the event pushed.
-    void push(EventPtr&& event);
+    void push(EventPtr event);
     /// Processes the event queue, popping each event from the queue and passing those
     /// to the \a dispatcher function. The processing continues till there are events in
     /// the queue and till the dispatcher returns true. When the dispatcher returns false,
     /// the queue processing is stopped and the remaining events are discarded from the
     /// event queue.
     /// The function always returns with an empty event queue.
-    void process(const EventDispatcherFunction& dispatcher);
+    template <typename DispatchFunction>
+    void process(DispatchFunction dispatcher)
+    {
+        lock_guard lock(*this);
+        while (!empty())
+        {
+            EventPtr event(std::move(c.front()));
+            pop();
+
+            ScopeRelock relock(*this);
+            TRACE("Processing event: " << int(event->type()))
+            dispatcher(*event);
+        }
+    }
 };
 
 }

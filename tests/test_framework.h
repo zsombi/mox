@@ -21,7 +21,7 @@
 
 #include <gtest/gtest.h>
 #include <mox/config/deftypes.hpp>
-#include <mox/event_handling/event_dispatcher.hpp>
+#include <mox/event_handling/run_loop.hpp>
 #include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/module/application.hpp>
@@ -50,7 +50,7 @@ public:
             Application::instance().quit();
             return true;
         };
-        threadData()->eventDispatcher()->addIdleTask(idleTask);
+        addIdleTask(std::move(idleTask));
         return run();
     }
 };

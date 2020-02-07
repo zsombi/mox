@@ -18,14 +18,13 @@
 
 #include <mox/event_handling/socket_notifier.hpp>
 #include <mox/module/thread_data.hpp>
+#include <mox/module/thread_loop.hpp>
 
 namespace mox
 {
 
-SocketNotifier::SocketNotifier(Handler handler, Modes modes)
-    : m_source(std::dynamic_pointer_cast<SocketNotifierSource>(ThreadData::thisThreadData()->eventDispatcher()->findEventSource("default_socket_notifier")))
-    , m_handler(handler)
-    , m_modes(modes & supportedModes())
+SocketNotifier::SocketNotifier(EventTarget handler, Modes modes)
+    : SocketNotifierSource::Notifier(handler, modes)
 {
 }
 
@@ -34,32 +33,35 @@ SocketNotifier::~SocketNotifier()
     setEnabled(false);
 }
 
-SocketNotifierSharedPtr SocketNotifier::create(Handler socket, Modes modes)
+void SocketNotifier::signal(Modes mode)
+{
+    auto self = std::static_pointer_cast<SocketNotifier>(shared_from_this());
+    activated(self, mode);
+}
+
+SocketNotifierSharedPtr SocketNotifier::create(EventTarget socket, Modes modes)
 {
     SocketNotifierSharedPtr notifier(new SocketNotifier(socket, modes));
     notifier->setEnabled(true);
     return notifier;
 }
 
+bool SocketNotifier::isEnabled() const
+{
+    return !m_source.expired();
+}
+
 void SocketNotifier::setEnabled(bool enabled)
 {
-    if (m_enabled == enabled)
+    auto source = m_source.lock();
+    if (!source && enabled)
     {
-        return;
+        source = ThreadData::thisThreadData()->thread()->m_runLoop->getDefaultSocketNotifierSource();
+        attach(*source);
     }
-    m_enabled = enabled;
-    SocketNotifierSourcePtr source = m_source.lock();
-    if (!source)
+    else if (source && !enabled)
     {
-        return;
-    }
-    if (m_enabled)
-    {
-        source->addNotifier(*this);
-    }
-    else
-    {
-        source->removeNotifier(*this);
+        detach();
     }
 }
 

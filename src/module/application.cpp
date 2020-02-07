@@ -19,8 +19,7 @@
 #ifndef APPLICATION_CPP
 #define APPLICATION_CPP
 
-#include <mox/event_handling/event_dispatcher.hpp>
-#include <mox/event_handling/event_loop.hpp>
+#include <mox/event_handling/run_loop.hpp>
 #include <mox/module/application.hpp>
 #include <mox/module/thread_loop.hpp>
 
@@ -33,6 +32,7 @@ public:
     explicit ApplicationThread(Application& app)
         : app(app)
     {
+        m_runLoop = RunLoop::create(true);
     }
     ~ApplicationThread()
     {
@@ -46,10 +46,11 @@ public:
 
     int run() final
     {
+        prepare();
         app.started();
         ThreadLoop::run();
         app.stopped();
-        return threadData()->exitCode();
+        return m_exitCode;
     }
 
     Application& app;
@@ -87,7 +88,7 @@ void Application::setRootObject(Object &root)
         return;
     }
     m_rootObject.reset();
-    m_rootObject = root.shared_from_this();
+    m_rootObject = root.asShared();
 }
 
 ThreadDataSharedPtr Application::threadData() const
@@ -116,9 +117,9 @@ void Application::quit()
     exit(0);
 }
 
-void Application::addIdleTask(EventDispatcher::IdleFunction&& task)
+void Application::addIdleTask(RunLoop::IdleFunction task)
 {
-    m_mainThread->eventDispatcher()->addIdleTask(std::forward<decltype(task)>(task));
+    m_mainThread->thread()->addIdleTask(std::forward<decltype(task)>(task));
 }
 
 }

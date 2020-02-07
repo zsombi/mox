@@ -35,7 +35,6 @@ bool EventQueueComparator::operator()(const EventPtr& lhs, const EventPtr& rhs) 
 
 EventQueue::~EventQueue()
 {
-    clear();
 }
 
 void EventQueue::clear()
@@ -55,25 +54,11 @@ bool EventQueue::empty() const
     return EventQueueBase::empty();
 }
 
-void EventQueue::push(EventPtr&& event)
+void EventQueue::push(EventPtr event)
 {
     lock_guard lock(*this);
     event->markTimestamp();
-    EventQueueBase::push(std::forward<EventPtr>(event));
-}
-
-void EventQueue::process(const EventDispatcherFunction& dispatcher)
-{
-    lock_guard lock(*this);
-    while (!empty())
-    {
-        EventPtr event(std::move(c.front()));
-        pop();
-
-        ScopeRelock relock(*this);
-        TRACE("Processing event: " << int(event->type()))
-        dispatcher(*event);
-    }
+    EventQueueBase::emplace(std::move(event));
 }
 
 }

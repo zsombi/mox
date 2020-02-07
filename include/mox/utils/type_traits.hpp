@@ -21,6 +21,7 @@
 
 #include <type_traits>
 #include <typeinfo>
+#include <memory>
 #include <mox/utils/type_traits/enum_operators.hpp>
 
 namespace mox
@@ -65,13 +66,20 @@ const std::type_info& remove_cv()
 }
 
 
-template <typename T, typename U>
-constexpr size_t offset_of(U T::*member)
-{
-    return (char*)&((T*)nullptr->*member) - (char*)nullptr;
-}
+/// \name Shared pointer tester
+/// \{
+template <typename T>
+struct is_shared_ptr : std::false_type {};
 
-/// Tests whether the T class has a StaticMetaClass declared.
+template <typename T>
+struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+/// \}
+
+/// \name StaticMetaClass testers
+/// \{
+///
+/// Test whether the T class has static metaclass
+/// \tparam T The class type
 template <class T>
 struct has_static_metaclass
 {
@@ -88,8 +96,10 @@ struct has_static_metaclass
 
 template <typename T>
 inline constexpr bool has_static_metaclass_v = has_static_metaclass<T>::value;
+/// \}
 
-/// Tests whether the T class has a Converter declared.
+/// Tests the existence of whether the T class has a Converter declared.
+/// \tparam T The class to test.
 template <class T>
 struct has_converter
 {
@@ -106,6 +116,7 @@ struct has_converter
 
 template <typename T>
 inline constexpr bool has_converter_v = has_converter<T>::value;
+/// \}
 
 } // namespace mox
 

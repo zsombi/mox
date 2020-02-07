@@ -22,6 +22,7 @@
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/event_handling/event_queue.hpp>
+#include <mox/event_handling/run_loop.hpp>
 
 #include <stack>
 
@@ -36,7 +37,7 @@ class ThreadLoop;
 using ThreadLoopSharedPtr = std::shared_ptr<ThreadLoop>;
 using ThreadLoopWeakPtr = std::weak_ptr<ThreadLoop>;
 
-/// ThreadData contains the event dispatcher of a thread in Mox. You must have a thread data on each
+/// ThreadData contains the thread loop of a thread in Mox. You must have a thread data on each
 /// thread that handles events, or has signal-slots connected to other threads.
 class MOX_API ThreadData : public std::enable_shared_from_this<ThreadData>
 {
@@ -51,13 +52,7 @@ public:
     /// Returns the main thread data.
     static ThreadDataSharedPtr mainThread();
 
-    /// Returns the event dispatcher of the thread, if any created.
-    EventDispatcherSharedPtr eventDispatcher() const;
-    /// Returns the topmost event loop of the event dispatcher.
-    EventLoopPtr eventLoop() const;
-
-    /// Returns the exit code of the thread.
-    int exitCode() const;
+    bool isMainThread() const;
 
     /// Returns the thread object owning the thread data.
     ThreadLoopSharedPtr thread() const;
@@ -66,20 +61,9 @@ protected:
     /// Constructor.
     explicit ThreadData();
 
-    /// Sets the exit code of the thread.
-    void setExitCode(int code);
-
-    mutable EventQueue m_eventQueue;
-    mutable std::stack<EventLoopPtr> m_eventLoopStack;
     mutable ThreadLoopSharedPtr m_thread;
-    mutable EventDispatcherSharedPtr m_eventDispatcher;
-    atomic<int> m_exitCode;
-
     friend class ThreadLoop;
     friend class Application;
-    friend class EventLoop;
-    friend class PostEventSource;
-    friend bool postEvent(EventPtr&&);
 };
 
 }

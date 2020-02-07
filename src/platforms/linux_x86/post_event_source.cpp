@@ -44,7 +44,7 @@ gboolean GPostEventSource::Source::dispatch(GSource* src, GSourceFunc, gpointer)
 
     source->eventSource->wakeUpCalled.store(false);
     // Process the event in the loop.
-    source->eventSource->dispatch();
+    source->eventSource->dispatchQueuedEvents();
     // Keep it rolling.
     return true;
 }
@@ -67,7 +67,7 @@ GPostEventSource::Source* GPostEventSource::Source::create(GPostEventSource& eve
 
     GSource* src = static_cast<GSource*>(source);
 //    g_source_set_can_recurse(src, true);
-    GlibEventDispatcher* loop = static_cast<GlibEventDispatcher*>(source->eventSource->eventDispatcher().get());
+    GlibEventDispatcher* loop = static_cast<GlibEventDispatcher*>(source->eventSource->getRunLoop().get());
     g_source_attach(src, loop->context);
 
     return source;
@@ -90,7 +90,7 @@ void GPostEventSource::Source::destroy(Source*& source)
  */
 
 GPostEventSource::GPostEventSource(std::string_view name)
-    : PostEventSource(name)
+    : EventSource(name)
     , source(nullptr)
 {
 }
@@ -112,9 +112,9 @@ void GPostEventSource::wakeUp()
 /******************************************************************************
  * PostEventSource factory function
  */
-PostEventSourcePtr Adaptation::createPostEventSource(std::string_view name)
+EventSourcePtr Adaptation::createPostEventSource(std::string_view name)
 {
-    return PostEventSourcePtr(new GPostEventSource(name));
+    return EventSourcePtr(new GPostEventSource(name));
 }
 
 }

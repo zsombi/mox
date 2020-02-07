@@ -25,7 +25,7 @@ namespace mox
 /******************************************************************************
  * Event
  */
-Event::Event(EventType type, ObjectSharedPtr target, Priority priority)
+Event::Event(ObjectSharedPtr target, EventType type, Priority priority)
     : m_target(target)
     , m_type(type)
     , m_priority(priority)
@@ -78,7 +78,7 @@ EventType Event::registerNewType()
  * QuitEvent
  */
 QuitEvent::QuitEvent(ObjectSharedPtr target, int exitCode)
-    : Event(EventType::Quit, target, Priority::Normal)
+    : Event(target, EventType::Quit, Priority::Normal)
     , m_exitCode(exitCode)
 {
 }
@@ -91,11 +91,12 @@ int QuitEvent::getExitCode() const
 /******************************************************************************
  * DeferredSignalEvent
  */
-DeferredSignalEvent::DeferredSignalEvent(Object& target, Signal::Connection& connection, const Callable::ArgumentPack& args)
-    : Event(EventType::DeferredSignal, target.shared_from_this(), Priority::Urgent)
+DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, Signal::Connection& connection, const Callable::ArgumentPack& args)
+    : Event(target, EventType::DeferredSignal, Priority::Urgent)
     , m_connection(connection.shared_from_this())
     , m_arguments(args)
 {
+    FATAL(target, "Cannot post deferred call on a null target")
 }
 
 void DeferredSignalEvent::activate()

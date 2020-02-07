@@ -22,9 +22,9 @@
 namespace mox
 {
 
-SocketNotifier::Modes SocketNotifier::supportedModes()
+SocketNotifierSource::Notifier::Modes SocketNotifierSource::supportedModes()
 {
-    return Modes::Read | Modes::Write | Modes::Error | Modes::Exception;
+    return Notifier::Modes::Read | Notifier::Modes::Write | Notifier::Modes::Error | Notifier::Modes::Exception;
 }
 
 /******************************************************************************
@@ -38,21 +38,21 @@ constexpr unsigned short writeMask = G_IO_OUT;
 constexpr unsigned short exceptionMask = G_IO_PRI;
 constexpr unsigned short errorMask = G_IO_ERR;
 
-constexpr bool pollRead(SocketNotifier::Modes modes)
+constexpr bool pollRead(SocketNotifierSource::Notifier::Modes modes)
 {
-    return (modes & SocketNotifier::Modes::Read) == SocketNotifier::Modes::Read;
+    return (modes & SocketNotifierSource::Notifier::Modes::Read) == SocketNotifierSource::Notifier::Modes::Read;
 }
-constexpr bool pollWrite(SocketNotifier::Modes modes)
+constexpr bool pollWrite(SocketNotifierSource::Notifier::Modes modes)
 {
-    return (modes & SocketNotifier::Modes::Write) == SocketNotifier::Modes::Write;
+    return (modes & SocketNotifierSource::Notifier::Modes::Write) == SocketNotifierSource::Notifier::Modes::Write;
 }
-constexpr bool pollException(SocketNotifier::Modes modes)
+constexpr bool pollException(SocketNotifierSource::Notifier::Modes modes)
 {
-    return (modes & SocketNotifier::Modes::Exception) == SocketNotifier::Modes::Exception;
+    return (modes & SocketNotifierSource::Notifier::Modes::Exception) == SocketNotifierSource::Notifier::Modes::Exception;
 }
-constexpr bool pollError(SocketNotifier::Modes modes)
+constexpr bool pollError(SocketNotifierSource::Notifier::Modes modes)
 {
-    return (modes & SocketNotifier::Modes::Error) == SocketNotifier::Modes::Error;
+    return (modes & SocketNotifierSource::Notifier::Modes::Error) == SocketNotifierSource::Notifier::Modes::Error;
 }
 
 } // noname
@@ -67,13 +67,13 @@ static GSourceFuncs socketNotifierSourceFuncs =
     nullptr
 };
 
-GPollHandler::GPollHandler(SocketNotifier& notifier)
+GPollHandler::GPollHandler(SocketNotifierSource::Notifier& notifier)
 {
     this->notifier = notifier.shared_from_this();
     fd.fd = notifier.handler();
     fd.events = 0;
 
-    SocketNotifier::Modes modes = notifier.modes();
+    SocketNotifierSource::Notifier::Modes modes = notifier.getModes();
     if (pollRead(modes))
     {
         fd.events |= readMask | G_IO_ERR;
@@ -103,7 +103,7 @@ GSocketNotifierSource::Source* GSocketNotifierSource::Source::create(GSocketNoti
 
     GSource* source = static_cast<GSource*>(src);
 //    g_source_set_can_recurse(source, true);
-    GlibEventDispatcher* loop = static_cast<GlibEventDispatcher*>(socketSource.eventDispatcher().get());
+    GlibEventDispatcher* loop = static_cast<GlibEventDispatcher*>(socketSource.getRunLoop().get());
     g_source_attach(source, loop->context);
 
     return src;
@@ -145,8 +145,8 @@ gboolean GSocketNotifierSource::Source::check(GSource* source)
     {
         if (poll.fd.revents & G_IO_NVAL)
         {
-            // Disable the invalid socket notifier. This will at least reset the poll.
-            poll.notifier->setEnabled(false);
+            // Detach the invalid socket notifier. This will at least reset the poll.
+            poll.notifier->detach();
         }
         else
         {
@@ -174,27 +174,27 @@ gboolean GSocketNotifierSource::Source::dispatch(GSource *source, GSourceFunc, g
     {
         if ((poll.fd.revents & poll.fd.events) != 0 && poll.notifier)
         {
-            SocketNotifier::Modes event = SocketNotifier::Modes::Inactiv;
-            SocketNotifier::Modes reqEvents = poll.notifier->modes();
+            SocketNotifierSource::Notifier::Modes event = SocketNotifierSource::Notifier::Modes::Inactiv;
+            SocketNotifierSource::Notifier::Modes reqEvents = poll.notifier->getModes();
             if ((poll.fd.revents & readMask) && (pollRead(reqEvents)))
             {
-                event = SocketNotifier::Modes::Read;
+                event = SocketNotifierSource::Notifier::Modes::Read;
             }
             if ((poll.fd.revents & writeMask) && (pollWrite(reqEvents)))
             {
-                event |= SocketNotifier::Modes::Write;
+                event |= SocketNotifierSource::Notifier::Modes::Write;
             }
             if ((poll.fd.revents & exceptionMask) && (pollException(reqEvents)))
             {
-                event |= SocketNotifier::Modes::Exception;
+                event |= SocketNotifierSource::Notifier::Modes::Exception;
             }
             if ((poll.fd.revents & errorMask) && (pollError(reqEvents)))
             {
-                event |= SocketNotifier::Modes::Error;
+                event |= SocketNotifierSource::Notifier::Modes::Error;
             }
-            if (event != SocketNotifier::Modes::Inactiv)
+            if (event != SocketNotifierSource::Notifier::Modes::Inactiv)
             {
-                poll.notifier->activated(poll.notifier, event);
+                poll.notifier->signal(event);
             }
         }
     };
@@ -230,25 +230,25 @@ void GSocketNotifierSource::prepare()
     source = Source::create(*this);
 }
 
-void GSocketNotifierSource::shutDown()
+void GSocketNotifierSource::clean()
 {
     auto close = [](const GPollHandler& handler)
     {
         if (handler.notifier)
         {
-            handler.notifier->setEnabled(false);
+            handler.notifier->detach();
         }
     };
     pollHandlers.forEach(close);
 }
 
-void GSocketNotifierSource::addNotifier(SocketNotifier& notifier)
+void GSocketNotifierSource::addNotifier(Notifier& notifier)
 {
     pollHandlers.emplace_back(GPollHandler(notifier));
     g_source_add_poll(static_cast<GSource*>(source), &pollHandlers.back().fd);
 }
 
-void GSocketNotifierSource::removeNotifier(SocketNotifier& notifier)
+void GSocketNotifierSource::removeNotifier(Notifier& notifier)
 {
     auto predicate = [&notifier](const GPollHandler& poll)
     {

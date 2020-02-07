@@ -34,7 +34,7 @@ public:
     void quit()
     {
         TRACE("Stop main thread")
-        threadData()->eventLoop()->exit(10);
+        threadData()->thread()->exit(10);
     }
 
     ClassMetaData(Quitter, mox::Object)
@@ -81,7 +81,7 @@ TEST_F(Threads, test_thread_basics)
     test->stopped.connect(onStopped);
 
     // Post a message to the thread to quit the thread
-    EXPECT_TRUE(mox::postEvent<mox::Event>(mox::EventType::Base, test));
+    EXPECT_TRUE(mox::ThreadLoop::postEvent<mox::Event>(test, mox::EventType::Base));
 
     test->join();
     wait.wait();
@@ -94,13 +94,14 @@ TEST_F(Threads, test_parented_thread_deletes_before_quiting)
     Notifier notifyDeath;
     Watcher watchDeath = notifyDeath.get_future();
     {
-        mox::Application mainThread;
+        TestApp mainThread;
 
         {
             auto thread = TestThreadLoop::create(std::move(notifyDeath), mainThread.getRootObject().get());
             thread->start();
         }
         EXPECT_EQ(1, TestThreadLoop::threadCount);
+        mainThread.runOnce();
     }
 //    std::cout << "??" << std::endl;
     watchDeath.wait();
@@ -147,7 +148,7 @@ TEST_F(Threads, test_quit_application_from_thread_kills_thread)
 
         auto onIdle = [thread]()
         {
-            mox::postEvent<mox::Event>(evQuit, thread);
+            mox::ThreadLoop::postEvent<mox::Event>(thread, evQuit);
             return true;
         };
         app.addIdleTask(onIdle);
@@ -193,7 +194,7 @@ TEST_F(Threads, test_threads2)
 
         auto onIdle = [thread]()
         {
-            mox::postEvent<mox::Event>(evQuit, thread);
+            mox::ThreadLoop::postEvent<mox::Event>(thread, evQuit);
             return true;
         };
         mainThread.addIdleTask(onIdle);
@@ -229,7 +230,7 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
 
         auto onIdle = [thread]()
         {
-            mox::postEvent<mox::Event>(evQuit, thread);
+            mox::ThreadLoop::postEvent<mox::Event>(thread, evQuit);
             return true;
         };
         mainThread.addIdleTask(onIdle);
@@ -256,7 +257,7 @@ TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
 
         auto onIdle = [thread]()
         {
-            mox::postEvent<mox::QuitEvent>(thread);
+            mox::ThreadLoop::postEvent<mox::QuitEvent>(thread);
             return true;
         };
         mainThread.addIdleTask(onIdle);

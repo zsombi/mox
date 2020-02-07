@@ -26,8 +26,7 @@ namespace mox
  * GlibEventDispatcher
  */
 // Constructor for threads
-GlibEventDispatcher::GlibEventDispatcher(ThreadData& threadData)
-    : EventDispatcher(threadData)
+GlibEventDispatcher::GlibEventDispatcher()
 {
     context = g_main_context_get_thread_default();
     FATAL(!context, "There should not be any main context at this point!!!")
@@ -37,9 +36,8 @@ GlibEventDispatcher::GlibEventDispatcher(ThreadData& threadData)
 }
 
 // constructor for main loop
-GlibEventDispatcher::GlibEventDispatcher(ThreadData& threadData, GMainContext& mainContext)
-    : EventDispatcher(threadData)
-    , context(&mainContext)
+GlibEventDispatcher::GlibEventDispatcher(GMainContext& mainContext)
+    : context(&mainContext)
 {
     g_main_context_ref(context);
     initialize();
@@ -55,7 +53,7 @@ void GlibEventDispatcher::initialize()
 GlibEventDispatcher::~GlibEventDispatcher()
 {
     // Kill all the sources before the context is destroyed
-    m_eventSources.clear();
+    m_runLoopSources.clear();
 
     g_main_loop_unref(evLoop);
     g_main_context_pop_thread_default(context);
@@ -82,35 +80,33 @@ void GlibEventDispatcher::scheduleIdleTasks()
     g_source_unref(idleSource);
 }
 
-bool GlibEventDispatcher::isProcessingEvents() const
+bool GlibEventDispatcher::isRunning() const
 {
-    return isRunning; //g_main_loop_is_running(evLoop) == TRUE;
+    return running; //g_main_loop_is_running(evLoop) == TRUE;
 }
 
-void GlibEventDispatcher::processEvents(ProcessFlags flags)
+void GlibEventDispatcher::execute(ProcessFlags)
 {
-    if (flags == ProcessFlags::RunOnce)
     {
-        FlagScope<true> toggle(isRunning);
-        g_main_context_iteration(context, TRUE);
-    }
-    else
-    {
-        FlagScope<true> toggle(isRunning);
+        FlagScope<true> toggle(running);
         g_main_loop_run(evLoop);
     }
-    forEachSource<AbstractEventSource>(&AbstractEventSource::shutDown);
 }
 
-void GlibEventDispatcher::stop()
+void GlibEventDispatcher::stopExecution()
 {
     // Stop the loop;
     g_main_loop_quit(evLoop);
 }
 
+void GlibEventDispatcher::shutDown()
+{
+    forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::clean);
+}
+
 void GlibEventDispatcher::wakeUp()
 {
-    forEachSource<PostEventSource>(&PostEventSource::wakeUp);
+    forEachSource<EventSource>(&EventSource::wakeUp);
     g_main_context_wakeup(context);
 }
 
@@ -128,17 +124,17 @@ size_t GlibEventDispatcher::runningTimerCount() const
 /******************************************************************************
  * EventDispatcher factory function
  */
-EventDispatcherSharedPtr Adaptation::createEventDispatcher(ThreadData& threadData, bool main)
+RunLoopSharedPtr Adaptation::createRunLoop(bool main)
 {
     if (!main)
     {
         // For main loop
-        return std::make_shared<GlibEventDispatcher>(threadData, *g_main_context_default());
+        return std::make_shared<GlibEventDispatcher>(*g_main_context_default());
     }
     else
     {
         // For threads...
-        return std::make_shared<GlibEventDispatcher>(threadData);
+        return std::make_shared<GlibEventDispatcher>();
     }
 }
 

@@ -22,8 +22,6 @@
 #include <chrono>
 #include <iostream>
 #include <memory>
-#include <vector>
-#include <algorithm>
 
 #include <mox/config/platform_config.hpp>
 
@@ -85,19 +83,6 @@ std::shared_ptr<Type> make_polymorphic_shared_ptr(Type* type)
     static_assert(std::is_base_of_v<BaseType, Type>, "BaseType is not a superclass of Type.");
     auto shared = std::shared_ptr<BaseType>{std::unique_ptr<BaseType>(type)};
     return std::static_pointer_cast<Type>(shared);
-}
-
-template <typename Type, typename Allocator, typename VType>
-void erase(std::vector<Type, Allocator>& v, const VType& value)
-{
-    v.erase(std::remove(v.begin(), v.end(), value), v.end());
-}
-
-/// Vector utility, removes the occurences for which the predicate gives affirmative result.
-template <typename Type, typename Allocator, typename Predicate>
-void erase_if(std::vector<Type, Allocator>& v, const Predicate& predicate)
-{
-    v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
 }
 
 } // mox

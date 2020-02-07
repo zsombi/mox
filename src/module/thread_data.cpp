@@ -17,7 +17,8 @@
  */
 
 #include <mox/module/thread_data.hpp>
-#include <mox/event_handling/event_dispatcher.hpp>
+#include <mox/event_handling/run_loop.hpp>
+#include <mox/module/thread_loop.hpp>
 
 namespace mox
 {
@@ -31,7 +32,6 @@ static thread_local ThreadData* ltsThreadData = nullptr;
  *
  */
 ThreadData::ThreadData()
-    : m_exitCode(0)
 {
     FATAL(!ltsThreadData, "This thread already has a thread data specified!")
     ltsThreadData = this;
@@ -53,7 +53,6 @@ ThreadData::~ThreadData()
 ThreadDataSharedPtr ThreadData::create()
 {
     ThreadDataSharedPtr threadData(new ThreadData);
-    threadData->m_eventDispatcher = EventDispatcher::create(*threadData, mainThreadData == threadData.get());
     return threadData;
 }
 
@@ -69,24 +68,9 @@ ThreadDataSharedPtr ThreadData::mainThread()
     return mainThreadData ? mainThreadData->shared_from_this() : nullptr;
 }
 
-EventDispatcherSharedPtr ThreadData::eventDispatcher() const
+bool ThreadData::isMainThread() const
 {
-    return m_eventDispatcher;
-}
-
-EventLoopPtr ThreadData::eventLoop() const
-{
-    return m_eventLoopStack.empty() ? nullptr : m_eventLoopStack.top();
-}
-
-int ThreadData::exitCode() const
-{
-    return m_exitCode.load();
-}
-
-void ThreadData::setExitCode(int code)
-{
-    m_exitCode.store(code);
+    return mainThreadData == this;
 }
 
 ThreadLoopSharedPtr ThreadData::thread() const

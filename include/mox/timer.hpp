@@ -20,7 +20,7 @@
 #define TIMER_HPP
 
 #include <mox/signal/signal.hpp>
-#include <mox/event_handling/event_dispatcher.hpp>
+#include <mox/event_handling/run_loop.hpp>
 
 namespace mox
 {
@@ -33,7 +33,7 @@ using TimerPtr = std::shared_ptr<Timer>;
 /// using createRepeating() or repeating() methods.
 ///
 /// When the timer expires, the expired signal is emitted.
-class MOX_API Timer : public ObjectLock, public std::enable_shared_from_this<Timer>
+class MOX_API Timer : public ObjectLock, public TimerSource::TimerRecord
 {
 public:
     /// Expired signal descriptor. The signal's argument contains the timer object that is
@@ -58,8 +58,6 @@ public:
     static TimerPtr createSingleShot(std::chrono::milliseconds timeout);
     /// Creates a repeating timer with an \a interval.
     static TimerPtr createRepeating(std::chrono::milliseconds interval);
-    /// Destructor.
-    ~Timer();
 
     /// Convenience template function, creates a singleton timer with \a timeout, and connects
     /// the \a slot to the timer that is invoked when the timer expires.
@@ -89,25 +87,18 @@ public:
 
     /// Starts the timer.
     void start();
-    /// Stops the timer.
-    void stop();
 
     /// Returns the type of the timer.
     Type type() const
     {
-        return m_type;
+        return isSingleShot() ? Type::SingleShot : Type::Repeating;
     }
     /// Returns the running state of the timer.
     bool isRunning() const
     {
         return m_isRunning;
     }
-    /// Returns the identifier of the timer.
-    int32_t id() const
-    {
-        return m_id;
-    }
-    /// Returns the interval fo the timer.
+    /// Returns the interval for the timer.
     std::chrono::milliseconds interval() const
     {
         return m_interval;
@@ -116,7 +107,7 @@ public:
     /// Returns the timer event source this timer uses to track the timeout
     TimerSourcePtr getSource() const
     {
-        return m_source.lock();
+        return m_source;
     }
 
 private:
@@ -125,11 +116,7 @@ private:
     DISABLE_COPY(Timer)
     DISABLE_MOVE(Timer)
 
-    TimerSourceWeakPtr m_source;
-    std::chrono::milliseconds m_interval;
-    Type m_type;
-    const int32_t m_id = -1;
-    bool m_isRunning = false;
+    void signal() override;
 };
 
 } // mox

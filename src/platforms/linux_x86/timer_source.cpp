@@ -46,7 +46,7 @@ gboolean GTimerSource::Source::prepare(GSource *src, gint *timeout)
 
     std::chrono::duration<double> duration = std::chrono::system_clock::now() - source->lastUpdateTime;
     std::chrono::milliseconds nextHitInMsec = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
-    long nextTimeout = source->timer->interval().count() - nextHitInMsec.count();
+    long nextTimeout = source->timer->getInterval().count() - nextHitInMsec.count();
     if (nextTimeout < 0)
     {
         nextTimeout = 0;
@@ -70,7 +70,7 @@ gboolean GTimerSource::Source::dispatch(GSource *src, GSourceFunc, gpointer)
     // Trigger the timer signal. Hold the timer object so it is not deleted!
     TRACE("Timer " << source->timer->id() << " kicked");
 
-    if (source->timer->type() == Timer::Type::Repeating)
+    if (!source->timer->isSingleShot())
     {
         // Refresh the update time before we signal the Mox event source.
         source->lastUpdateTime = Timer::TimerClass::now();
@@ -80,12 +80,12 @@ gboolean GTimerSource::Source::dispatch(GSource *src, GSourceFunc, gpointer)
         // Deactivate the timer source, to avoid re-emission.
         source->active = false;
     }
-    source->timer->getSource()->signal(*source->timer);
+    source->timer->signal();
 
     return true;
 }
 
-GTimerSource::Source* GTimerSource::Source::create(Timer& timer)
+GTimerSource::Source* GTimerSource::Source::create(TimerRecord& timer)
 {
     Source *src = reinterpret_cast<Source*>(g_source_new(&glibTimerSourceFuncs, sizeof(*src)));
     src->timer = timer.shared_from_this();
@@ -126,7 +126,7 @@ std::optional<size_t> GTimerSource::findSource(TimerPtr timer)
     return timers.findIf(predicate);
 }
 
-void GTimerSource::addTimer(Timer &timer)
+void GTimerSource::addTimer(TimerRecord& timer)
 {
     // Make sure the timer is registered once.
     auto index = findSource(timer.shared_from_this());
@@ -135,11 +135,11 @@ void GTimerSource::addTimer(Timer &timer)
     Source* gtimer = Source::create(timer);
     timers.push_back(gtimer);
 
-    GlibEventDispatcher* evLoop = static_cast<GlibEventDispatcher*>(m_eventDispatcher.lock().get());
+    GlibEventDispatcher* evLoop = static_cast<GlibEventDispatcher*>(m_runLoop.lock().get());
     g_source_attach(static_cast<GSource*>(gtimer), evLoop->context);
 }
 
-void GTimerSource::removeTimer(Timer &timer)
+void GTimerSource::removeTimer(TimerRecord& timer)
 {
     auto index = findSource(timer.shared_from_this());
     FATAL(index, "The timer is not registered")
@@ -155,7 +155,7 @@ size_t GTimerSource::timerCount() const
     return timers.size();
 }
 
-void GTimerSource::shutDown()
+void GTimerSource::clean()
 {
     // Stop running timers.
     auto cleanup = [](Source* source)

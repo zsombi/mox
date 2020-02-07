@@ -22,7 +22,7 @@
 #include <mox/metadata/metaclass.hpp>
 #include <mox/mox_module.hpp>
 #include <mox/object.hpp>
-#include <mox/event_handling/event_dispatcher.hpp>
+#include <mox/event_handling/run_loop.hpp>
 
 namespace mox
 {
@@ -54,13 +54,13 @@ public:
 
     /// Sets the root object of the application. The application must have a root object.
     /// You must set the root object of an application before you run the application's event loop.
-    /// The previous root object is deleted togherther with its child objects. To avoid this, you
+    /// The previous root object is deleted together with its child objects. To avoid this, you
     /// must move all child objects to the new root before replacing the root object.
     /// Once you start the application, the root object is locked.
     /// \param root The root object of the application.
     void setRootObject(Object& root);
 
-    /// Returns the root object casted to a given TargetType.
+    /// Returns the root object dynamic-casted to a given TargetType.
     template <class TargetType>
     std::shared_ptr<TargetType> castRootObject() const
     {
@@ -81,8 +81,8 @@ public:
     /// Quits the application.
     void quit();
 
-    /// Adds an idle task to the application's dispatcher.
-    void addIdleTask(EventDispatcher::IdleFunction&& task);
+    /// Adds an idle task to the application's run loop.
+    void addIdleTask(RunLoop::IdleFunction task);
 
     ClassMetaData(Application, MetaObject)
     {

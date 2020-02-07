@@ -24,14 +24,14 @@ namespace mox
 /******************************************************************************
  *
  */
-static void processEvents(void *info)
+static void execute(void *info)
 {
     CFPostEventSource* source = static_cast<CFPostEventSource*>(info);
-    source->dispatch();
+    source->dispatchQueuedEvents();
 }
 
 CFPostEventSource::CFPostEventSource(std::string_view name)
-    : PostEventSource(name)
+    : EventSource(name)
 {
 }
 
@@ -41,16 +41,16 @@ CFPostEventSource::~CFPostEventSource()
     CFRelease(sourceRef);
 }
 
-void CFPostEventSource::setEventDispatcher(EventDispatcher &eventDispatcher)
+void CFPostEventSource::setRunLoop(RunLoop& runLoop)
 {
-    PostEventSource::setEventDispatcher(eventDispatcher);
+    EventSource::setRunLoop(runLoop);
 
     CFRunLoopSourceContext context = {};
     context.info = this;
-    context.perform = processEvents;
+    context.perform = execute;
 
     sourceRef = CFRunLoopSourceCreate(kCFAllocatorDefault, 0, &context);
-    CFEventDispatcher& loop = static_cast<CFEventDispatcher&>(eventDispatcher);
+    FoundationRunLoop& loop = static_cast<FoundationRunLoop&>(runLoop);
     CFRunLoopAddSource(loop.runLoop, sourceRef, kCFRunLoopCommonModes);
 }
 
@@ -66,9 +66,9 @@ void CFPostEventSource::wakeUp()
 /******************************************************************************
  *
  */
-PostEventSourcePtr Adaptation::createPostEventSource(std::string_view name)
+EventSourcePtr Adaptation::createPostEventSource(std::string_view name)
 {
-    return PostEventSourcePtr(new CFPostEventSource(name));
+    return EventSourcePtr(new CFPostEventSource(name));
 }
 
 }

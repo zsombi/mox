@@ -21,12 +21,12 @@
 namespace mox
 {
 
-CFTimerSource::TimerRecord::TimerRecord(Timer& handler)
+CFTimerSource::CFTimerRecord::CFTimerRecord(TimerRecord& handler)
     : timerHandler(handler.shared_from_this())
 {
 }
 
-CFTimerSource::TimerRecord::~TimerRecord()
+CFTimerSource::CFTimerRecord::~CFTimerRecord()
 {
     if (timerRef)
     {
@@ -38,7 +38,7 @@ CFTimerSource::TimerRecord::~TimerRecord()
     timerHandler.reset();
 }
 
-void CFTimerSource::TimerRecord::create(CFTimerSource& source)
+void CFTimerSource::CFTimerRecord::create(CFTimerSource& source)
 {
     TRACE("Create timer record for source")
     if (!timerHandler || (timerRef && CFRunLoopTimerIsValid(timerRef)))
@@ -50,9 +50,9 @@ void CFTimerSource::TimerRecord::create(CFTimerSource& source)
         TRACE("WARNING: recreating timer?!")
         CFRelease(timerRef);
     }
-    CFAbsoluteTime timeout = CFAbsoluteTime(timerHandler->interval().count()) / 1000;
+    CFAbsoluteTime timeout = CFAbsoluteTime(timerHandler->getInterval().count()) / 1000;
     CFAbsoluteTime timeToFire = CFAbsoluteTimeGetCurrent() + timeout;
-    CFAbsoluteTime interval = timerHandler->type() == Timer::Type::SingleShot ? -1 : timeout;
+    CFAbsoluteTime interval = timerHandler->isSingleShot() ? -1 : timeout;
 
     auto proc = [&source, self = this](CFRunLoopTimerRef)
     {
@@ -64,20 +64,20 @@ void CFTimerSource::TimerRecord::create(CFTimerSource& source)
         lock_guard lock(source.timers);
         TRACE("Signaling timer " << self->timerRef << " of self[" << self << ']' << source.timers.lockCount())
         TimerPtr keepAlive = self->timerHandler;
-        source.signal(*keepAlive);
+        keepAlive->signal();
         TRACE("Timer signaled: " << self->timerRef << " of self[" << self << ']' << source.timers.lockCount())
     };
     timerRef = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, timeToFire, interval, 0, 0, proc);
-    CFEventDispatcher* eventDispatcher = static_cast<CFEventDispatcher*>(source.eventDispatcher().get());
-    CFRunLoopAddTimer(eventDispatcher->runLoop, timerRef, kCFRunLoopCommonModes);
+    FoundationRunLoop* foundationLoop = static_cast<FoundationRunLoop*>(source.getRunLoop().get());
+    CFRunLoopAddTimer(foundationLoop->runLoop, timerRef, kCFRunLoopCommonModes);
     FATAL(CFRunLoopTimerIsValid(timerRef), "Invalid timer created!")
     TRACE("Timer created with interval: " << interval << ", timeout " << timeout << ", ref: " << timerRef)
 }
 
 /******************************************************************************
- * CFEventDispatcher
+ * FoundationRunLoop
  */
-size_t CFEventDispatcher::runningTimerCount() const
+size_t FoundationRunLoop::runningTimerCount() const
 {
     size_t count = 0;
     auto counter = [&count](TimerSourcePtr source)
@@ -92,38 +92,39 @@ size_t CFEventDispatcher::runningTimerCount() const
  * TimerSource
  */
 
-void CFTimerSource::addTimer(Timer& timer)
+void CFTimerSource::addTimer(TimerRecord& timer)
 {
-    auto predicate = [&timer](TimerRecordPtr& record)
+    auto predicate = [&timer](CFTimerRecordPtr& record)
     {
-        return record->timerHandler.get() == &timer;
+        return record && record->timerHandler.get() == &timer;
     };
     auto index = timers.findIf(predicate);
     FATAL(!index, "Timer already registered")
 
     lock_guard lock(timers);
-    timers.emplace_back(std::make_unique<TimerRecord>(timer));
+    timers.emplace_back(std::make_unique<CFTimerRecord>(timer));
 }
 
-void CFTimerSource::removeTimer(Timer &timer)
+void CFTimerSource::removeTimer(TimerRecord& timer)
 {
-    auto predicate = [&timer](TimerRecordPtr& record)
+    auto predicate = [&timer](CFTimerRecordPtr& record)
     {
-        return record->timerHandler.get() == &timer;
+        return record && record->timerHandler.get() == &timer;
     };
     auto index = timers.findIf(predicate);
     FATAL(index, "Timer not registered")
 
     lock_guard lock(timers);
     timers[*index]->timerHandler.reset();
+    timers[*index].reset();
 }
 
-void CFTimerSource::shutDown()
+void CFTimerSource::clean()
 {
     lock_guard lock(timers);
-    auto looper = [](TimerRecordPtr& timer)
+    auto looper = [](CFTimerRecordPtr& timer)
     {
-        if (timer->timerHandler)
+        if (timer && timer->timerHandler)
         {
             timer->timerHandler->stop();
         }
@@ -138,14 +139,14 @@ size_t CFTimerSource::timerCount() const
 
 void CFTimerSource::activate()
 {
-    auto loop = [self = this](TimerRecordPtr& timer)
+    auto loop = [self = this](CFTimerRecordPtr& timer)
     {
-        if (!timer->timerHandler)
+        if (!timer || !timer->timerHandler)
         {
             return;
         }
 
-        if (timer->timerHandler->type() == Timer::Type::Repeating)
+        if (!timer->timerHandler->isSingleShot())
         {
             // Recreate timeRef if invalid.
             if (!timer->timerRef || !CFRunLoopTimerIsValid(timer->timerRef))
@@ -155,7 +156,7 @@ void CFTimerSource::activate()
             }
         }
 
-        if (timer->timerHandler->type() == Timer::Type::SingleShot && !timer->timerRef)
+        if (timer->timerHandler->isSingleShot() && !timer->timerRef)
         {
             timer->create(*self);
         }

@@ -19,12 +19,12 @@
 #ifndef OBJECT_HPP
 #define OBJECT_HPP
 
-#include <mox/utils/globals.hpp>
-#include <mox/metadata/metaobject.hpp>
-#include <mox/event_handling/event_handler.hpp>
-#include <mox/property/property.hpp>
 #include <mox/config/thread.hpp>
+#include <mox/metadata/metaobject.hpp>
 #include <mox/module/thread_data.hpp>
+#include <mox/property/property.hpp>
+#include <mox/utils/globals.hpp>
+#include <mox/utils/containers.hpp>
 
 namespace mox
 {
@@ -38,9 +38,8 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 /// This class is the base class for Mox objects with metatype reflection. You can build an object hierarchy
 /// by deriving your classes from Object and adding those as children to each other.
 ///
-/// Derived from EventHandlingProvider, provides event handling mechanisms. See EventHandlingProvider for more
-/// details on event handling.
-class MOX_API Object : public MetaObject, public EventHandlingProvider, public std::enable_shared_from_this<Object>
+/// Provides event dispatching.
+class MOX_API Object : public MetaObject, public EventSource::EventDispatcher, public std::enable_shared_from_this<Object>
 {
 public:
     /// The static metaclass of Object.
@@ -48,8 +47,83 @@ public:
     {
         static inline PropertyTypeDecl<Object, std::string, PropertyAccess::ReadWrite> ObjectNameProperty{"objectName"};
     };
-
     WritableProperty<std::string> objectName{*this, StaticMetaClass::ObjectNameProperty, ""};
+
+    /// \name Event handling
+    /// \{
+    /// Events are dispatched to the event targets in two phases: tunneling and bubbling.
+    /// In each phase the event is dispatched to objects that fall in between the root
+    /// object and the target object of the event.
+    ///
+    /// During tunneling phase, the event is filtered out from being handled. This is realized
+    /// by dispatching the event to the objects from root to the target object. The event is
+    /// marked as handled before it is passed to the filterEvent() method. If the method returns
+    /// \e true, the event is filtered out, and the event dispatching ends. If the method returns
+    /// false, the event is unmarked from being handled and the event dispatching continues, till
+    /// the target object is reached.
+    ///
+    /// If the event is not filtered out, the dispatching continues to the event handlers. This
+    /// is realized by bubbling the events from the target object to the ascendants. The event is
+    /// marked as handled before it is handed over to the handlers. This eases the event handler
+    /// code to concentrate on the case when the event is not handled. If that happens, the event
+    /// is bubbled to the closest ascendant event handler. This operation is repeated until an event
+    /// handler consumes the event.
+
+    /// The event filter type. The event filters return true if dispatching of the event is not desired
+    /// after the handler call.
+    using EventFilter = std::function<bool(Event&)>;
+    /// The event handler type.
+    using EventHandler = std::function<void(Event&)>;
+
+    /// Event handler token, identifies an active event handler.
+    class MOX_API EventToken : public std::enable_shared_from_this<EventToken>
+    {
+        friend class EventSource;
+        ObjectWeakPtr m_target;
+        EventType m_type;
+
+    public:
+        /// Constructor.
+        explicit EventToken(EventType type, ObjectSharedPtr target);
+        /// Destructor.
+        virtual ~EventToken() = default;
+
+        /// Returns the event type handled by the handler associated to the token.
+        EventType getEventType() const
+        {
+            return m_type;
+        }
+
+        /// Returns the event handler host.
+        /// \return The shared pointer
+        auto getTarget() const
+        {
+            return m_target.lock();
+        }
+
+        /// Removes the event handler.
+        void erase();
+    };
+    using EventTokenPtr = std::shared_ptr<EventToken>;
+
+    /// Adds an event \a handler for an event \a type.
+    /// \param type The event type.
+    /// \param handler The handler function for the event.
+    /// \return The token of the event handler.
+    EventTokenPtr addEventHandler(EventType type, EventHandler handler);
+
+    /// Adds an event \a filter for an event \a type.
+    /// \param type The event type.
+    /// \param filter The filter function for the event.
+    /// \return The token of the event filter.
+    EventTokenPtr addEventFilter(EventType type, EventFilter filter);
+
+    /// \}
+
+    inline ObjectSharedPtr asShared()
+    {
+        return shared_from_this();
+    }
 
     /// Creates a shared pointer with Object. If a \a parent is specified, the object you create
     /// is added to this object as child. You can also add the created object to any object as
@@ -121,7 +195,10 @@ protected:
     /// \return The visit result.
     virtual VisitResult moveToThread(ThreadDataSharedPtr threadData);
 
-    /// Convenience template function, creates an obhect derived from Object, and adds it to the
+    /// From EventSource::EventDispatcher
+    void dispatchEvent(Event &event) override;
+
+    /// Convenience template function, creates an object derived from Object, and adds it to the
     /// parent object.
     template <class Derived>
     static std::shared_ptr<Derived> createObject(Derived* newObject, Object* parent = nullptr)
@@ -136,10 +213,22 @@ protected:
 
 private:
     using ChildContainer = std::vector<ObjectSharedPtr>;
+    using TokenList = SharedVector<EventTokenPtr>;
+    using Container = FlatMap<EventType, TokenList>;
+    struct EventDispatcher
+    {
+        std::vector<ObjectSharedPtr> objects;
+        explicit EventDispatcher(Object& target);
+        bool processEventFilters(Event& event);
+        void processEventHandlers(Event& event);
+    };
 
-    Object* m_parent = nullptr;
+    Container m_handlers;
+    Container m_filters;
     ChildContainer m_children;
     mutable ThreadDataSharedPtr m_threadData;
+    Object* m_parent = nullptr;
+
     friend class ThreadLoop;
 };
 

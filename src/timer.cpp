@@ -18,23 +18,14 @@
 
 #include <mox/timer.hpp>
 #include <mox/module/thread_data.hpp>
+#include <mox/module/thread_loop.hpp>
 
 namespace mox
 {
 
-static int32_t timerUId = 0;
-
 Timer::Timer(Type type, std::chrono::milliseconds interval)
-    : m_source(std::dynamic_pointer_cast<TimerSource>(ThreadData::thisThreadData()->eventDispatcher()->findEventSource("default_timer")))
-    , m_interval(interval)
-    , m_type(type)
-    , m_id(++timerUId)
+    : TimerSource::TimerRecord(interval, type == Type::SingleShot)
 {
-}
-
-Timer::~Timer()
-{
-    stop();
 }
 
 TimerPtr Timer::createSingleShot(std::chrono::milliseconds timeout)
@@ -52,21 +43,16 @@ TimerPtr Timer::createRepeating(std::chrono::milliseconds interval)
 void Timer::start()
 {
     stop();
-    TimerSourcePtr source = m_source.lock();
-    if (!m_isRunning && source)
-    {
-        source->addTimer(*this);
-        m_isRunning = true;
-    }
+    auto source = ThreadData::thisThreadData()->thread()->m_runLoop->getDefaultTimerSource();
+    TimerSource::TimerRecord::start(*source);
 }
 
-void Timer::stop()
+void Timer::signal()
 {
-    TimerSourcePtr source = m_source.lock();
-    if (m_isRunning && source)
+    expired(this);
+    if (isSingleShot() && isRunning())
     {
-        m_isRunning = false;
-        source->removeTimer(*this);
+        stop();
     }
 }
 

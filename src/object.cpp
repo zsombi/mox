@@ -23,6 +23,89 @@
 namespace mox
 {
 
+/******************************************************************************
+ * internals
+ */
+namespace
+{
+
+/******************************************************************************
+ *
+ */
+class HandlerToken : public Object::EventToken
+{
+    Object::EventHandler m_handler;
+
+public:
+    explicit HandlerToken(EventType type, ObjectSharedPtr eventHandler, Object::EventHandler&& handler)
+        : EventToken(type, eventHandler)
+        , m_handler(handler)
+    {
+    }
+
+    auto handler() const
+    {
+        return m_handler;
+    }
+};
+
+/******************************************************************************
+ *
+ */
+class FilterToken : public Object::EventToken
+{
+    Object::EventFilter m_filter;
+public:
+    explicit FilterToken(EventType type, ObjectSharedPtr eventHandler, Object::EventFilter&& filter)
+        : EventToken(type, eventHandler)
+        , m_filter(filter)
+    {
+    }
+
+    auto filter() const
+    {
+        return m_filter;
+    }
+};
+
+}
+
+/******************************************************************************
+ * Object::EventToken
+ */
+Object::EventToken::EventToken(EventType type, ObjectSharedPtr target)
+    : m_target(target)
+    , m_type(type)
+{
+}
+
+void Object::EventToken::erase()
+{
+    auto target = m_target.lock();
+    if (!target)
+    {
+        return;
+    }
+
+    auto filter = dynamic_cast<FilterToken*>(this);
+    if (filter)
+    {
+        auto it = target->m_filters.find(m_type);
+        lock_guard ref(it->second);
+        it->second.remove(shared_from_this());
+    }
+    else
+    {
+        auto it = target->m_handlers.find(m_type);
+        lock_guard ref(it->second);
+        it->second.remove(shared_from_this());
+    }
+    m_target.reset();
+}
+
+/******************************************************************************
+ * Object
+ */
 Object::Object()
     : m_threadData(ThreadData::thisThreadData())
 {
@@ -79,9 +162,163 @@ Object::VisitResult Object::moveToThread(ThreadDataSharedPtr threadData)
     return VisitResult::Continue;
 }
 
+
+Object::EventDispatcher::EventDispatcher(Object& target)
+{
+    for (auto parent = &target; parent; parent = parent->m_parent)
+    {
+        lock_guard lock(*parent);
+        objects.push_back(parent->shared_from_this());
+    }
+}
+
+bool Object::EventDispatcher::processEventFilters(Event& event)
+{
+    auto processFilters = [&event](auto& object)
+    {
+        lock_guard objectLock(*object);
+        auto filter = object->m_filters.find(event.type());
+        if (filter == object->m_filters.end())
+        {
+            return false;
+        }
+
+        // Loop thru the filters of the event.
+        auto processor = [obj = object.get(), &event](EventTokenPtr token)
+        {
+            if (!token)
+            {
+                return false;
+            }
+            auto filterToken = std::static_pointer_cast<FilterToken>(token);
+            event.setHandled(true);
+            bool filtered = false;
+            {
+                ScopeRelock relock(*obj);
+                filtered = filterToken->filter()(event);
+            }
+            if (!filtered)
+            {
+                event.setHandled(false);
+                return false;
+            }
+            return true;
+        };
+        lock_guard ref(filter->second);
+        auto idx = filter->second.findIf(processor);
+        return (idx != std::nullopt);
+    };
+    auto it = reverse_find_if(objects, processFilters);
+    return (it != objects.rend());
+}
+
+void Object::EventDispatcher::processEventHandlers(Event& event)
+{
+    auto processHandlers = [&event](auto& object)
+    {
+        lock_guard objectLock(*object);
+        auto handler = object->m_handlers.find(event.type());
+        if (handler == object->m_handlers.end())
+        {
+            return false;
+        }
+
+        auto processor = [obj = object.get(), &event](EventTokenPtr token)
+        {
+            if (!token)
+            {
+                return false;
+            }
+            auto handlerToken = std::static_pointer_cast<HandlerToken>(token);
+
+            // Mark the event consumed.
+            event.setHandled(true);
+            {
+                ScopeRelock relock(*obj);
+                handlerToken->handler()(event);
+            }
+            if (event.isHandled())
+            {
+                return true;
+            }
+            return false;
+        };
+        lock_guard ref(handler->second);
+        auto idx = handler->second.findIf(processor);
+        return (idx != std::nullopt);
+    };
+    reverse_find_if(objects, processHandlers);
+}
+
+void Object::dispatchEvent(Event& event)
+{
+    if (event.isHandled())
+    {
+        return;
+    }
+
+    // Check default handlers.
+    if (event.type() == EventType::DeferredSignal)
+    {
+        DeferredSignalEvent& deferredSignal = dynamic_cast<DeferredSignalEvent&>(event);
+        deferredSignal.activate();
+        event.setHandled(true);
+        return;
+    }
+
+    // Collect the objects
+    EventDispatcher dispatcher(*this);
+    if (!dispatcher.processEventFilters(event))
+    {
+        dispatcher.processEventHandlers(event);
+    }
+}
+
+Object::EventTokenPtr Object::addEventHandler(EventType type, EventHandler handler)
+{
+    auto token = make_polymorphic_shared<EventToken, HandlerToken>(type, shared_from_this(), std::move(handler));
+
+    lock_guard lock(*this);
+    Container::Iterator it = m_handlers.find(type);
+    if (it == m_handlers.end())
+    {
+        TokenList tokens;
+        tokens.push_back(token);
+        m_handlers.insert(make_pair(type, std::move(tokens)));
+    }
+    else
+    {
+        lock_guard ref(it->second);
+        it->second.push_back(token);
+    }
+    return token;
+}
+
+Object::EventTokenPtr Object::addEventFilter(EventType type, EventFilter filter)
+{
+    auto token = make_polymorphic_shared<EventToken, FilterToken>(type, shared_from_this(), std::move(filter));
+
+    lock_guard lock(*this);
+    auto it = m_filters.find(type);
+    if (it == m_filters.end())
+    {
+        TokenList tokens;
+        tokens.push_back(token);
+        m_filters.insert(make_pair(type, std::move(tokens)));
+    }
+    else
+    {
+        lock_guard ref(it->second);
+        it->second.push_back(token);
+    }
+    return token;
+}
+
+
+
 void Object::addChild(Object& child)
 {
-    ObjectSharedPtr sharedChild = child.shared_from_this();
+    ObjectSharedPtr sharedChild = child.asShared();
     OrderedLock lock(this, sharedChild->parent());
 
     Object* oldParent = sharedChild->parent();
@@ -107,7 +344,7 @@ void Object::addChild(Object& child)
     };
     child.traverse(threadMover, TraverseOrder::PreOrder);
 
-    m_children.push_back(child.shared_from_this());
+    m_children.push_back(child.asShared());
     child.m_parent = this;
 }
 

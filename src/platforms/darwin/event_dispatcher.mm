@@ -17,7 +17,6 @@
  */
 
 #include "event_dispatcher.h"
-#include <mox/event_handling/event_loop.hpp>
 #include <stack>
 
 @interface RunLoopModeTracker :NSObject
@@ -98,25 +97,24 @@ static CFStringRef runLoopMode(NSDictionary *dictionary)
 namespace mox
 {
 
-CFEventDispatcher::CFEventDispatcher(ThreadData& threadData)
-    : EventDispatcher(threadData)
-    , runLoopActivitySource(this, &CFEventDispatcher::processRunLoopActivity, kCFRunLoopAllActivities)
+FoundationRunLoop::FoundationRunLoop()
+    : runLoopActivitySource(this, &FoundationRunLoop::processRunLoopActivity, kCFRunLoopAllActivities)
     , runLoop(CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent()))
     , modeTracker([[RunLoopModeTracker alloc] init])
 {
     runLoopActivitySource.addToMode(kCFRunLoopCommonModes);
 }
 
-CFEventDispatcher::~CFEventDispatcher()
+FoundationRunLoop::~FoundationRunLoop()
 {
 }
 
-void CFEventDispatcher::scheduleIdleTasks()
+void FoundationRunLoop::scheduleIdleTasks()
 {
     wakeUp();
 }
 
-void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
+void FoundationRunLoop::processRunLoopActivity(CFRunLoopActivity activity)
 {
     switch (activity)
     {
@@ -151,7 +149,7 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
             if (m_runOnce && !runningTimerCount())
             {
                 TRACE("runOnce invoked")
-                stop();
+                stopExecution();
             }
             break;
         }
@@ -165,7 +163,7 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
             if (!m_runOnce)
             {
                 TRACE("Exiting")
-                forEachSource<AbstractEventSource>(&AbstractEventSource::shutDown);
+                forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::clean);
             }
             break;
         }
@@ -179,34 +177,27 @@ void CFEventDispatcher::processRunLoopActivity(CFRunLoopActivity activity)
 /******************************************************************************
  *
  */
-EventDispatcherSharedPtr Adaptation::createEventDispatcher(ThreadData& threadData, bool)
+RunLoopSharedPtr Adaptation::createRunLoop(bool main)
 {
-    return make_polymorphic_shared<EventDispatcher, CFEventDispatcher>(threadData);
+    UNUSED(main);
+    TRACE("Run loop for main? " << main);
+    return make_polymorphic_shared<RunLoop, FoundationRunLoop>();
 }
 
-bool CFEventDispatcher::isProcessingEvents() const
+bool FoundationRunLoop::isRunning() const
 {
     return m_isRunning;
 }
 
-void CFEventDispatcher::processEvents(ProcessFlags flags)
+void FoundationRunLoop::execute(ProcessFlags)
 {
     FlagScope<true> toggleRunning(m_isRunning);
-    if (flags == ProcessFlags::RunOnce)
-    {
-        TRACE("Entering runOnce()")
-        runOnce();
-        TRACE("Leaving runOnce()")
-    }
-    else
-    {
-        currentMode = kCFRunLoopCommonModes;
-        FlagScope<false> lockRunOnce(m_runOnce);
-        CFRunLoopRun();
-    }
+    currentMode = kCFRunLoopCommonModes;
+    FlagScope<false> lockRunOnce(m_runOnce);
+    CFRunLoopRun();
 }
 
-void CFEventDispatcher::runOnce()
+void FoundationRunLoop::runOnce()
 {
     constexpr CFTimeInterval kCFTimeIntervalMinimum = 0;
     constexpr CFTimeInterval kCFTimeIntervalDistantFuture = std::numeric_limits<CFTimeInterval>::max();
@@ -220,15 +211,15 @@ void CFEventDispatcher::runOnce()
     UNUSED(result);
 }
 
-void CFEventDispatcher::stop()
+void FoundationRunLoop::stopExecution()
 {
-    TRACE("Stop dispatcher")
+    TRACE("Stop run loop")
     CFRunLoopStop(runLoop);
 }
 
-void CFEventDispatcher::wakeUp()
+void FoundationRunLoop::wakeUp()
 {
-    forEachSource<PostEventSource>(&PostEventSource::wakeUp);
+    forEachSource<EventSource>(&EventSource::wakeUp);
     if (runLoop)
     {
         TRACE("WakeUp...")

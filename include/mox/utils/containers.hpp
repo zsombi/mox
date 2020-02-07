@@ -23,7 +23,9 @@
 #include <memory>
 #include <optional>
 
+#include <mox/utils/algorithm.hpp>
 #include <mox/utils/globals.hpp>
+#include <mox/utils/type_traits.hpp>
 
 namespace mox
 {
@@ -40,6 +42,7 @@ struct ZeroCheck
 template <typename Type, typename CompactingPredicate = ZeroCheck<Type>>
 class SharedVector
 {
+    using Self = SharedVector<Type, CompactingPredicate>;
     using Container = std::vector<Type>;
 
     Container m_container;
@@ -49,6 +52,18 @@ class SharedVector
 
 public:
     explicit SharedVector() = default;
+
+    SharedVector(Self&& other)
+    {
+        *this = std::forward<Self>(other);
+    }
+
+    Self& operator=(Self&& other)
+    {
+        std::swap(m_container, other.m_container);
+        std::swap(m_refCount, other.m_refCount);
+        return *this;
+    }
 
     int lockCount() const
     {
@@ -123,6 +138,22 @@ public:
     void erase(const Type& value)
     {
         mox::erase(m_container, value);
+    }
+
+    void remove(const Type& value)
+    {
+        auto it = std::find(m_container.begin(), m_container.end(), value);
+        if constexpr (is_shared_ptr<Type>::value)
+        {
+            (*it).reset();
+            return;
+        }
+        if constexpr (std::is_pointer_v<Type>)
+        {
+            (*it) = nullptr;
+            return;
+        }
+        (*it) = Type();
     }
 
     std::optional<size_t> find(const Type& value) const

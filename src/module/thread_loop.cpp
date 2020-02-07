@@ -17,8 +17,7 @@
  */
 
 #include <mox/module/thread_loop.hpp>
-#include <mox/event_handling/event_dispatcher.hpp>
-#include <mox/event_handling/event_loop.hpp>
+#include <mox/event_handling/run_loop.hpp>
 #include <mox/module/application.hpp>
 
 #include <future>
@@ -31,11 +30,15 @@ using Waiter = std::future<void>;
 
 ThreadLoop::ThreadLoop()
 {
-    addEventHandler(EventType::Quit, std::bind(&ThreadLoop::quitHandler, this, std::placeholders::_1));
 }
 
 void ThreadLoop::registerModule()
 {
+}
+
+void ThreadLoop::prepare()
+{
+    addEventHandler(EventType::Quit, std::bind(&ThreadLoop::quitHandler, this, std::placeholders::_1));
 }
 
 Object::VisitResult ThreadLoop::moveToThread(ThreadDataSharedPtr threadData)
@@ -49,8 +52,8 @@ Object::VisitResult ThreadLoop::moveToThread(ThreadDataSharedPtr threadData)
 void ThreadLoop::quitHandler(Event& event)
 {
     QuitEvent& quit = static_cast<QuitEvent&>(event);
-    m_threadData->m_exitCode.store(quit.getExitCode());
-    m_threadData->m_eventDispatcher->stop();
+    m_exitCode.store(quit.getExitCode());
+    m_runLoop->stopExecution();
 }
 
 void ThreadLoop::moveToThread()
@@ -79,10 +82,13 @@ bool ThreadLoop::isRunning() const
 void ThreadLoop::threadMain(std::promise<void> notifier)
 {
     TRACE("Preparing thread")
-    lock();
-    ThreadDataSharedPtr threadData = ThreadData::create();
-    threadData->m_thread = std::static_pointer_cast<ThreadLoop>(shared_from_this());
-    unlock();
+    ThreadDataSharedPtr threadData;
+    {
+        lock_guard locker(*this);
+        threadData = ThreadData::create();
+        threadData->m_thread = std::static_pointer_cast<ThreadLoop>(shared_from_this());
+        m_runLoop = RunLoop::create(false);
+    }
 
     if (!threadData->m_thread->parent())
     {
@@ -100,7 +106,6 @@ void ThreadLoop::threadMain(std::promise<void> notifier)
     run();
     TRACE("Thread stopped")
 
-    TRACE("Thread really stopped")
     // The thread data is no longer valid, therefore reset it, and remove from all the objects owned by this thread loop.
     auto cleaner = [](Object& object)
     {
@@ -113,15 +118,17 @@ void ThreadLoop::threadMain(std::promise<void> notifier)
 
     threadData->m_thread.reset();
     m_threadData.reset();
+    TRACE("Thread really stopped")
 }
 
 void ThreadLoop::start()
 {
+    prepare();
     Notifier notifier;
     Waiter notifierLock = notifier.get_future();
     m_thread = std::thread(&ThreadLoop::threadMain, this, std::move(notifier));
 
-    // Wait till future gets signalled.
+    // Wait till future gets signaled.
     notifierLock.wait();
 }
 
@@ -132,7 +139,7 @@ void ThreadLoop::exit(int exitCode)
     {
         return;
     }
-    postEvent<QuitEvent>(shared_from_this(), exitCode);
+    postEvent<QuitEvent>(asShared(), exitCode);
 }
 
 void ThreadLoop::join()
@@ -165,11 +172,11 @@ void ThreadLoop::exitAndJoin(int exitCode)
 
 int ThreadLoop::run()
 {
-    EventLoop loop;
     m_status.store(Status::Running);
-    loop.processEvents();
+    m_runLoop->execute();
     m_status.store(Status::Stopped);
-    return threadData()->exitCode();
+    m_runLoop->shutDown();
+    return m_exitCode;
 }
 
 ThreadLoopSharedPtr ThreadLoop::create(Object* parent)
@@ -180,6 +187,35 @@ ThreadLoopSharedPtr ThreadLoop::create(Object* parent)
 ThreadLoopSharedPtr ThreadLoop::thisThread()
 {
     return ThreadData::thisThreadData()->thread();
+}
+
+void ThreadLoop::addIdleTask(RunLoop::IdleFunction idleTask)
+{
+    auto thread = ThreadLoop::thisThread();
+    FATAL(thread, "Invalid thread")
+    lock_guard lock(*thread);
+    thread->m_runLoop->addIdleTask(std::move(idleTask));
+}
+
+bool ThreadLoop::postEvent(EventPtr event)
+{
+    auto target = event->target();
+    FATAL(target, "Cannot post event without target")
+
+    auto thread = target->threadData()->thread();
+    FATAL(thread, "No thread!")
+    if (!thread)
+    {
+        return false;
+    }
+    lock_guard lock(*thread);
+    FATAL(thread->m_runLoop, "No more run loop for event " << int(event->type()))
+    if (!thread->m_runLoop)
+    {
+        return false;
+    }
+    thread->m_runLoop->getDefaultPostEventSource()->push(std::move(event));
+    return true;
 }
 
 }

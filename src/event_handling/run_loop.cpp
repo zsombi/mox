@@ -16,12 +16,10 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/event_handling/event_dispatcher.hpp>
-#include <mox/event_handling/event_loop.hpp>
-#include <mox/event_handling/event_handler.hpp>
 #include <mox/event_handling/event.hpp>
 #include <mox/event_handling/event_queue.hpp>
-#include <mox/event_handling/event_sources.hpp>
+#include <mox/event_handling/run_loop.hpp>
+#include <mox/event_handling/run_loop_sources.hpp>
 #include <mox/object.hpp>
 #include <mox/timer.hpp>
 #include <mox/platforms/adaptation.hpp>
@@ -34,13 +32,13 @@ namespace mox
 /******************************************************************************
  *
  */
-bool EventDispatcher::runIdleTasks()
+bool RunLoop::runIdleTasks()
 {
     decltype (m_idleTasks) newQueue;
 
     while (!m_idleTasks.empty())
     {
-        EventDispatcher::IdleFunction idleFunction(std::move(m_idleTasks.front()));
+        RunLoop::IdleFunction idleFunction(std::move(m_idleTasks.front()));
         m_idleTasks.pop();
 
         if (!idleFunction())
@@ -57,50 +55,49 @@ bool EventDispatcher::runIdleTasks()
     return !m_idleTasks.empty();
 }
 
-EventDispatcher::EventDispatcher(ThreadData& threadData)
-    : m_threadData(threadData)
+RunLoop::RunLoop()
 {
 }
 
-EventDispatcher::~EventDispatcher()
+RunLoop::~RunLoop()
 {
-    TRACE("EventDispatcher died")
+    TRACE("RunLoop died")
 }
 
-PostEventSourcePtr EventDispatcher::getActivePostEventSource()
+EventSourcePtr RunLoop::getActiveEventSource()
 {
-    // Get the last post event source. Only one post event source is used to handle the queue.
-    auto finder = [](AbstractEventSourceSharedPtr abstractSource)
+    // Get the last event source. Only one event source is used to handle the queue.
+    auto finder = [](AbstractRunLoopSourceSharedPtr abstractSource)
     {
-        return std::dynamic_pointer_cast<PostEventSource>(abstractSource) != nullptr;
+        return std::dynamic_pointer_cast<EventSource>(abstractSource) != nullptr;
     };
-    auto it = std::find_if(m_eventSources.rbegin(), m_eventSources.rend(), finder);
-    if (it == m_eventSources.rend())
+    auto it = std::find_if(m_runLoopSources.rbegin(), m_runLoopSources.rend(), finder);
+    if (it == m_runLoopSources.rend())
     {
         return nullptr;
     }
-    return std::static_pointer_cast<PostEventSource>(*it);
+    return std::static_pointer_cast<EventSource>(*it);
 }
 
-EventDispatcherSharedPtr EventDispatcher::create(ThreadData& threadData, bool main)
+RunLoopSharedPtr RunLoop::create(bool main)
 {
-    auto evLoop = Adaptation::createEventDispatcher(threadData, main);
+    auto evLoop = Adaptation::createRunLoop(main);
 
     auto timerSource = Adaptation::createTimerSource("default_timer");
-    evLoop->addEventSource(timerSource);
+    evLoop->addSource(timerSource);
 
     auto eventSource = Adaptation::createPostEventSource("default_post_event");
-    evLoop->addEventSource(eventSource);
+    evLoop->addSource(eventSource);
 
     auto socketSource = Adaptation::createSocketNotifierSource("default_socket_notifier");
-    evLoop->addEventSource(socketSource);
+    evLoop->addSource(socketSource);
 
     return evLoop;
 }
 
-void EventDispatcher::addEventSource(AbstractEventSourceSharedPtr source)
+void RunLoop::addSource(AbstractRunLoopSourceSharedPtr source)
 {
-    for (auto evs : m_eventSources)
+    for (auto evs : m_runLoopSources)
     {
         if (evs == source)
         {
@@ -108,14 +105,14 @@ void EventDispatcher::addEventSource(AbstractEventSourceSharedPtr source)
         }
     }
 
-    m_eventSources.push_back(source);
-    source->setEventDispatcher(*this);
+    m_runLoopSources.push_back(source);
+    source->setRunLoop(*this);
     source->prepare();
 }
 
-AbstractEventSourceSharedPtr EventDispatcher::findEventSource(std::string_view name)
+AbstractRunLoopSourceSharedPtr RunLoop::findSource(std::string_view name)
 {
-    for (auto source : m_eventSources)
+    for (auto source : m_runLoopSources)
     {
         if (source->name() == name)
         {
@@ -126,9 +123,9 @@ AbstractEventSourceSharedPtr EventDispatcher::findEventSource(std::string_view n
     return nullptr;
 }
 
-AbstractEventSourceSharedPtr EventDispatcher::findEventSource(std::string_view name) const
+AbstractRunLoopSourceSharedPtr RunLoop::findSource(std::string_view name) const
 {
-    for (auto source : m_eventSources)
+    for (auto source : m_runLoopSources)
     {
         if (source->name() == name)
         {
@@ -139,7 +136,25 @@ AbstractEventSourceSharedPtr EventDispatcher::findEventSource(std::string_view n
     return nullptr;
 }
 
-void EventDispatcher::addIdleTask(IdleFunction&& function)
+TimerSourcePtr RunLoop::getDefaultTimerSource()
+{
+    // the first source is the timer source.
+    return std::static_pointer_cast<TimerSource>(m_runLoopSources[0]);
+}
+
+EventSourcePtr RunLoop::getDefaultPostEventSource()
+{
+    // the secont source is the event source.
+    return std::static_pointer_cast<EventSource>(m_runLoopSources[1]);
+}
+
+SocketNotifierSourcePtr RunLoop::getDefaultSocketNotifierSource()
+{
+    // the third source is the socket notifier source.
+    return std::static_pointer_cast<SocketNotifierSource>(m_runLoopSources[2]);
+}
+
+void RunLoop::addIdleTask(IdleFunction function)
 {
     m_idleTasks.push(std::move(function));
     scheduleIdleTasks();

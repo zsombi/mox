@@ -19,8 +19,8 @@
 #ifndef EVENT_LOOP_H
 #define EVENT_LOOP_H
 
-#include <mox/event_handling/event_dispatcher.hpp>
-#include <mox/event_handling/socket_notifier.hpp>
+#include <mox/event_handling/run_loop.hpp>
+#include <mox/event_handling/run_loop_sources.hpp>
 #include <mox/timer.hpp>
 #include <mox/utils/containers.hpp>
 #include <mox/platforms/adaptation.hpp>
@@ -32,7 +32,7 @@ namespace mox
 
 class GlibEventDispatcher;
 
-class GPostEventSource : public PostEventSource
+class GPostEventSource : public EventSource
 {
 public:
     explicit GPostEventSource(std::string_view name);
@@ -60,8 +60,8 @@ public:
 struct GPollHandler
 {
     GPollFD fd;
-    SocketNotifierSharedPtr notifier;
-    explicit GPollHandler(SocketNotifier& notifier);
+    SocketNotifierSource::NotifierPtr notifier;
+    explicit GPollHandler(SocketNotifierSource::Notifier& notifier);
     void reset();
 };
 
@@ -95,9 +95,9 @@ public:
     ~GSocketNotifierSource() final;
 
     void prepare() final;
-    void shutDown() final;
-    void addNotifier(SocketNotifier& notifier) final;
-    void removeNotifier(SocketNotifier& notifier) final;
+    void clean() final;
+    void addNotifier(Notifier& notifier) final;
+    void removeNotifier(Notifier& notifier) final;
 };
 
 class GTimerSource : public TimerSource
@@ -105,14 +105,14 @@ class GTimerSource : public TimerSource
 public:
     struct Source : GSource
     {
-        TimerPtr timer;
+        TimerSource::TimerPtr timer;
         Timestamp lastUpdateTime;
         bool active = true;
 
         static gboolean prepare(GSource* src, gint* timeout);
         static gboolean dispatch(GSource* source, GSourceFunc, gpointer);
 
-        static Source *create(Timer& timer);
+        static Source *create(TimerRecord& timer);
         static void destroy(Source*& src);
     };
 
@@ -122,12 +122,12 @@ public:
     std::optional<size_t> findSource(TimerPtr timer);
 
     // From TimerSource
-    void addTimer(Timer& timer) final;
-    void removeTimer(Timer& timer) final;
+    void addTimer(TimerRecord& timer) final;
+    void removeTimer(TimerRecord& timer) final;
     size_t timerCount() const final;
 
-    // from AbstractEventSource
-    void shutDown() final;
+    // from AbstractRunLoopSource
+    void clean() final;
 
     struct ZeroTimer
     {
@@ -140,20 +140,21 @@ public:
     SharedVector<Source*, ZeroTimer> timers;
 };
 
-class GlibEventDispatcher : public EventDispatcher
+class GlibEventDispatcher : public RunLoop
 {
     void initialize();
 
     static gboolean idleFunc(gpointer userData);
 
 public:
-    explicit GlibEventDispatcher(ThreadData& threadData);
-    explicit GlibEventDispatcher(ThreadData& threadData, GMainContext& mainContext);
+    explicit GlibEventDispatcher();
+    explicit GlibEventDispatcher(GMainContext& mainContext);
     ~GlibEventDispatcher() override;
 
-    bool isProcessingEvents() const override;
-    void processEvents(ProcessFlags flags) override;
-    void stop() override;
+    bool isRunning() const override;
+    void execute(ProcessFlags flags) override;
+    void stopExecution() override;
+    void shutDown() override;
     void wakeUp() override;
     size_t runningTimerCount() const override;
 
@@ -161,7 +162,7 @@ public:
 
     GMainLoop* evLoop = nullptr;
     GMainContext* context = nullptr;
-    bool isRunning = false;
+    bool running = false;
 };
 
 }

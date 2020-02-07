@@ -21,7 +21,7 @@
 #include "../metadata/metadata_p.h"
 #include <mox/object.hpp>
 
-#include <mox/event_handling/event_loop.hpp>
+#include <mox/module/thread_loop.hpp>
 
 namespace mox
 {
@@ -211,7 +211,7 @@ void MethodConnection::activate(const Callable::ArgumentPack& args)
         if (receiver && receiver->threadData() != ThreadData::thisThreadData())
         {
             // Async!!
-            postEvent<DeferredSignalEvent>(*receiver, *this, args);
+            ThreadLoop::postEvent<DeferredSignalEvent>(receiver->asShared(), *this, args);
             return;
         }
     }
@@ -255,7 +255,7 @@ void MetaMethodConnection::activate(const Callable::ArgumentPack& args)
         if (receiver && receiver->threadData() != ThreadData::thisThreadData())
         {
             // Async!!
-            postEvent<DeferredSignalEvent>(*receiver, *this, args);
+            ThreadLoop::postEvent<DeferredSignalEvent>(receiver->asShared(), *this, args);
             return;
         }
     }

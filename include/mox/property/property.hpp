@@ -58,7 +58,7 @@ public:
     virtual ~Property();
 
     /// Checks the validity of a property. A property is valid if its type is set.
-    /// \return If teh property is valid, returns \e true, otherwise \e false.
+    /// \return If the property is valid, returns \e true, otherwise \e false.
     bool isValid() const;
 
     /// Returns the read-only state of the property.

@@ -22,6 +22,7 @@
 #include <mox/config/deftypes.hpp>
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
+#include <mox/utils/type_traits.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
 #include <mox/signal/signal.hpp>
 
@@ -59,7 +60,7 @@ public:
     };
 
     /// Constructs an event with a \a type, a \a target and \a priority.
-    explicit Event(EventType type, ObjectSharedPtr target, Priority priority = Priority::Normal);
+    explicit Event(ObjectSharedPtr target, EventType type, Priority priority = Priority::Normal);
     /// Descructor.
     virtual ~Event() = default;
 
@@ -112,10 +113,17 @@ class MOX_API DeferredSignalEvent : public Event
     Callable::ArgumentPack m_arguments;
 
 public:
-    explicit DeferredSignalEvent(Object& target, Signal::Connection& connection, const Callable::ArgumentPack& args);
+    explicit DeferredSignalEvent(ObjectSharedPtr target, Signal::Connection& connection, const Callable::ArgumentPack& args);
 
     void activate();
 };
+
+template <class EventClass, class TargetPtr, typename... Arguments>
+auto make_event(TargetPtr target, Arguments&&... arguments)
+{
+    static_assert(is_shared_ptr<TargetPtr>::value, "The first argument must be a shared pointer to the target");
+    return std::make_unique<EventClass>(target, std::forward<Arguments>(arguments)...);
+}
 
 } // namespace mox
 
