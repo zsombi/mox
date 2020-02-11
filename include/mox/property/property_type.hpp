@@ -21,7 +21,7 @@
 
 #include <mox/config/deftypes.hpp>
 #include <mox/config/platform_config.hpp>
-#include <mox/utils/flat_map.hpp>
+#include <mox/utils/containers/flat_map.hpp>
 #include <mox/metadata/variant.hpp>
 #include <mox/signal/signal_type.hpp>
 #include <mox/metadata/metaclass.hpp>

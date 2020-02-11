@@ -135,6 +135,7 @@ TEST_F(Threads, test_parented_detached_thread_deletes_before_quiting)
 
 TEST_F(Threads, test_quit_application_from_thread_kills_thread)
 {
+    GTEST_SKIP_("Flaky on Linux");
     TestApp app;
     Notifier notifyDeath;
     Watcher watchDeath = notifyDeath.get_future();
@@ -207,6 +208,7 @@ TEST_F(Threads, test_threads2)
 
 TEST_F(Threads, test_signal_connected_to_different_thread)
 {
+    GTEST_SKIP_("Flaky on Linux");
     mox::Application mainThread;
     mainThread.setRootObject(*Quitter::create());
 
@@ -243,6 +245,7 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
 
 TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
 {
+    GTEST_SKIP_("Flaky on Linux");
     mox::Application mainThread;
     mainThread.setRootObject(*Quitter::create());
 

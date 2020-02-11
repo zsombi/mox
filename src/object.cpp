@@ -91,14 +91,12 @@ void Object::EventToken::erase()
     if (filter)
     {
         auto it = target->m_filters.find(m_type);
-        lock_guard ref(it->second);
-        it->second.remove(shared_from_this());
+        mox::erase(it->second, shared_from_this());
     }
     else
     {
         auto it = target->m_handlers.find(m_type);
-        lock_guard ref(it->second);
-        it->second.remove(shared_from_this());
+        mox::erase(it->second, shared_from_this());
     }
     m_target.reset();
 }
@@ -204,8 +202,7 @@ bool Object::EventDispatcher::processEventFilters(Event& event)
             }
             return true;
         };
-        lock_guard ref(filter->second);
-        auto idx = filter->second.findIf(processor);
+        auto idx = find_if(filter->second, processor);
         return (idx != std::nullopt);
     };
     auto it = reverse_find_if(objects, processFilters);
@@ -243,8 +240,7 @@ void Object::EventDispatcher::processEventHandlers(Event& event)
             }
             return false;
         };
-        lock_guard ref(handler->second);
-        auto idx = handler->second.findIf(processor);
+        auto idx = find_if(handler->second, processor);
         return (idx != std::nullopt);
     };
     reverse_find_if(objects, processHandlers);

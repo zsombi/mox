@@ -21,7 +21,7 @@
 
 #include <mox/config/deftypes.hpp>
 #include <mox/utils/locks.hpp>
-#include <mox/utils/containers.hpp>
+#include <mox/utils/containers/shared_vector.hpp>
 #include <mox/metadata/callable.hpp>
 #include <mox/metadata/metaclass.hpp>
 #include <mox/signal/signal_type.hpp>
@@ -98,7 +98,7 @@ public:
         virtual void activate(const Callable::ArgumentPack& args) = 0;
 
         /// Resets the connection.
-        virtual void reset();
+        virtual void invalidate();
 
         /// Internal disconnect method, to disconnect a connection specific receiver.
         /// \return If the connection's receiver matches the one passed as argument,

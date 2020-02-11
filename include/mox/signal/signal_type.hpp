@@ -22,8 +22,7 @@
 #include <mox/config/deftypes.hpp>
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
-#include <mox/utils/containers.hpp>
-#include <mox/utils/flat_map.hpp>
+#include <mox/utils/containers/flat_map.hpp>
 #include <mox/metadata/callable.hpp>
 #include <mox/metadata/metaclass.hpp>
 

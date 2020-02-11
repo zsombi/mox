@@ -101,18 +101,14 @@ void CFSocketNotifierSource::Socket::addNotifier(Notifier& notifier)
 
 bool CFSocketNotifierSource::Socket::removeNotifier(Notifier& notifier)
 {
-    auto notifierLookup = [&notifier](SocketNotifierSource::NotifierPtr n)
+    auto remover = [&notifier](SocketNotifierSource::NotifierPtr n)
     {
         return n.get() == &notifier;
     };
-    auto index = notifiers.findIf(notifierLookup);
-    if (!index)
+    if (!erase_if(notifiers, remover))
     {
         return false;
     }
-
-    lock_guard lock(notifiers);
-    notifiers[*index].reset();
 
     bool isRead = hasMode(notifier, SocketNotifierSource::Notifier::Modes::Read);
     bool isWrite = hasMode(notifier, SocketNotifierSource::Notifier::Modes::Write);
@@ -176,7 +172,7 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
             }
         }
     };
-    socket->notifiers.forEach(process);
+    for_each(socket->notifiers, process);
     TRACE("Leaving socket notifications.")
 }
 
@@ -185,7 +181,6 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
  */
 CFSocketNotifierSource::CFSocketNotifierSource(std::string_view name)
     : SocketNotifierSource(name)
-//    , sockets([](const SocketPtr& socket) { return !socket || !socket->handler; })
 {
 }
 

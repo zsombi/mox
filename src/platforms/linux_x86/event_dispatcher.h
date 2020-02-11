@@ -22,7 +22,7 @@
 #include <mox/event_handling/run_loop.hpp>
 #include <mox/event_handling/run_loop_sources.hpp>
 #include <mox/timer.hpp>
-#include <mox/utils/containers.hpp>
+#include <mox/utils/containers/shared_vector.hpp>
 #include <mox/platforms/adaptation.hpp>
 
 #include <glib.h>
@@ -88,8 +88,16 @@ public:
         }
     };
 
+    struct PollInvalidator
+    {
+        void operator()(GPollHandler& handler)
+        {
+            handler.notifier.reset();
+        }
+    };
+
     Source* source = nullptr;
-    SharedVector<GPollHandler, NullPollHandler> pollHandlers;
+    SharedVector<GPollHandler, NullPollHandler, PollInvalidator> pollHandlers;
 
     explicit GSocketNotifierSource(std::string_view name);
     ~GSocketNotifierSource() final;
@@ -118,8 +126,6 @@ public:
 
     explicit GTimerSource(std::string_view name);
     ~GTimerSource() final;
-
-    std::optional<size_t> findSource(TimerPtr timer);
 
     // From TimerSource
     void addTimer(TimerRecord& timer) final;

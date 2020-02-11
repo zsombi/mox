@@ -98,30 +98,27 @@ void CFTimerSource::addTimer(TimerRecord& timer)
     {
         return record && record->timerHandler.get() == &timer;
     };
-    auto index = timers.findIf(predicate);
-    FATAL(!index, "Timer already registered")
-
     lock_guard lock(timers);
-    timers.emplace_back(std::make_unique<CFTimerRecord>(timer));
+    timers.emplace_back_if(std::make_unique<CFTimerRecord>(timer), predicate);
 }
 
 void CFTimerSource::removeTimer(TimerRecord& timer)
 {
-    auto predicate = [&timer](CFTimerRecordPtr& record)
+    auto eraser = [&timer](auto& record)
     {
-        return record && record->timerHandler.get() == &timer;
-    };
-    auto index = timers.findIf(predicate);
-    FATAL(index, "Timer not registered")
+        if (!record || record->timerHandler.get() != &timer)
+        {
+            return false;
+        }
 
-    lock_guard lock(timers);
-    timers[*index]->timerHandler.reset();
-    timers[*index].reset();
+        record->timerHandler.reset();
+        return true;
+    };
+    erase_if(timers, eraser);
 }
 
 void CFTimerSource::clean()
 {
-    lock_guard lock(timers);
     auto looper = [](CFTimerRecordPtr& timer)
     {
         if (timer && timer->timerHandler)
@@ -129,7 +126,7 @@ void CFTimerSource::clean()
             timer->timerHandler->stop();
         }
     };
-    timers.forEach(looper);
+    for_each(timers, looper);
 }
 
 size_t CFTimerSource::timerCount() const
@@ -161,7 +158,7 @@ void CFTimerSource::activate()
             timer->create(*self);
         }
     };
-    timers.forEach(loop);
+    for_each(timers, loop);
 }
 
 TimerSourcePtr Adaptation::createTimerSource(std::string_view name)

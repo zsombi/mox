@@ -153,8 +153,7 @@ gboolean GSocketNotifierSource::Source::check(GSource* source)
             hasPendingEvents = hasPendingEvents || ((poll.fd.revents & poll.fd.events) != 0);
         }
     };
-    lock_guard lock(src->self->pollHandlers);
-    src->self->pollHandlers.forEach(callback);
+    for_each(src->self->pollHandlers, callback);
 
     // if the pollfds are empty trigger dispatch so this source can be removed
     return hasPendingEvents;
@@ -198,8 +197,7 @@ gboolean GSocketNotifierSource::Source::dispatch(GSource *source, GSourceFunc, g
             }
         }
     };
-    lock_guard lock(src->self->pollHandlers);
-    src->self->pollHandlers.forEach(callback);
+    for_each(src->self->pollHandlers, callback);
 
     return G_SOURCE_CONTINUE;
 }
@@ -220,7 +218,7 @@ GSocketNotifierSource::~GSocketNotifierSource()
         g_source_remove_poll(gsource, &handler.fd);
         handler.reset();
     };
-    pollHandlers.forEach(cleanup);
+    for_each(pollHandlers, cleanup);
 
     Source::destroy(source);
 }
@@ -239,7 +237,7 @@ void GSocketNotifierSource::clean()
             handler.notifier->detach();
         }
     };
-    pollHandlers.forEach(close);
+    for_each(pollHandlers, close);
 }
 
 void GSocketNotifierSource::addNotifier(Notifier& notifier)
@@ -250,20 +248,16 @@ void GSocketNotifierSource::addNotifier(Notifier& notifier)
 
 void GSocketNotifierSource::removeNotifier(Notifier& notifier)
 {
-    auto predicate = [&notifier](const GPollHandler& poll)
+    auto predicate = [&notifier, this](GPollHandler& poll)
     {
-        return poll.notifier.get() == &notifier;
+        if (poll.notifier.get() == &notifier)
+        {
+            g_source_remove_poll(static_cast<GSource*>(this->source), &poll.fd);
+            return true;
+        }
+        return false;
     };
-    auto index = pollHandlers.findIf(predicate);
-    if (!index)
-    {
-        return;
-    }
-
-    // Lock the container to make sure the container size is not altered.
-    lock_guard lock(pollHandlers);
-    g_source_remove_poll(static_cast<GSource*>(source), &pollHandlers[*index].fd);
-    pollHandlers[*index].reset();
+    erase_if(pollHandlers, predicate);
 }
 
 /******************************************************************************

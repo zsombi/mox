@@ -17,7 +17,7 @@
  */
 
 #include "test_framework.h"
-#include <mox/utils/flat_set.hpp>
+#include <mox/utils/containers/flat_set.hpp>
 
 TEST(FlatSetTests, test_empty_set)
 {

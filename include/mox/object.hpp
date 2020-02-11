@@ -24,7 +24,8 @@
 #include <mox/module/thread_data.hpp>
 #include <mox/property/property.hpp>
 #include <mox/utils/globals.hpp>
-#include <mox/utils/containers.hpp>
+#include <mox/utils/containers/shared_vector.hpp>
+#include <mox/utils/containers/flat_map.hpp>
 
 namespace mox
 {

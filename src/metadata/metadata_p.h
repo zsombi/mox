@@ -23,7 +23,7 @@
 #include <string>
 #include <functional>
 #include <mox/config/deftypes.hpp>
-#include <mox/utils/flat_map.hpp>
+#include <mox/utils/containers/flat_map.hpp>
 #include <mox/metadata/metadata.hpp>
 #include <mox/metadata/metatype_descriptor.hpp>
 #include <mox/metadata/variant.hpp>

@@ -69,7 +69,7 @@ public:
     }
 
     void activate(const Callable::ArgumentPack& args) override;
-    void reset() override;
+    void invalidate() override;
 };
 
 class MethodConnection : public FunctionConnection
@@ -81,7 +81,7 @@ public:
 
     bool disconnect(Variant receiver, const Callable& callable) override;
     void activate(const Callable::ArgumentPack& args) override;
-    void reset() override;
+    void invalidate() override;
 };
 
 class MetaMethodConnection : public ConnectionPrivates<MetaMethodConnection>
@@ -105,7 +105,7 @@ public:
     }
     bool disconnect(Variant receiver, const Callable& callable) override;
     void activate(const Callable::ArgumentPack& args) override;
-    void reset() override;
+    void invalidate() override;
 };
 typedef std::shared_ptr<MetaMethodConnection> MetaMethodConnectionSharedPtr;
 
@@ -128,7 +128,7 @@ public:
     }
     bool disconnect(Variant receiver, const Callable& callable) override;
     void activate(const Callable::ArgumentPack& args) override;
-    void reset() override;
+    void invalidate() override;
 };
 typedef std::shared_ptr<SignalConnection> SignalConnectionSharedPtr;
 

@@ -17,7 +17,7 @@
  */
 
 #include "test_framework.h"
-#include <mox/utils/flat_map.hpp>
+#include <mox/utils/containers/flat_map.hpp>
 
 TEST(FlatMapTests, test_empty_map)
 {

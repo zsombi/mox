@@ -125,7 +125,7 @@ Signal::Connection::Connection(Signal& signal)
 {
 }
 
-void Signal::Connection::reset()
+void Signal::Connection::invalidate()
 {
     m_signal = nullptr;
 }
@@ -167,7 +167,7 @@ bool FunctionConnection::disconnect(Variant, const Callable &callable)
 {
     if (m_slot == callable)
     {
-        reset();
+        invalidate();
         return true;
     }
     return false;
@@ -179,10 +179,10 @@ void FunctionConnection::activate(const Callable::ArgumentPack& args)
     m_slot.apply(args);
 }
 
-void FunctionConnection::reset()
+void FunctionConnection::invalidate()
 {
     m_slot.reset();
-    Connection::reset();
+    Connection::invalidate();
 }
 
 /******************************************************************************
@@ -221,10 +221,10 @@ void MethodConnection::activate(const Callable::ArgumentPack& args)
     m_slot.apply(Callable::ArgumentPack(m_receiver, prepareActivation(args)));
 }
 
-void MethodConnection::reset()
+void MethodConnection::invalidate()
 {
     m_receiver.reset();
-    FunctionConnection::reset();
+    FunctionConnection::invalidate();
 }
 
 /******************************************************************************
@@ -241,7 +241,7 @@ bool MetaMethodConnection::disconnect(Variant receiver, const Callable &callable
 {
     if ((m_receiver.metaType() == receiver.metaType()) && (*m_slot == callable))
     {
-        reset();
+        invalidate();
         return true;
     }
     return false;
@@ -265,11 +265,11 @@ void MetaMethodConnection::activate(const Callable::ArgumentPack& args)
     m_slot->apply(Callable::ArgumentPack(m_receiver, prepareActivation(args)));
 }
 
-void MetaMethodConnection::reset()
+void MetaMethodConnection::invalidate()
 {
     m_receiver.reset();
     m_slot = nullptr;
-    Connection::reset();
+    Connection::invalidate();
 }
 
 /******************************************************************************
@@ -294,10 +294,10 @@ void SignalConnection::activate(const Callable::ArgumentPack& args)
     }
 }
 
-void SignalConnection::reset()
+void SignalConnection::invalidate()
 {
     m_receiverSignal = nullptr;
-    Connection::reset();
+    Connection::invalidate();
 }
 
 /******************************************************************************
@@ -313,7 +313,7 @@ Signal::Signal(Instance owner, SignalType& signalType)
 
 Signal::~Signal()
 {
-    m_connections.forEach([](ConnectionSharedPtr& connection) { if (connection) connection->m_signal = nullptr; });
+    for_each(m_connections, [](ConnectionSharedPtr connection) { if (connection) connection->m_signal = nullptr; });
     if (m_signalType)
     {
         m_signalType->removeSignalInstance(*this);
@@ -331,18 +331,18 @@ void Signal::removeConnection(ConnectionSharedPtr connection)
 {
     FATAL(m_signalType, "Invalid signal")
     lock_guard lock(*this);
-    lock_guard refConnection(m_connections);
 
-    auto predicate = [&connection](ConnectionSharedPtr& conn)
+    auto eraser = [&connection](ConnectionSharedPtr conn)
     {
-        return (conn == connection);
+        if (conn != connection)
+        {
+            return false;
+        }
+
+        connection->invalidate();
+        return true;
     };
-    auto index = m_connections.findIf(predicate);
-    if (index)
-    {
-        m_connections[*index].reset();
-        connection->reset();
-    }
+    erase_if(m_connections, eraser);
 }
 
 SignalType* Signal::getType()
@@ -397,47 +397,30 @@ bool Signal::disconnect(const Signal& signal)
 {
     FATAL(m_signalType, "Invalid signal")
     lock_guard lock(*this);
-    lock_guard refConnections(m_connections);
 
-    auto predicate = [&signal](ConnectionSharedPtr& connection)
+    auto predicate = [&signal](ConnectionSharedPtr connection)
     {
         SignalConnectionSharedPtr signalConnection = std::dynamic_pointer_cast<SignalConnection>(connection);
-        return (signalConnection && signalConnection->receiverSignal() == &signal);
+        if (signalConnection && signalConnection->receiverSignal() == &signal)
+        {
+            connection->invalidate();
+            return true;
+        }
+        return false;
     };
-    auto index = m_connections.findIf(predicate);
-    if (index)
-    {
-        m_connections[*index]->reset();
-        m_connections[*index].reset();
-        return true;
-    }
-
-    return false;
+    return erase_if(m_connections, predicate);
 }
 
 bool Signal::disconnectImpl(Variant receiver, const Callable& callable)
 {
     FATAL(m_signalType, "Invalid signal")
     lock_guard lock(*this);
-    lock_guard refConnections(m_connections);
 
-    auto predicate = [&receiver, &callable](ConnectionSharedPtr& connection)
+    auto predicate = [&receiver, &callable](ConnectionSharedPtr connection)
     {
-        if (!connection)
-        {
-            return false;
-        }
-
-        return connection->disconnect(receiver, callable);
+        return (connection && connection->disconnect(receiver, callable));
     };
-    auto index = m_connections.findIf(predicate);
-    if (index)
-    {
-        m_connections[*index].reset();
-        return true;
-    }
-
-    return false;
+    return erase_if(m_connections, predicate);
 }
 
 int Signal::activate(const Callable::ArgumentPack& arguments)
@@ -453,8 +436,7 @@ int Signal::activate(const Callable::ArgumentPack& arguments)
     FlagScope<true> triggerLock(m_triggering);
     int count = 0;
 
-    lock_guard refConnections(m_connections);
-    auto activator = [&arguments, self = this, &count](ConnectionSharedPtr& connection)
+    auto activator = [&arguments, self = this, &count](ConnectionSharedPtr connection)
     {
         if (!connection)
         {
@@ -464,7 +446,7 @@ int Signal::activate(const Callable::ArgumentPack& arguments)
         connection->activate(arguments);
         ++count;
     };
-    m_connections.forEach(activator);
+    for_each(m_connections, activator);
 
     return count;
 }

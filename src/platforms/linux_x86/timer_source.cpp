@@ -117,23 +117,20 @@ GTimerSource::~GTimerSource()
 {
 }
 
-std::optional<size_t> GTimerSource::findSource(TimerPtr timer)
-{
-    auto predicate = [timer](const Source* source)
-    {
-        return source->timer == timer;
-    };
-    return timers.findIf(predicate);
-}
-
 void GTimerSource::addTimer(TimerRecord& timer)
 {
     // Make sure the timer is registered once.
-    auto index = findSource(timer.shared_from_this());
-    FATAL(!index, "The timer is already registered")
-
+    auto finder = [tmr = timer.shared_from_this()](const Source* source)
+    {
+        return source->timer == tmr;
+    };
     Source* gtimer = Source::create(timer);
-    timers.push_back(gtimer);
+    if (!timers.push_back_if(gtimer, finder))
+    {
+        Source::destroy(gtimer);
+        FATAL(false, "The timer is already registered")
+        return;
+    }
 
     GlibEventDispatcher* evLoop = static_cast<GlibEventDispatcher*>(m_runLoop.lock().get());
     g_source_attach(static_cast<GSource*>(gtimer), evLoop->context);
@@ -141,13 +138,16 @@ void GTimerSource::addTimer(TimerRecord& timer)
 
 void GTimerSource::removeTimer(TimerRecord& timer)
 {
-    auto index = findSource(timer.shared_from_this());
-    FATAL(index, "The timer is not registered")
-
-    lock_guard lock(timers);
-    Source* src = timers[*index];
-    timers[*index] = nullptr;
-    Source::destroy(src);
+    auto eraser = [tmr = timer.shared_from_this()](Source* source)
+    {
+        if (source->timer == tmr)
+        {
+            Source::destroy(source);
+            return true;
+        }
+        return false;
+    };
+    erase_if(timers, eraser);
 }
 
 size_t GTimerSource::timerCount() const
@@ -165,8 +165,7 @@ void GTimerSource::clean()
             source->timer->stop();
         }
     };
-    lock_guard lock(timers);
-    timers.forEach(cleanup);
+    for_each(timers, cleanup);
 }
 
 /******************************************************************************

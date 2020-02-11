@@ -25,11 +25,11 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/platforms/adaptation.hpp
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/globals.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers/shared_vector.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers/flat_set.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers/flat_map.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/algorithm.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/locks.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/flat_set.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/flat_map.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/string.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/function_traits.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/type_traits.hpp

@@ -21,7 +21,7 @@
 
 #include <mox/event_handling/run_loop.hpp>
 #include <mox/event_handling/socket_notifier.hpp>
-#include <mox/utils/containers.hpp>
+#include <mox/utils/containers/shared_vector.hpp>
 #include <mox/platforms/adaptation.hpp>
 
 #include <CoreFoundation/CoreFoundation.h>
@@ -189,7 +189,9 @@ public:
         }
     };
 
-    SharedVector<CFTimerRecordPtr, NullTimer> timers;
+    using TimerCollection = SharedVector<CFTimerRecordPtr, NullTimer>;
+
+    TimerCollection timers;
 };
 
 class CFPostEventSource : public EventSource

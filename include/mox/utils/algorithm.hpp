@@ -26,6 +26,12 @@ void for_each(Container& c, Predicate predicate)
     std::for_each(c.begin(), c.end(), predicate);
 }
 
+template <typename Type, typename Allocator, typename VType>
+auto find(std::vector<Type, Allocator>& v, const VType& value)
+{
+    return std::find(v.begin(), v.end(), value);
+}
+
 template <typename Container, typename Predicate>
 auto find_if(Container& c, Predicate predicate)
 {
