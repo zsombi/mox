@@ -169,7 +169,7 @@ void PropertyPrivate::updateData(const Variant& newValue)
  */
 
 Property::Property(Instance host, PropertyType& type, AbstractPropertyData& data)
-    : SharedLock<ObjectLock>(*host.as<ObjectLock>())
+    : SharedLock(*host.as<ObjectLock>())
     , d_ptr(pimpl::make_d_ptr<PropertyPrivate>(*this, data, type, host))
     , changed(host, type.getChangedSignalType())
 {

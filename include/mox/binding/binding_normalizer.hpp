@@ -21,7 +21,7 @@
 
 #include <mox/config/deftypes.hpp>
 #include <mox/metadata/variant.hpp>
-#include <mox/utils/locks.hpp>
+#include <mox/utils/ref_counted.hpp>
 
 namespace mox
 {
@@ -46,7 +46,7 @@ using BindingNormalizerPtr = std::unique_ptr<BindingNormalizer>;
 /// or by throwing an exception.
 ///
 /// BindingGroups can have only one binding loop normalizer objects at a time.
-class MOX_API BindingNormalizer : public RefCountable<int>
+class MOX_API BindingNormalizer : public RefCounted<int>
 {
     friend class BindingGroup;
     BindingSharedPtr m_target;

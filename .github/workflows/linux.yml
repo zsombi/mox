@@ -19,9 +19,9 @@ jobs:
     - name: Build debug
       run: |
         cmake -DBUILD_GMOCK=OFF -DBUILD_SHARED_LIBS=ON -DINSTALL_GTEST=ON -DMOX_TESTS=ON ../mox
-        cmake --build . --config Debug --target unittest -- -j4
+        cmake --build . --config Debug --target all -- -j8
     - name: Run unit tests
       run: |
-        cd tests
+        cd tests/unittest
         ./unittest
 

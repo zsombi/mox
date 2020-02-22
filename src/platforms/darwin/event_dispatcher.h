@@ -262,7 +262,7 @@ public:
     void processRunLoopActivity(CFRunLoopActivity activity);
 
     RunLoopObserver<> runLoopActivitySource;
-    CFType<CFRunLoopRef> runLoop;
+    mac::CFType<CFRunLoopRef> runLoop;
     RunLoopModeTracker *modeTracker = nullptr;
     CFStringRef currentMode = nullptr;
     bool m_runOnce = true;

@@ -30,6 +30,8 @@ typedef struct objc_object RunLoopModeTracker;
 
 namespace mox
 {
+namespace mac
+{
 
 template <typename T, typename U, U (*RetainFunction)(U), void (*ReleaseFunction)(U)>
 class RefCounted
@@ -110,6 +112,7 @@ public:
     }
 };
 
+}
 }
 
 #endif // MAC_UTIL_H

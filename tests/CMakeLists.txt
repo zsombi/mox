@@ -22,29 +22,10 @@ set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../cmake.m
 include(configure-platform)
 include(gtest)
 
-set(SOURCES
-    test_framework.h
-    test_main.cpp
-    test_enumerate_metatypes.cpp
-    test_flatset.cpp
-    test_flatmap.cpp
-    test_metatypes.cpp
-    test_converters.cpp
-    test_argument.cpp
-    test_metaclass.cpp
-    test_callables.cpp
-    test_metamethod.cpp
-    test_signal.cpp
-    test_object.cpp
-    test_event.cpp
-    test_event_queue.cpp
-    test_event_handling.cpp
-    test_threads.cpp
-    test_properties.cpp
-    test_bindings.cpp
-    )
-add_executable(unittest ${SOURCES})
-target_link_libraries(unittest mox gtest_main)
+set (TEST_FRAMEWORK
+    ${CMAKE_CURRENT_LIST_DIR}/test_framework.h
+    ${CMAKE_CURRENT_LIST_DIR}/test_main.cpp)
 
-add_test(NAME unittest COMMAND unittest "--gtest_output=xml:unittest.xml"
-    WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
+include_directories(${CMAKE_SOURCE_DIR}/tests)
+
+add_subdirectory(unittest)

@@ -52,7 +52,7 @@ class SignalType;
 /// those will not get processed.
 ///
 /// Use SignalDecl<> template to declare your signals with specialized arguments.
-class MOX_API Signal : public SharedLock<ObjectLock>
+class MOX_API Signal : public SharedLock
 {
     friend class SignalType;
     friend class Property;

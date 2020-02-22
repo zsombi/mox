@@ -32,7 +32,7 @@ template <typename Type>
 Metatype metaType()
 {
     static_assert (!is_cstring<Type>::value, "Use std::string_view in reflections instead of cstrings");
-    Metatype type = metadata::findMetatype(remove_cv<Type>());
+    Metatype type = metadata::findMetatype(getNakedTypeInfo<Type>());
     throwIf<ExceptionType::MetatypeNotRegistered>(type == Metatype::Invalid);
     return type;
 }
@@ -40,15 +40,15 @@ Metatype metaType()
 template <typename Type>
 const MetatypeDescriptor& metatypeDescriptor()
 {
-    const MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(remove_cv<Type>());
-    FATAL(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + remove_cv<Type>().name());
+    const MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(getNakedTypeInfo<Type>());
+    FATAL(descriptor, std::string("metaTypeDescriptor<>(): unregistered type ") + getNakedTypeInfo<Type>().name());
     return *descriptor;
 }
 
 template <typename Type>
 Metatype registerMetaType(std::string_view name)
 {
-    const auto& rtti = remove_cv<Type>();
+    const auto& rtti = getNakedTypeInfo<Type>();
     auto newType = metadata::findMetatype(rtti);
     if (newType != Metatype::Invalid)
     {
@@ -80,7 +80,7 @@ bool registerConverter()
 {
     const Metatype toType = metaType<To>();
 
-    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(remove_cv<From>());
+    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(getNakedTypeInfo<From>());
     if constexpr(std::is_class_v<typename std::remove_pointer_t<From>> && std::is_class_v<typename std::remove_pointer_t<To>>)
     {
         return descriptor->addConverter(MetatypeDescriptor::Converter::dynamicCast<From, To>(), toType);
@@ -95,7 +95,7 @@ template <typename From, typename To, typename Function>
 bool registerConverter(Function function)
 {
     const Metatype toType = metaType<To>();
-    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(remove_cv<From>());
+    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(getNakedTypeInfo<From>());
     return descriptor->addConverter(MetatypeDescriptor::Converter::fromFunction<From, To, Function>(function), toType);
 }
 
@@ -103,7 +103,7 @@ template <typename From, typename To>
 bool registerConverter(To (From::*method)() const)
 {
     const Metatype toType = metaType<To>();
-    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(remove_cv<From>());
+    MetatypeDescriptor* descriptor = metadata::findMetatypeDescriptor(getNakedTypeInfo<From>());
     return descriptor->addConverter(MetatypeDescriptor::Converter::fromMethod<From, To>(method), toType);
 }
 

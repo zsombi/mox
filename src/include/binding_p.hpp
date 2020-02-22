@@ -24,16 +24,19 @@
 #include <mox/binding/binding_normalizer.hpp>
 #include <mox/binding/property_binding.hpp>
 #include <mox/config/pimpl.hpp>
+#include <mox/utils/ref_counted.hpp>
 
 #include <unordered_set>
 
 namespace mox
 {
 
-class BindingPrivate
+class BindingPrivate : public RefCounted<size_t>
 {
 public:
     DECLARE_PUBLIC(Binding)
+
+    using Base = RefCounted<size_t>;
 
     explicit BindingPrivate(Binding* pp, bool permanent);
     ~BindingPrivate();
@@ -42,16 +45,6 @@ public:
     void removeDependency(Property& dependency);
     void clearDependencies();
     void invalidate();
-
-    // for RefCounter
-    void operator++()
-    {
-        ++bindingLoopCount;
-    }
-    void operator--()
-    {
-        --bindingLoopCount;
-    }
 
     inline void setGroup(BindingGroupSharedPtr grp)
     {
@@ -70,7 +63,6 @@ protected:
     BindingGroupSharedPtr group;
     Property* target = nullptr;
     BindingState state = BindingState::Detached;
-    size_t bindingLoopCount = 0u;
     bool enabled:1;
     bool evaluateOnEnabled:1;
     bool isPermanent:1;
@@ -92,7 +84,7 @@ class BindingLoopDetector : public RefCounter<BindingPrivate>
 {
     using BaseClass = RefCounter<BindingPrivate>;
 
-    /*thread_local */static inline BindingLoopDetector* last = nullptr;
+    static inline BindingLoopDetector* last = nullptr;
     BindingLoopDetector* prev = nullptr;
 
 public:

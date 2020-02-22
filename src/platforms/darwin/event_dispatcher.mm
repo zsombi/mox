@@ -99,7 +99,7 @@ namespace mox
 
 FoundationRunLoop::FoundationRunLoop()
     : runLoopActivitySource(this, &FoundationRunLoop::processRunLoopActivity, kCFRunLoopAllActivities)
-    , runLoop(CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent()))
+    , runLoop(mac::CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent()))
     , modeTracker([[RunLoopModeTracker alloc] init])
 {
     runLoopActivitySource.addToMode(kCFRunLoopCommonModes);

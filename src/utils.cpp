@@ -22,15 +22,16 @@
 namespace mox
 {
 
-#ifdef DEBUG
-
 ObjectLock::ObjectLock()
+    : AtomicRefCounted<int32_t>(0)
 {
-    m_lockCount.store(0);
 }
+
+#ifdef DEBUG
 
 ObjectLock::~ObjectLock()
 {
+    FATAL(!m_value, "Object lock is still shared!")
     FATAL(m_lockCount.load() == 0, "Destroying unlocked object! LockCount is " << m_lockCount.load())
     m_lockCount.store(-1);
 }
@@ -73,10 +74,6 @@ bool ObjectLock::try_lock()
 
 #else
 
-ObjectLock::ObjectLock()
-{
-}
-
 ObjectLock::~ObjectLock()
 {
 }
@@ -97,5 +94,27 @@ bool ObjectLock::try_lock()
 }
 
 #endif
+
+SharedLock::SharedLock(ObjectLock& sharedLock)
+    : BaseClass(sharedLock)
+{
+}
+
+SharedLock::~SharedLock()
+{
+}
+
+void SharedLock::lock()
+{
+    m_refCounted.lock();
+}
+void SharedLock::unlock()
+{
+    m_refCounted.unlock();
+}
+bool SharedLock::try_lock()
+{
+    return m_refCounted.try_lock();
+}
 
 }

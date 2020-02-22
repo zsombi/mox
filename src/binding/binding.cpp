@@ -72,30 +72,30 @@ BindingLoopDetector::BindingLoopDetector(BindingPrivate& binding)
 {
     prev = last;
     last = this;
-    if (m_value.group && m_value.group->getNormalizer())
+    if (m_refCounted.group && m_refCounted.group->getNormalizer())
     {
-        ++(*m_value.group->getNormalizer());
+        m_refCounted.group->getNormalizer()->retain();
     }
 }
 BindingLoopDetector::~BindingLoopDetector()
 {
     FATAL(last == this, "Some other binding messed up the binding loop detection")
     last = prev;
-    if (m_value.group && m_value.group->getNormalizer())
+    if (m_refCounted.group && m_refCounted.group->getNormalizer())
     {
-        --(*m_value.group->getNormalizer());
+        m_refCounted.group->getNormalizer()->release();
     }
 }
 bool BindingLoopDetector::tryNormalize(Variant& value)
 {
-    auto groupNormalizer = m_value.group ? m_value.group->getNormalizer() : nullptr;
-    if (m_value.bindingLoopCount > 1)
+    auto groupNormalizer = m_refCounted.group ? m_refCounted.group->getNormalizer() : nullptr;
+    if (m_refCounted.m_value > 1)
     {
         // Without group and normalizer, throw exception.
         throwIf<ExceptionType::BindingLoop>(!groupNormalizer);
-        auto normalizer = m_value.group->getNormalizer();
+        auto normalizer = m_refCounted.group->getNormalizer();
 
-        switch (normalizer->tryNormalize(*m_value.p_ptr, value, m_value.bindingLoopCount))
+        switch (normalizer->tryNormalize(*m_refCounted.p_ptr, value, m_refCounted.m_value))
         {
             case BindingNormalizer::Normalized:
             {
@@ -116,7 +116,7 @@ bool BindingLoopDetector::tryNormalize(Variant& value)
     }
     else if (groupNormalizer)
     {
-        groupNormalizer->initialize(*m_value.p_ptr, value);
+        groupNormalizer->initialize(*m_refCounted.p_ptr, value);
     }
     return true;
 }

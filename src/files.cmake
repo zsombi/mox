@@ -29,6 +29,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers/flat_set.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers/flat_map.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/algorithm.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/ref_counted.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/locks.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/string.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/function_traits.hpp

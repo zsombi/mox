@@ -45,7 +45,7 @@ using BindingSharedPtr = std::shared_ptr<Binding>;
 /// several bindings, but only one of those is enabled at a time.
 /// \see WritableProperty<>, ReadOnlyProperty<>, Binding, PropertyBinding, ExpressionBinding
 class PropertyPrivate;
-class MOX_API Property : public SharedLock<ObjectLock>
+class MOX_API Property : public SharedLock
 {
     DECLARE_PRIVATE_PTR(Property)
 

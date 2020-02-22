@@ -53,15 +53,16 @@ struct is_cstring<char[N]> : public std::true_type
 };
 
 template <typename T>
-struct naked_cptype
+struct remove_cvref
 {
     typedef std::remove_const_t<std::remove_reference_t<T>> type;
 };
+template <typename T> using remove_cvref_t = typename remove_cvref<T>::type;
 
 template <typename T>
-const std::type_info& remove_cv()
+const std::type_info& getNakedTypeInfo()
 {
-    typedef typename naked_cptype<T>::type NakedType;
+    typedef typename remove_cvref<T>::type NakedType;
     return typeid(NakedType);
 }
 

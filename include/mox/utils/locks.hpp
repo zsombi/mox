@@ -25,6 +25,7 @@
 #endif
 
 #include <mox/utils/globals.hpp>
+#include <mox/utils/ref_counted.hpp>
 
 #include <functional>
 #include <thread>
@@ -37,151 +38,71 @@ using atomic_bool = std::atomic_bool;
 using atomic_int32_t = std::atomic_int32_t;
 using std::lock_guard;
 
-class MOX_API ObjectLock
+/// Provides shareable locking functionality on objects, lock being shared with properties, signals and
+/// other callables of the object.
+class MOX_API ObjectLock : public AtomicRefCounted<int32_t>
 {
     mutable std::mutex m_mutex;
+
 #ifdef DEBUG
-    mutable atomic_int32_t m_lockCount;
-    mutable std::atomic<std::thread::id> m_owner;
+    mutable atomic_int32_t m_lockCount = 0;
+    mutable std::atomic<std::thread::id> m_owner = std::thread::id();
 #endif
+
 public:
+    /// Construct the object lock.
     explicit ObjectLock();
+    /// Destruct the object lock. The destruction fails if the object's lock is still shared.
     virtual ~ObjectLock();
 
+    /// Locks the object.
     void lock();
 
+    /// Unlocks the object.
     void unlock();
 
+    /// Tries to lock the object.
+    /// \return If the object locking succeeds, returns \e true, otherwise \e false.
     bool try_lock();
 };
 
-template <typename LockType>
-class SharedLock
+/// Base class sharing the locking with an ObjectLock.
+class MOX_API SharedLock : public RefCounter<ObjectLock&>
 {
-    LockType& m_sharedLock;
+    using BaseClass = RefCounter<ObjectLock&>;
     DISABLE_MOVE(SharedLock)
+    DISABLE_COPY(SharedLock)
 
 public:
-    explicit SharedLock(LockType& sharedLock)
-        : m_sharedLock(sharedLock)
-    {
-    }
+    /// Construct the shared lock with the given \a sharedLock. Does not retain the lock, but
+    /// increases the shared count of the object lock.
+    explicit SharedLock(ObjectLock& sharedLock);
+    /// Destructs the shared lock and releases the object lock shared count.
+    virtual ~SharedLock();
 
-    explicit SharedLock(const SharedLock& other)
-        : m_sharedLock(other.m_sharedLock)
-    {
-    }
-
-    SharedLock& operator=(const SharedLock<LockType>& other)
-    {
-        m_sharedLock = other.m_sharedLock;
-        return *this;
-    }
-
-    void lock()
-    {
-        m_sharedLock.lock();
-    }
-    void unlock()
-    {
-        m_sharedLock.unlock();
-    }
-    bool try_lock()
-    {
-        return m_sharedLock.try_lock();
-    }
+    /// Locks the shared object.
+    void lock();
+    /// Unlocks the shared object.
+    void unlock();
+    /// Tries to lock the shared object.
+    /// \return If the object locking succeeds, returns \e true, otherwise \e false.
+    bool try_lock();
 };
 
-template <typename Lockable>
-class AdaptiveLock
-{
-    DISABLE_MOVE(AdaptiveLock)
-
-public:
-    void lock()
-    {
-        FATAL(m_sharedLockable, "No lockable adapted")
-        m_sharedLockable->lock();
-    }
-
-    void unlock()
-    {
-        FATAL(m_sharedLockable, "No lockable adapted")
-        m_sharedLockable->unlock();
-    }
-
-    bool try_lock()
-    {
-        FATAL(m_sharedLockable, "No lockable adapted")
-        return m_sharedLockable->try_lock();
-    }
-
-protected:
-    explicit AdaptiveLock() = default;
-    mutable Lockable m_sharedLockable = nullptr;
-};
-
-template <typename Type>
-struct RefCountable
-{
-    void operator++()
-    {
-        m_value++;
-    }
-    void operator--()
-    {
-        m_value--;
-    }
-
-    Type refCount() const
-    {
-        return m_value;
-    }
-
-private:
-    Type m_value = Type();
-};
-
-template <typename Type>
-struct RefCounter
-{
-    explicit RefCounter(Type& value)
-        : m_value(value)
-    {
-        ++m_value;
-    }
-    ~RefCounter()
-    {
-        --m_value;
-    }
-protected:
-    Type& m_value;
-};
-
-
-template <typename LockType>
-class ScopeUnlock
-{
-    LockType& m_lock;
-public:
-    explicit ScopeUnlock(LockType& lock)
-        : m_lock(lock)
-    {
-        m_lock.unlock();
-    }
-};
-/// The template unlocks the lock passed as argument on construction, and relocks
-/// it on destruction.
+/// The template works the opposite to the std::lock_guard class: unlocks the lock on construction
+/// and re-locks on destruction.
 template<typename LockType>
 class ScopeRelock
 {
 public:
+    /// Constructor, unlocks the \a lock.
     explicit ScopeRelock(LockType& lock)
         : m_lock(lock)
     {
         m_lock.unlock();
     }
 
+    /// Destructor, re-locks the lock.
     ~ScopeRelock()
     {
         m_lock.lock();
@@ -189,6 +110,7 @@ public:
 
 private:
     DISABLE_COPY(ScopeRelock)
+    DISABLE_MOVE(ScopeRelock)
     LockType&  m_lock;
 };
 

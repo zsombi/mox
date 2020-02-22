@@ -304,7 +304,7 @@ void SignalConnection::invalidate()
  *
  */
 Signal::Signal(Instance owner, SignalType& signalType)
-    : SharedLock<ObjectLock>(*owner.as<ObjectLock>())
+    : SharedLock(*owner.as<ObjectLock>())
     , m_signalType(&signalType)
     , m_owner(owner)
 {
