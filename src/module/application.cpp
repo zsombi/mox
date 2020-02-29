@@ -88,7 +88,7 @@ void Application::setRootObject(Object &root)
         return;
     }
     m_rootObject.reset();
-    m_rootObject = root.asShared();
+    m_rootObject = as_shared<Object>(&root);
 }
 
 ThreadDataSharedPtr Application::threadData() const

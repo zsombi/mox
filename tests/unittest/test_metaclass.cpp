@@ -16,8 +16,8 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/metadata/metaclass.hpp>
-#include <mox/metadata/metaobject.hpp>
+#include <mox/metainfo/metaclass.hpp>
+#include <mox/metainfo/metaobject.hpp>
 #include "test_framework.h"
 
 using namespace mox;
@@ -25,7 +25,7 @@ using namespace mox;
 class TBaseClass
 {
 public:
-    ClassMetaData(TBaseClass)
+    MetaInfo(TBaseClass)
     {
     };
 
@@ -38,7 +38,7 @@ public:
 class BaseObject : public MetaObject, public TBaseClass
 {
 public:
-    ClassMetaData(BaseObject, MetaObject, TBaseClass)
+    MetaInfo(BaseObject, MetaObject, TBaseClass)
     {
     };
 };
@@ -46,7 +46,7 @@ public:
 class OtherBaseClass
 {
 public:
-    ClassMetaData(OtherBaseClass)
+    MetaInfo(OtherBaseClass)
     {
     };
 
@@ -63,7 +63,7 @@ public:
     {
     }
 
-    ClassMetaData(DerivedClass, TBaseClass, OtherBaseClass)
+    MetaInfo(DerivedClass, TBaseClass, OtherBaseClass)
     {
     };
 };
@@ -71,7 +71,7 @@ public:
 class ObjectDerivedClass : public MetaObject, public DerivedClass
 {
 public:
-    ClassMetaData(ObjectDerivedClass, MetaObject, DerivedClass)
+    MetaInfo(ObjectDerivedClass, MetaObject, DerivedClass)
     {
     };
 };
@@ -85,7 +85,7 @@ public:
 
     virtual void noop() = 0;
 
-    ClassMetaData(SecondLevelDerived, DerivedClass)
+    MetaInfo(SecondLevelDerived, DerivedClass)
     {
     };
 };
@@ -93,7 +93,7 @@ public:
 class SecondObject : public MetaObject, public SecondLevelDerived
 {
 public:
-    ClassMetaData(SecondObject, MetaObject, SecondLevelDerived)
+    MetaInfo(SecondObject, MetaObject, SecondLevelDerived)
     {
     };
     void noop() override
@@ -119,17 +119,17 @@ protected:
 
 TEST_F(MetaClasses, test_metaclass_ownership)
 {
-    const MetaClass* mo = TBaseClass::StaticMetaClass::get();
+    const auto* mo = TBaseClass::StaticMetaClass::get();
     BaseObject object;
     EXPECT_TRUE(mo->isClassOf(object));
 }
 
 TEST_F(MetaClasses, test_composit_interface_metaclass)
 {
-    const MetaClass* moBaseClass = TBaseClass::StaticMetaClass::get();
-    const MetaClass* moOtherBaseClass = OtherBaseClass::StaticMetaClass::get();
-    const MetaClass* moDerivedClass = DerivedClass::StaticMetaClass::get();
-    const MetaClass* moObjectDerivedClass = ObjectDerivedClass::StaticMetaClass::get();
+    const auto* moBaseClass = TBaseClass::StaticMetaClass::get();
+    const auto* moOtherBaseClass = OtherBaseClass::StaticMetaClass::get();
+    const auto* moDerivedClass = DerivedClass::StaticMetaClass::get();
+    const auto* moObjectDerivedClass = ObjectDerivedClass::StaticMetaClass::get();
     ObjectDerivedClass object;
 
     EXPECT_TRUE(moBaseClass->isClassOf(object));
@@ -140,11 +140,11 @@ TEST_F(MetaClasses, test_composit_interface_metaclass)
 
 TEST_F(MetaClasses, test_superclass)
 {
-    const MetaClass* moBaseClass = TBaseClass::StaticMetaClass::get();
-    const MetaClass* moOtherBaseClass = OtherBaseClass::StaticMetaClass::get();
-    const MetaClass* moDerivedClass = DerivedClass::StaticMetaClass::get();
-    const MetaClass* moObjectDerivedClass = ObjectDerivedClass::StaticMetaClass::get();
-    const MetaClass* moMetaObject = MetaObject::StaticMetaClass::get();
+    const auto* moBaseClass = TBaseClass::StaticMetaClass::get();
+    const auto* moOtherBaseClass = OtherBaseClass::StaticMetaClass::get();
+    const auto* moDerivedClass = DerivedClass::StaticMetaClass::get();
+    const auto* moObjectDerivedClass = ObjectDerivedClass::StaticMetaClass::get();
+    const auto* moMetaObject = MetaObject::StaticMetaClass::get();
 
     EXPECT_FALSE(moObjectDerivedClass->isSuperClassOf(*moMetaObject));
     EXPECT_TRUE(moObjectDerivedClass->derivesFrom(*moMetaObject));
@@ -167,12 +167,12 @@ TEST_F(MetaClasses, test_second_object)
     ObjectDerivedClass o1;
     SecondObject o2;
 
-    const MetaClass* moBaseClass = TBaseClass::StaticMetaClass::get();
-    const MetaClass* moOtherBaseClass = OtherBaseClass::StaticMetaClass::get();
-    const MetaClass* moDerivedClass = DerivedClass::StaticMetaClass::get();
-    const MetaClass* moSecondLevelDerived = SecondLevelDerived::StaticMetaClass::get();
-    const MetaClass* moObjectDerivedClass = ObjectDerivedClass::StaticMetaClass::get();
-    const MetaClass* moMetaObject = MetaObject::StaticMetaClass::get();
+    const auto* moBaseClass = TBaseClass::StaticMetaClass::get();
+    const auto* moOtherBaseClass = OtherBaseClass::StaticMetaClass::get();
+    const auto* moDerivedClass = DerivedClass::StaticMetaClass::get();
+    const auto* moSecondLevelDerived = SecondLevelDerived::StaticMetaClass::get();
+    const auto* moObjectDerivedClass = ObjectDerivedClass::StaticMetaClass::get();
+    const auto* moMetaObject = MetaObject::StaticMetaClass::get();
 
     EXPECT_TRUE(moBaseClass->isClassOf(o1));
     EXPECT_TRUE(moBaseClass->isClassOf(o2));
@@ -195,18 +195,18 @@ TEST_F(MetaClasses, test_second_object)
 
 TEST_F(MetaClasses, test_find)
 {
-    EXPECT_TRUE(nullptr != MetaClass::find("TBaseClass"));
-    EXPECT_TRUE(nullptr == MetaClass::find("Boo"));
-    EXPECT_TRUE(nullptr == MetaClass::find("baseClass"));
+    EXPECT_TRUE(nullptr != metainfo::MetaClass::find("TBaseClass"));
+    EXPECT_TRUE(nullptr == metainfo::MetaClass::find("Boo"));
+    EXPECT_TRUE(nullptr == metainfo::MetaClass::find("baseClass"));
 }
 
 TEST_F(MetaClasses, test_metatype_superclass)
 {
     SecondObject::StaticMetaClass::get();
-    const MetatypeDescriptor& base = metatypeDescriptor<TBaseClass>();
-    const MetatypeDescriptor& derived = metatypeDescriptor<SecondLevelDerived>();
-    const MetatypeDescriptor& metaObject = metatypeDescriptor<MetaObject>();
-    const MetatypeDescriptor& secondObject = metatypeDescriptor<SecondObject>();
+    const auto& base = metatypeDescriptor<TBaseClass>();
+    const auto& derived = metatypeDescriptor<SecondLevelDerived>();
+    const auto& metaObject = metatypeDescriptor<MetaObject>();
+    const auto& secondObject = metatypeDescriptor<SecondObject>();
 
     EXPECT_TRUE(derived.derivesFrom(base));
     EXPECT_TRUE(base.isSupertypeOf(derived));

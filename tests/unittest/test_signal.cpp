@@ -17,10 +17,10 @@
  */
 
 #include "test_framework.h"
-#include <mox/metadata/metaclass.hpp>
-#include <mox/metadata/metaobject.hpp>
-#include <mox/metadata/callable.hpp>
-#include <mox/signal/signal.hpp>
+#include <mox/metainfo/metaclass.hpp>
+#include <mox/metainfo/metaobject.hpp>
+#include <mox/metatype.core/callable.hpp>
+#include <mox/meta/signal/signal.hpp>
 
 #include <string_view>
 
@@ -31,11 +31,11 @@ class TestEmitterNoMetaClass : public ObjectLock
 public:
     explicit TestEmitterNoMetaClass() = default;
 
-    static inline SignalTypeDecl<TestEmitterNoMetaClass> VoidSignalType;
-    static inline SignalTypeDecl<TestEmitterNoMetaClass, int> IntSignalType;
+    static inline SignalTypeDecl<> VoidSignalType;
+    static inline SignalTypeDecl<int> IntSignalType;
 
-    SignalDecl<> voidSig{*this, VoidSignalType};
-    SignalDecl<int> intSig{*this, IntSignalType};
+    Signal voidSig{*this, VoidSignalType};
+    Signal intSig{*this, IntSignalType};
 };
 
 class TestEmitterWithMetaClass : public ObjectLock
@@ -43,42 +43,42 @@ class TestEmitterWithMetaClass : public ObjectLock
 public:
     explicit TestEmitterWithMetaClass() = default;
 
-    ClassMetaData(TestEmitterWithMetaClass)
+    MetaInfo(TestEmitterWithMetaClass)
     {
-        static inline SignalTypeDecl<TestEmitterWithMetaClass> VoidSignalType{"voidSig"};
+        static inline MetaSignal<TestEmitterWithMetaClass> VoidSignalType{"voidSig"};
     };
 
-    static inline SignalTypeDecl<TestEmitterWithMetaClass, std::string_view> StringSignalType;
+    static inline SignalTypeDecl<std::string_view> StringSignalType;
 
-    SignalDecl<std::string_view> string{*this, StringSignalType};
-    SignalDecl<> voidSig{*this, StaticMetaClass::VoidSignalType};
+    Signal string{*this, StringSignalType};
+    Signal voidSig{*this, StaticMetaClass::VoidSignalType};
 };
 
 class SignalTestClass : public MetaObject
 {
 public:
-    SignalDecl<> sig1{*this, StaticMetaClass::Sign1Des};
-    SignalDecl<int32_t> sig2{*this, StaticMetaClass::Sign2Des};
-    SignalDecl<int32_t, std::string> sig3{*this, StaticMetaClass::Sign3Des};
-    SignalDecl<> sigB{*this, StaticMetaClass::SignBDes};
+    Signal sig1{*this, StaticMetaClass::Sign1Des};
+    Signal sig2{*this, StaticMetaClass::Sign2Des};
+    Signal sig3{*this, StaticMetaClass::Sign3Des};
+    Signal sigB{*this, StaticMetaClass::SignBDes};
 
-    ClassMetaData(SignalTestClass, MetaObject)
+    MetaInfo(SignalTestClass, MetaObject)
     {
-        static inline SignalTypeDecl<SignalTestClass> Sign1Des{"sig1"};
-        static inline SignalTypeDecl<SignalTestClass> SignBDes{"sigB"};
-        static inline SignalTypeDecl<SignalTestClass, int32_t> Sign2Des{"sig2"};
-        static inline SignalTypeDecl<SignalTestClass, int32_t, std::string> Sign3Des{"sig3"};
+        static inline MetaSignal<SignalTestClass> Sign1Des{"sig1"};
+        static inline MetaSignal<SignalTestClass> SignBDes{"sigB"};
+        static inline MetaSignal<SignalTestClass, int32_t> Sign2Des{"sig2"};
+        static inline MetaSignal<SignalTestClass, int32_t, std::string> Sign3Des{"sig3"};
     };
 };
 
 class DerivedEmitter : public SignalTestClass
 {
 public:
-    SignalDecl<std::vector<int32_t>> sigV{*this, StaticMetaClass::SignVDes};
+    Signal sigV{*this, StaticMetaClass::SignVDes};
 
-    ClassMetaData(DerivedEmitter, SignalTestClass)
+    MetaInfo(DerivedEmitter, SignalTestClass)
     {
-        static inline SignalTypeDecl<DerivedEmitter, std::vector<int32_t>> SignVDes{"sigV"};
+        static inline MetaSignal<DerivedEmitter, std::vector<int32_t>> SignVDes{"sigV"};
     };
 };
 
@@ -90,7 +90,7 @@ class  SlotHolder : public ObjectLock
     int slot4Call = 0;
 
 public:
-    SignalDecl<int> sig{*this, StaticMetaClass::SigDes};
+    Signal sig{*this, StaticMetaClass::SigDes};
 
     virtual ~SlotHolder() = default;
 
@@ -148,15 +148,15 @@ public:
         }
     }
 
-    ClassMetaData(SlotHolder)
+    MetaInfo(SlotHolder)
     {
-        static inline MethodTypeDecl<SlotHolder> method1{&BaseType::method1, "method1"};
-        static inline MethodTypeDecl<SlotHolder>method2{&BaseType::method2, "method2"};
-        static inline MethodTypeDecl<SlotHolder>method3{&BaseType::method3, "method3"};
-        static inline MethodTypeDecl<SlotHolder>method4{&BaseType::method4, "method4"};
-        static inline MethodTypeDecl<SlotHolder>autoDisconnect1{&BaseType::autoDisconnect1, "autoDisconnect1"};
-        static inline MethodTypeDecl<SlotHolder>autoDisconnect2{&BaseType::autoDisconnect2, "autoDisconnect2"};
-        static inline SignalTypeDecl<SlotHolder, int> SigDes{"sig"};
+        static inline MetaMethod<SlotHolder> method1{&BaseType::method1, "method1"};
+        static inline MetaMethod<SlotHolder>method2{&BaseType::method2, "method2"};
+        static inline MetaMethod<SlotHolder>method3{&BaseType::method3, "method3"};
+        static inline MetaMethod<SlotHolder>method4{&BaseType::method4, "method4"};
+        static inline MetaMethod<SlotHolder>autoDisconnect1{&BaseType::autoDisconnect1, "autoDisconnect1"};
+        static inline MetaMethod<SlotHolder>autoDisconnect2{&BaseType::autoDisconnect2, "autoDisconnect2"};
+        static inline MetaSignal<SlotHolder, int> SigDes{"sig"};
     };
 };
 
@@ -183,10 +183,10 @@ public:
         return derived2Call;
     }
 
-    ClassMetaData(DerivedHolder, SlotHolder)
+    MetaInfo(DerivedHolder, SlotHolder)
     {
-        static inline MethodTypeDecl<DerivedHolder> derivedMethod1{&BaseType::derivedMethod1, "derivedMethod1"};
-        static inline MethodTypeDecl<DerivedHolder> derivedMethod2{&BaseType::derivedMethod2, "derivedMethod2"};
+        static inline MetaMethod<DerivedHolder> derivedMethod1{&BaseType::derivedMethod1, "derivedMethod1"};
+        static inline MetaMethod<DerivedHolder> derivedMethod2{&BaseType::derivedMethod2, "derivedMethod2"};
     };
 };
 
@@ -222,8 +222,8 @@ TEST_F(SignalTest, test_signal_without_metaclass)
     EXPECT_EQ(0, test.voidSig());
     EXPECT_EQ(0, test.intSig(10));
 
-    EXPECT_EQ(0, TestEmitterNoMetaClass::VoidSignalType.activate(&test, Callable::ArgumentPack()));
-    EXPECT_EQ(0, TestEmitterNoMetaClass::IntSignalType.activate(&test, Callable::ArgumentPack(100)));
+    EXPECT_EQ(0, TestEmitterNoMetaClass::VoidSignalType.activate(test, Callable::ArgumentPack()));
+    EXPECT_EQ(0, TestEmitterNoMetaClass::IntSignalType.activate(test, Callable::ArgumentPack(100)));
 }
 
 TEST_F(SignalTest, test_signal_with_metaclass)
@@ -231,11 +231,11 @@ TEST_F(SignalTest, test_signal_with_metaclass)
     TestEmitterWithMetaClass test;
 
     EXPECT_EQ(0, test.voidSig());
-    EXPECT_EQ(0, TestEmitterWithMetaClass::StaticMetaClass::VoidSignalType.activate(&test, Callable::ArgumentPack()));
+    EXPECT_EQ(0, TestEmitterWithMetaClass::StaticMetaClass::VoidSignalType.activate(test, Callable::ArgumentPack()));
 
     auto param = "alpha"sv;
     EXPECT_EQ(0, test.string(param));
-    EXPECT_EQ(0, TestEmitterWithMetaClass::StringSignalType.activate(&test, Callable::ArgumentPack(param)));
+    EXPECT_EQ(0, TestEmitterWithMetaClass::StringSignalType.activate(test, Callable::ArgumentPack(param)));
 }
 
 
@@ -259,16 +259,16 @@ TEST_F(SignalTest, test_connect_metamethod)
     SignalTestClass host;
     SlotHolder slots;
 
-    EXPECT_NOT_NULL(host.sig1.connect(slots, "method1"));
-    EXPECT_NOT_NULL(host.sig2.connect(slots, "method1"));
-    EXPECT_NOT_NULL(host.sig2.connect(slots, "method2"));
-    EXPECT_NULL(host.sig2.connect(slots, "method3"));
-    EXPECT_NOT_NULL(host.sig2.connect(slots, "method4"));
+    EXPECT_NOT_NULL(metainfo::connect(host, "sig1", slots, "method1"));
+    EXPECT_NOT_NULL(metainfo::connect(host, "sig2", slots, "method1"));
+    EXPECT_NOT_NULL(metainfo::connect(host, "sig2", slots, "method2"));
+    EXPECT_NULL(metainfo::connect(host, "sig2", slots, "method3"));
+    EXPECT_NOT_NULL(metainfo::connect(host, "sig2", slots, "method4"));
 
-    EXPECT_NOT_NULL(host.sig3.connect(slots, "method1"));
-    EXPECT_NOT_NULL(host.sig3.connect(slots, "method2"));
-    EXPECT_NOT_NULL(host.sig3.connect(slots, "method3"));
-    EXPECT_NOT_NULL(host.sig3.connect(slots, "method4"));
+    EXPECT_NOT_NULL(metainfo::connect(host, "sig3", slots, "method1"));
+    EXPECT_NOT_NULL(metainfo::connect(host, "sig3", slots, "method2"));
+    EXPECT_NOT_NULL(metainfo::connect(host, "sig3", slots, "method3"));
+    EXPECT_NOT_NULL(metainfo::connect(host, "sig3", slots, "method4"));
 }
 
 TEST_F(SignalTest, test_connect_function)
@@ -386,35 +386,20 @@ TEST_F(SignalTest, test_disconnect_metamethod)
     SignalTestClass host;
     SlotHolder slots;
 
-    EXPECT_NOT_NULL(host.sig1.connect(slots, "method1"));
+    auto connection = metainfo::connect(host, "sig1", slots, "method1");
+    EXPECT_NOT_NULL(connection);
     EXPECT_EQ(1u, host.sig1());
-    EXPECT_TRUE(host.sig1.disconnect(slots, "method1"));
-    EXPECT_FALSE(host.sig1.disconnect(slots, "method2"));
+    EXPECT_TRUE(connection->disconnect());
     EXPECT_EQ(0u, host.sig1());
 
-    EXPECT_NOT_NULL(host.sig2.connect(slots, "method1"));
-    EXPECT_NOT_NULL(host.sig2.connect(slots, "method2"));
+    auto c1 = metainfo::connect(host, "sig2", slots, "method1");
+    auto c2 = metainfo::connect(host, "sig2", slots, "method2");
+    EXPECT_NOT_NULL(c1);
+    EXPECT_NOT_NULL(c2);
     EXPECT_EQ(2u, host.sig2(1));
 
-    EXPECT_TRUE(host.sig2.disconnect(slots, "method2"));
+    EXPECT_TRUE(c2->disconnect());
     EXPECT_EQ(1u, host.sig2(1));
-}
-
-TEST_F(SignalTest, test_connect_as_address_disconnect_as_methodname)
-{
-    SignalTestClass host;
-    SlotHolder slots;
-
-    EXPECT_NOT_NULL(host.sig1.connect(slots, &SlotHolder::method1));
-    EXPECT_TRUE(host.sig1.disconnect(slots, "method1"));
-
-    EXPECT_NOT_NULL(host.sig1.connect(slots, "method1"));
-    EXPECT_TRUE(host.sig1.disconnect(slots, &SlotHolder::method1));
-
-    EXPECT_NOT_NULL(host.sig1.connect(slots, &SlotHolder::notMetaMethod));
-    EXPECT_FALSE(host.sig1.disconnect(slots, "notMetaMethod"));
-
-    EXPECT_NULL(host.sig1.connect(slots, "notMetaMethod"));
 }
 
 TEST_F(SignalTest, test_emit_signal)
@@ -608,17 +593,17 @@ TEST_F(SignalTest, test_emit_metasignals)
 {
     SignalTestClass sender;
 
-    EXPECT_EQ(0, emit(sender, "sig1"));
+    EXPECT_EQ(0, metainfo::emit(sender, "sig1"));
 
     // Invoke with convertible args.
-    EXPECT_EQ(0, emit(sender, "sig2", std::string_view("10")));
+    EXPECT_EQ(0, metainfo::emit(sender, "sig2", std::string_view("10")));
 
     // Invoke with not enough args.
-    EXPECT_EQ(-1, emit(sender, "sig3", 10));
-    EXPECT_EQ(0, emit(sender, "sig3", 10, std::string_view("123")));
+    EXPECT_EQ(-1, metainfo::emit(sender, "sig3", 10));
+    EXPECT_EQ(0, metainfo::emit(sender, "sig3", 10, std::string_view("123")));
 
     // Invoke a non-existent signal.
-    EXPECT_EQ(-1, emit(sender, "sigV"));
+    EXPECT_EQ(-1, metainfo::emit(sender, "sigV"));
 }
 
 TEST_F(SignalTest, test_metaclass_invoke_metasignals)

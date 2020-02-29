@@ -17,7 +17,7 @@
  */
 
 #include "test_framework.h"
-#include <mox/metadata/metatype_descriptor.hpp>
+#include <mox/metatype.core/metatype_descriptor.hpp>
 
 using namespace mox;
 

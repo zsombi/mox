@@ -17,7 +17,7 @@
  */
 
 #include <mox/object.hpp>
-#include <mox/metadata/callable.hpp>
+#include <mox/metatype.core/callable.hpp>
 #include <mox/module/thread_loop.hpp>
 
 namespace mox
@@ -314,7 +314,7 @@ Object::EventTokenPtr Object::addEventFilter(EventType type, EventFilter filter)
 
 void Object::addChild(Object& child)
 {
-    ObjectSharedPtr sharedChild = child.asShared();
+    ObjectSharedPtr sharedChild = as_shared<Object>(&child);
     OrderedLock lock(this, sharedChild->parent());
 
     Object* oldParent = sharedChild->parent();
@@ -340,7 +340,7 @@ void Object::addChild(Object& child)
     };
     child.traverse(threadMover, TraverseOrder::PreOrder);
 
-    m_children.push_back(child.asShared());
+    m_children.push_back(as_shared<Object>(&child));
     child.m_parent = this;
 }
 

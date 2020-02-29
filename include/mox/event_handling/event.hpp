@@ -24,7 +24,7 @@
 #include <mox/utils/locks.hpp>
 #include <mox/utils/type_traits.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
-#include <mox/signal/signal.hpp>
+#include <mox/meta/signal/signal.hpp>
 
 #include <chrono>
 

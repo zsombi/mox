@@ -42,6 +42,14 @@ if ("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
 endif()
 add_definitions(-DMOX_NO_DEBUG_LOGS)
 
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMOX_HOST_LINUX")
+endif()
+
+if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DMOX_HOST_MACOSX")
+endif()
+
 message(STATUS "System  : ${CMAKE_SYSTEM_NAME}")
 message(STATUS "Build   : ${CMAKE_BUILD_TYPE}")
 message(STATUS "LibDir  : ${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")

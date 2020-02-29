@@ -20,8 +20,9 @@
 #define SOCKET_NOTIFIER_HPP
 
 #include <mox/event_handling/run_loop_sources.hpp>
-#include <mox/signal/signal.hpp>
+#include <mox/meta/signal/signal.hpp>
 #include <mox/event_handling/event_handling_declarations.hpp>
+#include <mox/metainfo/metaclass.hpp>
 
 namespace mox
 {
@@ -31,11 +32,14 @@ namespace mox
 class MOX_API SocketNotifier : public ObjectLock, public SocketNotifierSource::Notifier
 {
 public:
-    /// Activation signal type descriptor.
-    static inline SignalTypeDecl<SocketNotifier, SocketNotifierSharedPtr, Modes> ActivatedSignalType;
+    MetaInfo(SocketNotifier)
+    {
+        /// Activation signal type descriptor.
+        static inline MetaSignal<SocketNotifier, SocketNotifierSharedPtr, Modes> ActivatedSignalType{"activated"};
+    };
 
     /// Activation signal, emitted when the operation on the socket is notified.
-    SignalDecl<SocketNotifierSharedPtr, Modes> activated{*this, ActivatedSignalType};
+    Signal activated{*this, StaticMetaClass::ActivatedSignalType};
 
     /// Creates a socket notifier on a \a socket with notification \a modes.
     static SocketNotifierSharedPtr create(EventTarget socket, Modes modes);

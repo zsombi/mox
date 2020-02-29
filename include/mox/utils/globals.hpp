@@ -85,6 +85,18 @@ std::shared_ptr<Type> make_polymorphic_shared_ptr(Type* type)
     return std::static_pointer_cast<Type>(shared);
 }
 
+template <class To, class From>
+std::shared_ptr<To> as_shared(From* from)
+{
+    return std::static_pointer_cast<To>(from->shared_from_this());
+}
+
+template <class To, class From>
+std::shared_ptr<To> as_shared(std::shared_ptr<From> from)
+{
+    return std::static_pointer_cast<To>(from);
+}
+
 } // mox
 
 #endif // GLOBALS

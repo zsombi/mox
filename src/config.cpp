@@ -22,49 +22,6 @@
 namespace mox
 {
 
-Instance::Instance(intptr_t instance)
-    : m_instance(instance)
-{
-}
-
-Instance::Instance(Instance&& other) noexcept
-{
-    std::swap(m_instance, other.m_instance);
-}
-
-Instance::operator intptr_t() const
-{
-    return m_instance;
-}
-
-void Instance::reset() noexcept
-{
-    m_instance = 0;
-}
-
-bool Instance::operator==(const Instance& rhs)
-{
-    return m_instance == rhs.m_instance;
-}
-
-Instance& Instance::operator=(const Instance& rhs)
-{
-    m_instance = rhs.m_instance;
-    return *this;
-}
-
-bool operator==(const Instance& lhs, intptr_t rhs)
-{
-    return (intptr_t)lhs == rhs;
-}
-
-bool operator==(intptr_t lhs, const Instance& rhs)
-{
-    return lhs == (intptr_t)rhs;
-}
-
-
-
 Exception::Exception(ExceptionType type)
     : m_type(type)
 {
@@ -104,16 +61,6 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "The binding is not in the group.";
     }
     return nullptr;
-}
-
-AbstractMetaInfo::AbstractMetaInfo(std::string_view name)
-    : m_name(name)
-{
-}
-
-std::string AbstractMetaInfo::name() const
-{
-    return m_name;
 }
 
 }

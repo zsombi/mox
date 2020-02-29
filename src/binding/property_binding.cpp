@@ -16,7 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/property/property.hpp>
+#include <mox/meta/property/property.hpp>
 #include <mox/config/error.hpp>
 
 #include <binding_p.hpp>

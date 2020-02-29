@@ -139,7 +139,7 @@ void ThreadLoop::exit(int exitCode)
     {
         return;
     }
-    postEvent<QuitEvent>(asShared(), exitCode);
+    postEvent<QuitEvent>(as_shared<Object>(this), exitCode);
 }
 
 void ThreadLoop::join()

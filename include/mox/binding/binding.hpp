@@ -19,7 +19,7 @@
 #ifndef BINDING_HPP
 #define BINDING_HPP
 
-#include <mox/property/property.hpp>
+#include <mox/meta/property/property.hpp>
 
 namespace mox
 {

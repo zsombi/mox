@@ -19,7 +19,7 @@
 #ifndef BINDING_P_HPP
 #define BINDING_P_HPP
 
-#include <mox/property/property.hpp>
+#include <mox/meta/property/property.hpp>
 #include <mox/binding/binding.hpp>
 #include <mox/binding/binding_normalizer.hpp>
 #include <mox/binding/property_binding.hpp>

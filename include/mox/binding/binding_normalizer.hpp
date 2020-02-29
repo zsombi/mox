@@ -20,7 +20,7 @@
 #define BINDING_NORMALIZER_HPP
 
 #include <mox/config/deftypes.hpp>
-#include <mox/metadata/variant.hpp>
+#include <mox/metatype.core/variant.hpp>
 #include <mox/utils/ref_counted.hpp>
 
 namespace mox

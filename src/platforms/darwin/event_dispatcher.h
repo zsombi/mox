@@ -20,6 +20,7 @@
 #define EVENT_LOOP_H
 
 #include <mox/event_handling/run_loop.hpp>
+#include <mox/metainfo/metaobject.hpp>
 #include <mox/event_handling/socket_notifier.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 #include <mox/platforms/adaptation.hpp>

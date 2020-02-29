@@ -36,31 +36,34 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/type_traits.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/type_traits/enum_operators.hpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metatype_descriptor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metatype_descriptor_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/variant_descriptor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/variant.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/method_type.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/variant_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metaclass.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metaobject.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/callable.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/callable_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metaclass_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/metadata.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metadata/detail/metadata_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/metatype.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/metatype_descriptor.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/metatype_descriptor_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/variant_descriptor.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/variant.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/variant_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/callable.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/callable_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/metadata.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/metadata_impl.hpp
+
+    # Meta-programming support
 
     # Signal handling
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal_type.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/signal.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/signal/detail/signal_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/signal_type.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/signal.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/detail/signal_impl.hpp
 
     # Property handling
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_decl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_data.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property_type.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/property/property.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_decl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_type.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property.hpp
+
+    # Metainfo
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/detail/metaclass_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/metaclass.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/metaobject.hpp
 
     # Bindings
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding.hpp
@@ -89,31 +92,33 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/object.hpp
 
     # Private includes
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/metadata_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/property_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/binding_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/binding_p.hpp    
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/signal_p.hpp
     )
 
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metadata.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metadata_p.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metatype.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/converters.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/method_type.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaclass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/metaobject.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/variant.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metadata/callable.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/metadata.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/metatype.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/converters.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/variant.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/callable.cpp
 
     # Signal
-    ${CMAKE_CURRENT_SOURCE_DIR}/signal/signal_p.h
-    ${CMAKE_CURRENT_SOURCE_DIR}/signal/signal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/signal/signal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/signal/signal_connections.cpp
 
     # Property handling
-    ${CMAKE_CURRENT_SOURCE_DIR}/property/property.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/property/property_type.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property_type.cpp
+
+    # Metainfo
+    ${CMAKE_CURRENT_SOURCE_DIR}/metainfo/metaclass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/metainfo/metaobject.cpp
 
     # Binding
     ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding.cpp

@@ -20,9 +20,9 @@
 #define OBJECT_HPP
 
 #include <mox/config/thread.hpp>
-#include <mox/metadata/metaobject.hpp>
+#include <mox/metainfo/metaobject.hpp>
 #include <mox/module/thread_data.hpp>
-#include <mox/property/property.hpp>
+#include <mox/meta/property/property.hpp>
 #include <mox/utils/globals.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 #include <mox/utils/containers/flat_map.hpp>
@@ -42,13 +42,14 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 /// Provides event dispatching.
 class MOX_API Object : public MetaObject, public EventSource::EventDispatcher, public std::enable_shared_from_this<Object>
 {
+    PropertyData<std::string> objectNameValue{""s};
 public:
     /// The static metaclass of Object.
-    ClassMetaData(Object, MetaObject)
+    MetaInfo(Object, MetaObject)
     {
-        static inline PropertyTypeDecl<Object, std::string, PropertyAccess::ReadWrite> ObjectNameProperty{"objectName"};
+        static inline MetaProperty<Object, std::string, PropertyAccess::ReadWrite> ObjectNameProperty{"objectName", ""s};
     };
-    WritableProperty<std::string> objectName{*this, StaticMetaClass::ObjectNameProperty, ""};
+    Property objectName{*this, StaticMetaClass::ObjectNameProperty, objectNameValue};
 
     /// \name Event handling
     /// \{
@@ -120,11 +121,6 @@ public:
     EventTokenPtr addEventFilter(EventType type, EventFilter filter);
 
     /// \}
-
-    inline ObjectSharedPtr asShared()
-    {
-        return shared_from_this();
-    }
 
     /// Creates a shared pointer with Object. If a \a parent is specified, the object you create
     /// is added to this object as child. You can also add the created object to any object as

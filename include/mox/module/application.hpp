@@ -19,7 +19,7 @@
 #ifndef APPLICATION_HPP
 #define APPLICATION_HPP
 
-#include <mox/metadata/metaclass.hpp>
+#include <mox/metainfo/metaclass.hpp>
 #include <mox/mox_module.hpp>
 #include <mox/object.hpp>
 #include <mox/event_handling/run_loop.hpp>
@@ -34,9 +34,9 @@ class MOX_API Application : public MetaObject, public MoxModule
 public:
     /// The static metaclass of the Application class.
     /// Signal is emitted when the application's event loop is started.
-    SignalDecl<> started{*this, StaticMetaClass::StartedSignalType};
+    Signal started{*this, StaticMetaClass::StartedSignalType};
     /// Signal emitted when the application's event loop exits.
-    SignalDecl<> stopped{*this, StaticMetaClass::StoppedSignalType};
+    Signal stopped{*this, StaticMetaClass::StoppedSignalType};
 
     /// Constructor, creates an application object. You can have only one application object in your
     /// application.
@@ -84,11 +84,11 @@ public:
     /// Adds an idle task to the application's run loop.
     void addIdleTask(RunLoop::IdleFunction task);
 
-    ClassMetaData(Application, MetaObject)
+    MetaInfo(Application, MetaObject)
     {
-        static inline SignalTypeDecl<Application> StartedSignalType{"started"};
-        static inline SignalTypeDecl<Application> StoppedSignalType{"stopped"};
-        static inline MethodTypeDecl<Application> QuitMethod{&Application::quit, "quit"};
+        static inline MetaSignal<Application> StartedSignalType{"started"};
+        static inline MetaSignal<Application> StoppedSignalType{"stopped"};
+        static inline MetaMethod<Application> QuitMethod{&Application::quit, "quit"};
     };
 private:
     ThreadDataSharedPtr m_mainThread;

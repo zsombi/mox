@@ -22,8 +22,8 @@
 #include <gtest/gtest.h>
 #include <mox/config/deftypes.hpp>
 #include <mox/event_handling/run_loop.hpp>
-#include <mox/metadata/metadata.hpp>
-#include <mox/metadata/metatype_descriptor.hpp>
+#include <mox/metatype.core/metadata.hpp>
+#include <mox/metatype.core/metatype_descriptor.hpp>
 #include <mox/module/application.hpp>
 #include <mox/module/thread_loop.hpp>
 #include <mox/config/error.hpp>
@@ -38,7 +38,7 @@ protected:
 class TestApp : public mox::Application
 {
 public:
-    ClassMetaData(TestApp, mox::Application)
+    MetaInfo(TestApp, mox::Application)
     {
     };
 

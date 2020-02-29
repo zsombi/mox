@@ -19,8 +19,9 @@
 #ifndef TIMER_HPP
 #define TIMER_HPP
 
-#include <mox/signal/signal.hpp>
+#include <mox/meta/signal/signal.hpp>
 #include <mox/event_handling/run_loop.hpp>
+#include <mox/metainfo/metaclass.hpp>
 
 namespace mox
 {
@@ -36,11 +37,8 @@ using TimerPtr = std::shared_ptr<Timer>;
 class MOX_API Timer : public ObjectLock, public TimerSource::TimerRecord
 {
 public:
-    /// Expired signal descriptor. The signal's argument contains the timer object that is
-    /// expired when the signal is emitted.
-    static inline SignalTypeDecl<Timer, Timer*> SigExpired;
     /// Expired signal emitted when the timer expires.
-    SignalDecl<Timer*> expired{*this, SigExpired};
+    Signal expired{*this, StaticMetaClass::SigExpired};
 
     /// Specifies the type of the timer.
     enum class Type
@@ -109,6 +107,13 @@ public:
     {
         return m_source;
     }
+
+    MetaInfo(Timer)
+    {
+        /// Expired signal descriptor. The signal's argument contains the timer object that is
+        /// expired when the signal is emitted.
+        static inline MetaSignal<Timer, Timer*> SigExpired{"expired"};
+    };
 
 private:
     /// Constructor.

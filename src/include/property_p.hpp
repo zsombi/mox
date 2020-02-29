@@ -19,7 +19,7 @@
 #ifndef PROPERTY_P_HPP
 #define PROPERTY_P_HPP
 
-#include <mox/property/property.hpp>
+#include <mox/meta/property/property.hpp>
 #include <mox/config/pimpl.hpp>
 
 #include <unordered_set>
@@ -43,13 +43,13 @@ class PropertyPrivate
     /// The type of the property.
     PropertyType* type = nullptr;
     /// The host object of the property.
-    Instance host;
+    ObjectLock* host = nullptr;
 
 public:
     DECLARE_PUBLIC(Property)
 
     /// Constructor.
-    explicit PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, Instance host);
+    explicit PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, ObjectLock& host);
     ~PropertyPrivate();
 
     /// Thread-safe functions.
@@ -70,7 +70,7 @@ public:
 
     /// Non thread-safe.
     Variant fetchDataUnsafe() const;
-    inline const Instance& getHost() const
+    inline const ObjectLock* getHost() const
     {
         return host;
     }
@@ -80,7 +80,8 @@ private:
     void clearBindings();
 
     /// Non thread-safe functions.
-    /// Informs the proeprty being accessed.
+    void resetToDefault();
+    /// Informs the property being accessed.
     void notifyAccessed();
     /// Notifies the subscribers about the property value change.
     void notifyChanges();

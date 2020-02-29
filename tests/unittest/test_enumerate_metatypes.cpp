@@ -17,47 +17,125 @@
  */
 
 #include "test_framework.h"
-#include <mox/metadata/metaclass.hpp>
-#include <mox/metadata/metadata.hpp>
-#include <mox/metadata/metatype.hpp>
-#include <mox/metadata/metatype_descriptor.hpp>
+#include <mox/metainfo/metaclass.hpp>
+#include <mox/metatype.core/metadata.hpp>
+#include <mox/metatype.core/metatype.hpp>
+#include <mox/metatype.core/metatype_descriptor.hpp>
 
-TEST(MetaDataEnum, test_enumerate_metatypes)
+TEST(MetaDataEnum, test_enumerate_default_metatypes)
 {
-    auto scanner = [](const auto& des)
-    {
-        std::cout << "Metatype id[" << int(des.id()) << "] " << des.name() << std::endl;
-        return false;
+    // Test the predefined types.
+    std::array<std::string, int(mox::Metatype::UserType)> typeNames = {
+        "void"s, "bool"s, "char"s, "byte"s, "short"s, "word"s, "int"s, "uint"s, "int64"s, "uint64"s,
+        "float"s, "double"s, "std::string"s, "literal"s, "void*"s, "byte*"s, "int*"s, "int64*"s,
+        "vector<int32>"s
     };
-    mox::metadata::scanMetatypes(scanner);
-}
-TEST(MetaDataEnum, test_enumerate_metaclasses)
-{
-    auto scanner = [](const auto& mc)
+    auto it = typeNames.begin();
+    auto scanner = [&it, &typeNames](const auto& des)
     {
-        std::cout << "MetaClass: " << mox::MetatypeDescriptor::get(mc.getMetaTypes().first).name() << std::endl;
+        EXPECT_EQ(*it, des.name());
+        ++it;
+        return it == typeNames.end();
+    };
+    mox::metadata::findMetatype(scanner);
+}
 
-        auto propertyVisitor = [](const auto property)
+TEST(MetaDataEnum, test_find_user_metatypes)
+{
+    std::array<std::string, 8> typeNames = {
+        "mox::Object"s, "mox::Object*"s, "mox::MetaObject"s, "mox::MetaObject*"s,
+        "mox::ObjectLock"s, "mox::ObjectLock*"s, "mox::ThreadLoop"s, "mox::ThreadLoop*"s,
+    };
+    for (auto name : typeNames)
+    {
+        auto scanner = [&name](const auto& des)
         {
-            std::cout << "  Property: " << property->signature() << std::endl;
-            return false;
+            return name == des.name();
+        };
+        auto typeDes = mox::metadata::findMetatype(scanner);
+        EXPECT_NOT_NULL(typeDes);
+        EXPECT_EQ(name, typeDes->name());
+    }
+}
+
+struct MetaTest
+{
+    std::string metaClass;
+    std::vector<std::string> properties;
+    std::vector<std::string> signals;
+    std::vector<std::string> methods;
+
+    void clear()
+    {
+        metaClass.clear();
+        properties.clear();
+        signals.clear();
+        methods.clear();
+    }
+
+    bool verifyMetaClass(const mox::metainfo::MetaClass& mc)
+    {
+        bool result = metaClass == mox::MetatypeDescriptor::get(mc.getMetaTypes().first).name();
+
+        if (!result)
+        {
+            return result;
+        }
+
+        auto propertyIt = properties.begin();
+        auto propertyVisitor = [this, &propertyIt](const auto, const auto& meta)
+        {
+            EXPECT_EQ(*propertyIt, meta.name());
+            ++propertyIt;
+            return propertyIt == properties.end();
         };
         mc.visitProperties(propertyVisitor);
 
-        auto signalVisitor = [](const auto signal)
+        auto signalIt = signals.begin();
+        auto signalVisitor = [&signalIt, this](const auto, const auto& meta)
         {
-            std::cout << "  Signal: [" << signal << "] " << signal->signature() << std::endl;
-            return false;
+            EXPECT_EQ(*signalIt, meta.name());
+            ++signalIt;
+            return signalIt == signals.end();
         };
         mc.visitSignals(signalVisitor);
 
-        auto methodVisitor = [](const auto method)
+        auto methodIt = methods.begin();
+        auto methodVisitor = [&methodIt, this](const auto, const auto& meta)
         {
-            std::cout << "  Method: " << method->signature() << std::endl;
-            return false;
+            EXPECT_EQ(*methodIt, meta.name());
+            ++methodIt;
+            return methodIt == methods.end();
         };
         mc.visitMethods(methodVisitor);
-        return false;
-    };
-    mox::metadata::scanMetaClasses(scanner);
+        return result;
+    }
+};
+
+TEST(MetaDataEnum, test_enumerate_metaclasses)
+{
+    MetaTest test;
+    test.metaClass = "mox::Object";
+    test.properties.push_back("objectName"s);
+    test.signals.push_back("objectNameChanged");
+
+    EXPECT_NOT_NULL(mox::metainfo::find(std::bind(&MetaTest::verifyMetaClass, &test, std::placeholders::_1)));
+    test.clear();
+
+    test.metaClass = "mox::ThreadLoop";
+    test.properties.push_back("objectName"s);
+    test.signals.push_back("started");
+    test.signals.push_back("stopped");
+    test.signals.push_back("objectNameChanged");
+
+    EXPECT_NOT_NULL(mox::metainfo::find(std::bind(&MetaTest::verifyMetaClass, &test, std::placeholders::_1)));
+    test.clear();
+
+    test.metaClass = "mox::Application";
+    test.signals.push_back("started");
+    test.signals.push_back("stopped");
+    test.methods.push_back("quit");
+
+    EXPECT_NOT_NULL(mox::metainfo::find(std::bind(&MetaTest::verifyMetaClass, &test, std::placeholders::_1)));
+    test.clear();
 }

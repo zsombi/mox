@@ -29,12 +29,13 @@ using namespace mox;
 template <class LockableObject>
 class WritablePropertyHolder
 {
+    PropertyData<int> writableValue{0};
 public:
-    static inline PropertyTypeDecl<LockableObject, int, PropertyAccess::ReadWrite> WritablePropertyType{"writable"};
-    WritableProperty<int> writable;
+    static inline PropertyTypeDecl<int, PropertyAccess::ReadWrite> WritablePropertyType{0};
+    Property writable;
 
     explicit WritablePropertyHolder(LockableObject& lockable)
-        : writable(lockable, WritablePropertyType, 0)
+        : writable(lockable, WritablePropertyType, writableValue)
     {
     }
 };
@@ -55,8 +56,8 @@ class ReadableTest : public Object
 public:
     PropertyData<int> vpReadable = 99;
 
-    static inline PropertyTypeDecl<ReadableTest, int, PropertyAccess::ReadOnly> ReadablePropertyType{"readable"};
-    ReadOnlyProperty<int> readable{*this, ReadablePropertyType, vpReadable};
+    static inline PropertyTypeDecl<int, PropertyAccess::ReadOnly> ReadablePropertyType = 99;
+    Property readable{*this, ReadablePropertyType, vpReadable};
 
     explicit ReadableTest() = default;
 };
@@ -75,7 +76,8 @@ protected:
 
     void onUpdateEvent(Event&)
     {
-        ++writable;
+        int v = writable;
+        writable = ++v;
     }
 
 public:
@@ -191,7 +193,7 @@ TEST_F(Bindings, test_multiple_bindings_on_target)
     EXPECT_TRUE(binding2->isAttached());
     EXPECT_FALSE(binding1->isEnabled());
     EXPECT_TRUE(binding2->isEnabled());
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 }
 
 TEST_F(Bindings, test_re_enable_binding_on_target_with_enable_to_evaluate)
@@ -207,17 +209,17 @@ TEST_F(Bindings, test_re_enable_binding_on_target_with_enable_to_evaluate)
     EXPECT_TRUE(binding2->isAttached());
     EXPECT_FALSE(binding1->isEnabled());
     EXPECT_TRUE(binding2->isEnabled());
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 
     binding1->setEnabled(true);
     EXPECT_TRUE(binding1->isEnabled());
     EXPECT_FALSE(binding2->isEnabled());
-    EXPECT_EQ(20, o1.writable);
+    EXPECT_EQ(20, int(o1.writable));
 
     binding2->setEnabled(true);
     EXPECT_FALSE(binding1->isEnabled());
     EXPECT_TRUE(binding2->isEnabled());
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 }
 
 TEST_F(Bindings, test_re_enable_binding_on_target_with_enable_to_not_evaluate)
@@ -235,12 +237,12 @@ TEST_F(Bindings, test_re_enable_binding_on_target_with_enable_to_not_evaluate)
     EXPECT_TRUE(binding2->isAttached());
     EXPECT_FALSE(binding1->isEnabled());
     EXPECT_TRUE(binding2->isEnabled());
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 
     binding1->setEnabled(true);
     EXPECT_TRUE(binding1->isEnabled());
     EXPECT_FALSE(binding2->isEnabled());
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 }
 
 TEST_F(Bindings, test_disable_all_bindings)
@@ -252,19 +254,19 @@ TEST_F(Bindings, test_disable_all_bindings)
     auto binding1 = PropertyBinding::bindPermanent(o1.writable, o2.writable);
     auto binding2 = PropertyBinding::bindPermanent(o1.writable, o3.readable);
 
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 
     binding2->setEnabled(false);
     EXPECT_FALSE(binding1->isEnabled());
     EXPECT_FALSE(binding2->isEnabled());
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 
     // update readable
     o3.vpReadable.updateData(Variant(1000));
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 
     o2.writable = 1;
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 }
 
 
@@ -285,13 +287,13 @@ TEST_F(Bindings, test_one_way_property_binding)
     EXPECT_NOT_NULL(binding);
     EXPECT_TRUE(binding->isAttached());
     EXPECT_EQ(&o1.writable, binding->getTarget());
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
     EXPECT_EQ(1, o1ChangeCount);
     EXPECT_EQ(0, o2ChangeCount);
 
     // Update o2 property. This will change o1
     o2.vpReadable.updateData(Variant(101));
-    EXPECT_EQ(101, o1.writable);
+    EXPECT_EQ(101, int(o1.writable));
     EXPECT_EQ(2, o1ChangeCount);
     EXPECT_EQ(1, o2ChangeCount);
 }
@@ -305,14 +307,14 @@ TEST_F(Bindings, test_one_way_property_binding_removed_explicitly)
     auto binding = PropertyBinding::bindPermanent(o1.writable, o2.readable);
     EXPECT_NOT_NULL(binding);
     EXPECT_TRUE(binding->isAttached());
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 
     binding->detach();
     EXPECT_FALSE(binding->isAttached());
 
     // Update o2 property. This will no longer change o1, as the binding is removed.
     o2.vpReadable.updateData(Variant(101));
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 }
 
 TEST_F(Bindings, test_two_way_binding)
@@ -327,27 +329,27 @@ TEST_F(Bindings, test_two_way_binding)
     EXPECT_NOT_NULL(binding1);
     EXPECT_TRUE(binding1->isAttached());
     EXPECT_EQ(&o2.writable, binding1->getTarget());
-    EXPECT_EQ(10, o2.writable);
+    EXPECT_EQ(10, int(o2.writable));
 
     // o2 write does not update o1, only the other way around.
     o1.writable = 5;
-    EXPECT_EQ(5, o2.writable);
+    EXPECT_EQ(5, int(o2.writable));
     o2.writable = 9;
-    EXPECT_EQ(5, o1.writable);
-    EXPECT_EQ(9, o2.writable);
+    EXPECT_EQ(5, int(o1.writable));
+    EXPECT_EQ(9, int(o2.writable));
 
     // Create binding the other way around
     auto binding2 = PropertyBinding::bindPermanent(o1.writable, o2.writable);
     EXPECT_NOT_NULL(binding2);
     EXPECT_TRUE(binding2->isAttached());
     EXPECT_EQ(&o1.writable, binding2->getTarget());
-    EXPECT_EQ(9, o1.writable);
+    EXPECT_EQ(9, int(o1.writable));
 
     // Writes to either of the property will update both
     o1.writable = 0;
-    EXPECT_EQ(0, o2.writable);
+    EXPECT_EQ(0, int(o2.writable));
     o2.writable = 99;
-    EXPECT_EQ(99, o1.writable);
+    EXPECT_EQ(99, int(o1.writable));
 }
 
 TEST_F(Bindings, test_two_way_binding_removed_explicitly)
@@ -365,15 +367,15 @@ TEST_F(Bindings, test_two_way_binding_removed_explicitly)
 
     binding1->detach();
     o1.writable = 100;
-    EXPECT_EQ(10, o2.writable);
+    EXPECT_EQ(10, int(o2.writable));
     o2.writable = 80;
-    EXPECT_EQ(80, o1.writable);
+    EXPECT_EQ(80, int(o1.writable));
 
     binding2->detach();
     o1.writable = 100;
-    EXPECT_EQ(80, o2.writable);
+    EXPECT_EQ(80, int(o2.writable));
     o2.writable = 80;
-    EXPECT_EQ(100, o1.writable);
+    EXPECT_EQ(100, int(o1.writable));
 }
 
 TEST_F(Bindings, test_multiple_permanent_bindings_on_target)
@@ -388,35 +390,35 @@ TEST_F(Bindings, test_multiple_permanent_bindings_on_target)
 
     auto bo12 = PropertyBinding::bindPermanent(o1.writable, o2.writable);
     EXPECT_TRUE(bo12->isEnabled());
-    EXPECT_EQ(20, o1.writable);
-    EXPECT_EQ(30, o3.readable);
+    EXPECT_EQ(20, int(o1.writable));
+    EXPECT_EQ(30, int(o3.readable));
 
     auto bo13 = PropertyBinding::bindPermanent(o1.writable, o3.readable);
     EXPECT_TRUE(bo13->isEnabled());
     EXPECT_FALSE(bo12->isEnabled());
-    EXPECT_EQ(30, o1.writable);
-    EXPECT_EQ(20, o2.writable);
+    EXPECT_EQ(30, int(o1.writable));
+    EXPECT_EQ(20, int(o2.writable));
 
     // Write to o2, it does not update o1.
     o2.writable = 200;
-    EXPECT_EQ(30, o1.writable);
+    EXPECT_EQ(30, int(o1.writable));
 
     // Enable bo12.
     bo12->setEnabled(true);
-    EXPECT_EQ(200, o1.writable);
+    EXPECT_EQ(200, int(o1.writable));
 
     // Update o2.
     o2.writable = 101;
-    EXPECT_EQ(101, o1.writable);
-    EXPECT_EQ(101, o2.writable);
+    EXPECT_EQ(101, int(o1.writable));
+    EXPECT_EQ(101, int(o2.writable));
 
     // This shall make bo13 enabled.
     bo12->detach();
-    EXPECT_EQ(30, o1.writable);
+    EXPECT_EQ(30, int(o1.writable));
 
     o2.writable = 202;
-    EXPECT_EQ(30, o1.writable);
-    EXPECT_EQ(202, o2.writable);
+    EXPECT_EQ(30, int(o1.writable));
+    EXPECT_EQ(202, int(o2.writable));
     EXPECT_TRUE(bo13->isEnabled());
 }
 
@@ -429,19 +431,19 @@ TEST_F(Bindings, test_binding_in_row)
     auto b3 = PropertyBinding::bindPermanent(o3.writable, o1.writable);
 
     o1.writable = 1;
-    EXPECT_EQ(1, o1.writable);
-    EXPECT_EQ(1, o2.writable);
-    EXPECT_EQ(1, o3.writable);
+    EXPECT_EQ(1, int(o1.writable));
+    EXPECT_EQ(1, int(o2.writable));
+    EXPECT_EQ(1, int(o3.writable));
 
     o2.writable = 2;
-    EXPECT_EQ(2, o1.writable);
-    EXPECT_EQ(2, o2.writable);
-    EXPECT_EQ(2, o3.writable);
+    EXPECT_EQ(2, int(o1.writable));
+    EXPECT_EQ(2, int(o2.writable));
+    EXPECT_EQ(2, int(o3.writable));
 
     o3.writable = 3;
-    EXPECT_EQ(3, o1.writable);
-    EXPECT_EQ(3, o2.writable);
-    EXPECT_EQ(3, o3.writable);
+    EXPECT_EQ(3, int(o1.writable));
+    EXPECT_EQ(3, int(o2.writable));
+    EXPECT_EQ(3, int(o3.writable));
 }
 
 TEST_F(Bindings, test_group_bindings_explicitly)
@@ -584,16 +586,16 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_permanent)
 
     // Write to o3 updates all, but writes to o2 updates o1 only, and o1 write does not update any.
     o3.writable = 100;
-    EXPECT_EQ(100, o2.writable);
-    EXPECT_EQ(100, o1.writable);
+    EXPECT_EQ(100, int(o2.writable));
+    EXPECT_EQ(100, int(o1.writable));
 
     o2.writable = 200;
-    EXPECT_EQ(100, o3.writable);
-    EXPECT_EQ(200, o1.writable);
+    EXPECT_EQ(100, int(o3.writable));
+    EXPECT_EQ(200, int(o1.writable));
 
     o1.writable = 300;
-    EXPECT_EQ(100, o3.writable);
-    EXPECT_EQ(200, o2.writable);
+    EXPECT_EQ(100, int(o3.writable));
+    EXPECT_EQ(200, int(o2.writable));
 }
 
 TEST_F(Bindings, test_binding_groups_with_writable_properties_permanent_circular)
@@ -612,14 +614,14 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_permanent_circular
 
     // Writes to any property updates all.
     o1.writable = 100;
-    EXPECT_EQ(100, o2.writable);
-    EXPECT_EQ(100, o3.writable);
+    EXPECT_EQ(100, int(o2.writable));
+    EXPECT_EQ(100, int(o3.writable));
     o2.writable = 200;
-    EXPECT_EQ(200, o1.writable);
-    EXPECT_EQ(200, o3.writable);
+    EXPECT_EQ(200, int(o1.writable));
+    EXPECT_EQ(200, int(o3.writable));
     o3.writable = 300;
-    EXPECT_EQ(300, o1.writable);
-    EXPECT_EQ(300, o2.writable);
+    EXPECT_EQ(300, int(o1.writable));
+    EXPECT_EQ(300, int(o2.writable));
 }
 
 TEST_F(Bindings, test_binding_groups_with_writable_properties_auto_discard)
@@ -637,9 +639,9 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_auto_discard)
 
     // Write on any property detaches all the bindings
     o2.writable = 100;
-    EXPECT_EQ(2, o1.writable);
-    EXPECT_EQ(100, o2.writable);
-    EXPECT_EQ(2, o3.writable);
+    EXPECT_EQ(2, int(o1.writable));
+    EXPECT_EQ(100, int(o2.writable));
+    EXPECT_EQ(2, int(o3.writable));
 
     EXPECT_EQ(2u, group->getBindingCount());
     EXPECT_FALSE((*group)[0]->isAttached());
@@ -662,57 +664,11 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_auto_discard_circu
 
     // Write on any property detaches all the bindings
     o2.writable = 100;
-    EXPECT_EQ(2, o1.writable);
-    EXPECT_EQ(100, o2.writable);
-    EXPECT_EQ(2, o3.writable);
+    EXPECT_EQ(2, int(o1.writable));
+    EXPECT_EQ(100, int(o2.writable));
+    EXPECT_EQ(2, int(o3.writable));
 
     EXPECT_EQ(3u, group->getBindingCount());
-    EXPECT_FALSE((*group)[0]->isAttached());
-    EXPECT_FALSE((*group)[1]->isAttached());
-    EXPECT_FALSE((*group)[2]->isAttached());
-}
-
-TEST_F(Bindings, test_property_increment_keeps_permanent_bindings)
-{
-    WritableTest o1;
-    WritableTest o2;
-    WritableTest o3(101);
-
-    auto group = BindingGroup::bindPermanentCircular(o1.writable, o2.writable, o3.writable);
-    EXPECT_NOT_NULL(group);
-    EXPECT_EQ(101, o1.writable);
-    EXPECT_EQ(101, o2.writable);
-    EXPECT_EQ(101, o3.writable);
-
-    ++o2.writable;
-    EXPECT_TRUE((*group)[0]->isAttached());
-    EXPECT_TRUE((*group)[1]->isAttached());
-    EXPECT_TRUE((*group)[2]->isAttached());
-    EXPECT_EQ(102, o1.writable);
-    EXPECT_EQ(102, o2.writable);
-    EXPECT_EQ(102, o3.writable);
-
-    --o1.writable;
-    EXPECT_TRUE((*group)[0]->isAttached());
-    EXPECT_TRUE((*group)[1]->isAttached());
-    EXPECT_TRUE((*group)[2]->isAttached());
-    EXPECT_EQ(101, o1.writable);
-    EXPECT_EQ(101, o2.writable);
-    EXPECT_EQ(101, o3.writable);
-}
-
-TEST_F(Bindings, test_assign_property_present_in_binding_breaks_binding)
-{
-    WritableTest o1;
-    WritableTest o2;
-    WritableTest o3(101);
-
-    auto group = BindingGroup::bindAutoDiscardCircular(o1.writable, o2.writable, o3.writable);
-    EXPECT_EQ(101, o1.writable);
-    EXPECT_EQ(101, o2.writable);
-    EXPECT_EQ(101, o3.writable);
-
-    o1.writable = o3.writable;
     EXPECT_FALSE((*group)[0]->isAttached());
     EXPECT_FALSE((*group)[1]->isAttached());
     EXPECT_FALSE((*group)[2]->isAttached());
@@ -724,26 +680,26 @@ TEST_F(Bindings, test_expression_binding_create_permanent)
     WritableTest o1;
     WritableTest o2(20);
 
-    auto binding = ExpressionBinding::create([&o2]() { return Variant(o2.writable + 2); }, true);
+    auto binding = ExpressionBinding::create([&o2]() { return Variant(int(o2.writable) + 2); }, true);
     EXPECT_NOT_NULL(binding);
     EXPECT_FALSE(binding->isEnabled());
     EXPECT_FALSE(binding->isAttached());
     EXPECT_TRUE(binding->isPermanent());
 
-    EXPECT_EQ(0, o1.writable);
+    EXPECT_EQ(0, int(o1.writable));
     binding->attach(o1.writable);
     EXPECT_TRUE(binding->isEnabled());
     EXPECT_TRUE(binding->isAttached());
-    EXPECT_EQ(22, o1.writable);
+    EXPECT_EQ(22, int(o1.writable));
 
     o2.writable = 30;
-    EXPECT_EQ(32, o1.writable);
+    EXPECT_EQ(32, int(o1.writable));
 
     o1.writable = 4;
-    EXPECT_EQ(4, o1.writable);
+    EXPECT_EQ(4, int(o1.writable));
 
     o2.writable = 3;
-    EXPECT_EQ(5, o1.writable);
+    EXPECT_EQ(5, int(o1.writable));
 }
 
 TEST_F(Bindings, test_expression_binding_create_discardable)
@@ -751,27 +707,27 @@ TEST_F(Bindings, test_expression_binding_create_discardable)
     WritableTest o1;
     WritableTest o2(20);
 
-    auto binding = ExpressionBinding::create([&o2]() { return Variant(o2.writable + 2); }, false);
+    auto binding = ExpressionBinding::create([&o2]() { return Variant(int(o2.writable) + 2); }, false);
     EXPECT_NOT_NULL(binding);
     EXPECT_FALSE(binding->isEnabled());
     EXPECT_FALSE(binding->isAttached());
     EXPECT_FALSE(binding->isPermanent());
 
-    EXPECT_EQ(0, o1.writable);
+    EXPECT_EQ(0, int(o1.writable));
     binding->attach(o1.writable);
     EXPECT_TRUE(binding->isEnabled());
     EXPECT_TRUE(binding->isAttached());
-    EXPECT_EQ(22, o1.writable);
+    EXPECT_EQ(22, int(o1.writable));
 
     o2.writable = 30;
-    EXPECT_EQ(32, o1.writable);
+    EXPECT_EQ(32, int(o1.writable));
 
     o1.writable = 4;
-    EXPECT_EQ(4, o1.writable);
+    EXPECT_EQ(4, int(o1.writable));
     EXPECT_FALSE(binding->isAttached());
 
     o2.writable = 3;
-    EXPECT_EQ(4, o1.writable);
+    EXPECT_EQ(4, int(o1.writable));
 }
 
 TEST_F(Bindings, test_expression_binding_with_one_property_expression)
@@ -779,18 +735,18 @@ TEST_F(Bindings, test_expression_binding_with_one_property_expression)
     WritableTest o1;
     WritableTest o2(20);
 
-    auto binding = ExpressionBinding::bindPermanent(o1.writable, [&o2]() { return Variant(o2.writable * 2); });
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, [&o2]() { return Variant(int(o2.writable) * 2); });
     EXPECT_NOT_NULL(binding);
     EXPECT_TRUE(binding->isEnabled());
     EXPECT_TRUE(binding->isAttached());
-    EXPECT_EQ(40, o1.writable);
+    EXPECT_EQ(40, int(o1.writable));
 
     o1.writable = 10;
-    EXPECT_EQ(10, o1.writable);
+    EXPECT_EQ(10, int(o1.writable));
     EXPECT_TRUE(binding->isAttached());
 
     o2.writable = 40;
-    EXPECT_EQ(80, o1.writable);
+    EXPECT_EQ(80, int(o1.writable));
 }
 
 TEST_F(Bindings, test_expression_binding_to_readonly_target_fails)
@@ -806,16 +762,16 @@ TEST_F(Bindings, test_expression_binding_with_multiple_properties)
     WritableTest o2(2);
     WritableTest o3(3);
 
-    auto binding = ExpressionBinding::bindPermanent(o1.writable, [&o2, &o3]() { return Variant(o2.writable * o3.writable); });
+    auto binding = ExpressionBinding::bindPermanent(o1.writable, [&o2, &o3]() { return Variant(int(o2.writable) * int(o3.writable)); });
     EXPECT_NOT_NULL(binding);
     EXPECT_TRUE(binding->isAttached());
-    EXPECT_EQ(6, o1.writable);
+    EXPECT_EQ(6, int(o1.writable));
 
     o2.writable = 10;
-    EXPECT_EQ(30, o1.writable);
+    EXPECT_EQ(30, int(o1.writable));
 
-    o3.writable = o2.writable;
-    EXPECT_EQ(100, o1.writable);
+    o3.writable = int(o2.writable);
+    EXPECT_EQ(100, int(o1.writable));
 }
 
 TEST_F(Bindings, test_expression_binding_conditional_with_multiple_properties)
@@ -827,7 +783,7 @@ TEST_F(Bindings, test_expression_binding_conditional_with_multiple_properties)
 
     auto expression = [&o2, &o3, &o4]()
     {
-        if (o4.readable % 2)
+        if (int(o4.readable) % 2)
         {
             return o3.writable.get();
         }
@@ -837,11 +793,11 @@ TEST_F(Bindings, test_expression_binding_conditional_with_multiple_properties)
     EXPECT_NOT_NULL(binding);
     EXPECT_TRUE(binding->isAttached());
     // o4 is 99, this makes o1 to get o3 value.
-    EXPECT_EQ(3, o1.writable);
+    EXPECT_EQ(3, int(o1.writable));
 
     // update o4 to divide by 2. this makes o1 to get o2.
     o4.vpReadable.updateData(Variant(2));
-    EXPECT_EQ(2, o1.writable);
+    EXPECT_EQ(2, int(o1.writable));
 }
 
 TEST_F(Bindings, test_binding_detached_and_invalid_when_source_property_dies)
@@ -867,9 +823,9 @@ TEST_F(Bindings, test_expression_binding_detached_and_invalid_when_source_in_exp
     auto binding = BindingSharedPtr();
     {
         WritableTest o3(100);
-        binding = ExpressionBinding::bindPermanent(o1.writable, [&o2, &o3]() { return Variant(o2.writable + o3.writable); });
+        binding = ExpressionBinding::bindPermanent(o1.writable, [&o2, &o3]() { return Variant(int(o2.writable) + int(o3.writable)); });
         EXPECT_TRUE(binding->isAttached());
-        EXPECT_EQ(105, o1.writable);
+        EXPECT_EQ(105, int(o1.writable));
     }
 
     EXPECT_FALSE(binding->isAttached());
@@ -887,12 +843,12 @@ TEST_F(Bindings, test_espression_binding_detect_binding_loop)
     WritableTest o3(3);
 
     // o1 is bount to {o2 + 2}
-    ExpressionBinding::bindPermanent(o1.writable, [&o2]() { return Variant(o2.writable + 2); });
-    EXPECT_EQ(4, o1.writable);
+    ExpressionBinding::bindPermanent(o1.writable, [&o2]() { return Variant(int(o2.writable) + 2); });
+    EXPECT_EQ(4, int(o1.writable));
 
     // o3 is bount to o1
     PropertyBinding::bindPermanent(o3.writable, o1.writable);
-    EXPECT_EQ(4, o3.writable);
+    EXPECT_EQ(4, int(o3.writable));
 
     // o2 is bount to o3. This closes the loop, and produces binding loop.
     EXPECT_THROW(PropertyBinding::bindPermanent(o2.writable, o3.writable), Exception);
@@ -957,7 +913,7 @@ TEST_F(Bindings, test_binding_loop_detection_needs_higher_count)
     auto b1 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
     auto expression = [&o2]()
     {
-        return Variant(o2.writable % 3);
+        return Variant(int(o2.writable) % 3);
     };
     auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
 
@@ -1016,7 +972,7 @@ TEST_F(Bindings, test_binding_loop_normalizer_changes_value)
     auto b1 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
     auto expression = [&o2]()
     {
-        return Variant(o2.writable % 3);
+        return Variant(int(o2.writable) % 3);
     };
     auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
 
@@ -1085,7 +1041,7 @@ TEST_F(Bindings, test_binding_loop_normalize_throw_if_normalization_fails_after_
     auto b1 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
     auto expression = [&o2]()
     {
-        return Variant(o2.writable % 3);
+        return Variant(int(o2.writable) % 3);
     };
     auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
 
@@ -1146,7 +1102,7 @@ TEST_F(Bindings, test_binding_loop_normalize_exit_if_normalization_fails_after_4
     auto b1 = PropertyBinding::bindPermanent(o2.writable, o1.writable);
     auto expression = [&o2]()
     {
-        return Variant(o2.writable % 3);
+        return Variant(int(o2.writable) % 3);
     };
     auto binding = ExpressionBinding::bindPermanent(o1.writable, expression);
 
@@ -1180,16 +1136,16 @@ TEST_F(Bindings, test_property_binding_between_threads)
 
     {
         auto thread = BindingThread::create();
-        EXPECT_EQ(20, thread->writable);
+        EXPECT_EQ(20, int(thread->writable));
 
         binding = PropertyBinding::bindPermanent(o1.writable, thread->writable);
         EXPECT_TRUE(binding->isAttached());
-        EXPECT_EQ(20, o1.writable);
+        EXPECT_EQ(20, int(o1.writable));
 
         // start the thread
         thread->start();
 
-        kickThreadUpdate = [threadObject = thread.get()]() { ThreadLoop::postEvent<Event>(threadObject->asShared(), BindingThread::evUpdate); };
+        kickThreadUpdate = [threadObject = thread.get()]() { ThreadLoop::postEvent<Event>(as_shared<BindingThread>(threadObject), BindingThread::evUpdate); };
         killThread = [threadObject = thread.get()]() { threadObject->exitAndJoin(0); };
     }
 
@@ -1204,7 +1160,7 @@ TEST_F(Bindings, test_property_binding_between_threads)
     kickThreadUpdate();
     updateWatch.wait();
 
-    EXPECT_EQ(21, o1.writable);
+    EXPECT_EQ(21, int(o1.writable));
 
     // Stop the thread.
     killThread();
@@ -1231,16 +1187,16 @@ TEST_F(Bindings, test_expression_binding_between_threads)
 
     {
         auto thread = BindingThread::create();
-        EXPECT_EQ(20, thread->writable);
+        EXPECT_EQ(20, int(thread->writable));
         // Note:!! Beware of the capture of the expression lambda!! Do not copy the thread handler as the lambda will hold the pointer reference!
         binding = ExpressionBinding::bindPermanent(o1.writable, [thrd = thread.get()]() { return thrd->writable.get(); });
         EXPECT_TRUE(binding->isAttached());
-        EXPECT_EQ(20, o1.writable);
+        EXPECT_EQ(20, int(o1.writable));
 
         // start the thread
         thread->start();
 
-        kickThreadUpdate = [threadObject = thread.get()]() { ThreadLoop::postEvent<Event>(threadObject->asShared(), BindingThread::evUpdate); };
+        kickThreadUpdate = [threadObject = thread.get()]() { ThreadLoop::postEvent<Event>(as_shared<BindingThread>(threadObject), BindingThread::evUpdate); };
         killThread = [threadObject = thread.get()]() { threadObject->exitAndJoin(0); };
     }
 
@@ -1255,7 +1211,7 @@ TEST_F(Bindings, test_expression_binding_between_threads)
     kickThreadUpdate();
     updateWatch.wait();
 
-    EXPECT_EQ(21, o1.writable);
+    EXPECT_EQ(21, int(o1.writable));
 
     // Stop the thread.
     killThread();

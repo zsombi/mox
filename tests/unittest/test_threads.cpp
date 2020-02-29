@@ -37,9 +37,9 @@ public:
         threadData()->thread()->exit(10);
     }
 
-    ClassMetaData(Quitter, mox::Object)
+    MetaInfo(Quitter, mox::Object)
     {
-        static inline mox::MethodTypeDecl<Quitter> quit{&Quitter::quit, "quit"};
+        static inline MetaMethod<Quitter> quit{&Quitter::quit, "quit"};
     };
 };
 
@@ -103,7 +103,6 @@ TEST_F(Threads, test_parented_thread_deletes_before_quiting)
         EXPECT_EQ(1, TestThreadLoop::threadCount);
         mainThread.runOnce();
     }
-//    std::cout << "??" << std::endl;
     watchDeath.wait();
     EXPECT_EQ(0, TestThreadLoop::threadCount);
 }
@@ -135,7 +134,9 @@ TEST_F(Threads, test_parented_detached_thread_deletes_before_quiting)
 
 TEST_F(Threads, test_quit_application_from_thread_kills_thread)
 {
+#if MOX_HOST_LINUX
     GTEST_SKIP_("Flaky on Linux");
+#endif
     TestApp app;
     Notifier notifyDeath;
     Watcher watchDeath = notifyDeath.get_future();
@@ -208,7 +209,9 @@ TEST_F(Threads, test_threads2)
 
 TEST_F(Threads, test_signal_connected_to_different_thread)
 {
+#if MOX_HOST_LINUX
     GTEST_SKIP_("Flaky on Linux");
+#endif
     mox::Application mainThread;
     mainThread.setRootObject(*Quitter::create());
 
@@ -216,7 +219,7 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
     Watcher watchDeath = notifyDeath.get_future();
     {
         auto thread = TestThreadLoop::create(std::move(notifyDeath));
-        thread->stopped.connect(*mainThread.castRootObject<Quitter>(), &Quitter::quit);
+        EXPECT_NOT_NULL(thread->stopped.connect(*mainThread.castRootObject<Quitter>(), &Quitter::quit));
 
         auto quitEventHandler = [](mox::Event& event)
         {
@@ -245,7 +248,9 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
 
 TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
 {
+#if MOX_HOST_LINUX
     GTEST_SKIP_("Flaky on Linux");
+#endif
     mox::Application mainThread;
     mainThread.setRootObject(*Quitter::create());
 
@@ -253,7 +258,7 @@ TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
     Watcher watchDeath = notifyDeath.get_future();
     {
         auto thread = TestThreadLoop::create(std::move(notifyDeath));
-        thread->stopped.connect(*mainThread.castRootObject<Quitter>(), "quit");
+        EXPECT_NOT_NULL(mox::metainfo::connect(thread->stopped, *mainThread.castRootObject<Quitter>(), Quitter::StaticMetaClass::quit));
 
         thread->start();
         EXPECT_EQ(1, TestThreadLoop::threadCount);

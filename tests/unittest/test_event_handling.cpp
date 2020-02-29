@@ -27,8 +27,8 @@ using namespace mox;
 class TestTimer : public ObjectLock, public TimerSource::TimerRecord
 {
 public:
-    static inline SignalTypeDecl<TestTimer> TestTimerExpiredSignalType{"expired"};
-    SignalDecl<> expired{*this, TestTimerExpiredSignalType};
+    static inline SignalTypeDecl<> TestTimerExpiredSignalType;
+    Signal expired{*this, TestTimerExpiredSignalType};
 
     explicit TestTimer(std::chrono::milliseconds interval, bool singleShot)
         : TimerSource::TimerRecord(interval, singleShot)
@@ -48,8 +48,8 @@ public:
 class TestSocket : public ObjectLock, public SocketNotifierSource::Notifier
 {
 public:
-    static inline SignalTypeDecl<TestSocket, Modes> TestSocketSignalType{"modeChanged"};
-    SignalDecl<Modes> modeChanged{*this, TestSocketSignalType};
+    static inline SignalTypeDecl<Modes> TestSocketSignalType;
+    Signal modeChanged{*this, TestSocketSignalType};
 
     explicit TestSocket(EventTarget handler, Modes modes)
         : SocketNotifierSource::Notifier(handler, modes)

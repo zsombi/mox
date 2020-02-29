@@ -25,8 +25,8 @@
 #include <vector>
 
 #include <mox/utils/globals.hpp>
-#include <mox/metadata/metatype.hpp>
-#include <mox/metadata/variant_descriptor.hpp>
+#include <mox/metatype.core/metatype.hpp>
+#include <mox/metatype.core/variant_descriptor.hpp>
 
 namespace mox
 {

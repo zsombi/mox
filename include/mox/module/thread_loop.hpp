@@ -22,7 +22,7 @@
 #include <mox/module/module.hpp>
 #include <mox/object.hpp>
 
-#include <mox/signal/signal.hpp>
+#include <mox/meta/signal/signal.hpp>
 
 #include <mox/config/thread.hpp>
 
@@ -120,16 +120,16 @@ public:
     /// \name Metadata
     /// \{
     /// The static metaclass of the thread loop.
-    ClassMetaData(ThreadLoop, Object)
+    MetaInfo(ThreadLoop, Object)
     {
-        static inline SignalTypeDecl<ThreadLoop, ThreadLoop*> StartedSignalType{"started"};
-        static inline SignalTypeDecl<ThreadLoop, ThreadLoop*> StoppedSignalType{"stopped"};
+        static inline MetaSignal<ThreadLoop, ThreadLoop*> StartedSignalType{"started"};
+        static inline MetaSignal<ThreadLoop, ThreadLoop*> StoppedSignalType{"stopped"};
     };
 
     /// Signal emitted when the thread starts the event loop.
-    SignalDecl<ThreadLoop*> started{*this, StaticMetaClass::StartedSignalType};
+    Signal started{*this, StaticMetaClass::StartedSignalType};
     /// Signal emitted right before the thread stops its execution.
-    SignalDecl<ThreadLoop*> stopped{*this, StaticMetaClass::StoppedSignalType};
+    Signal stopped{*this, StaticMetaClass::StoppedSignalType};
     /// \}
 
 protected:

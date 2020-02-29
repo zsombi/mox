@@ -18,8 +18,8 @@
 
 #include "test_framework.h"
 
-#include <mox/metadata/variant.hpp>
-#include <mox/metadata/metaobject.hpp>
+#include <mox/metatype.core/variant.hpp>
+#include <mox/metainfo/metaobject.hpp>
 
 namespace converter_test
 {
@@ -67,7 +67,7 @@ class Derived : public mox::MetaObject
 public:
     explicit Derived() = default;
 
-    ClassMetaData(Derived, mox::MetaObject)
+    MetaInfo(Derived, mox::MetaObject)
     {
     };
 };
