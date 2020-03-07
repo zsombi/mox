@@ -33,7 +33,7 @@
 namespace mox
 {
 
-struct MetaData : public ObjectLock
+struct MetaData : public MetaBase
 {
     explicit MetaData();
     ~MetaData();

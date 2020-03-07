@@ -17,6 +17,7 @@
  */
 
 #include <signal_p.hpp>
+#include <metabase_p.hpp>
 #include <mox/utils/locks.hpp>
 #include <metadata_p.hpp>
 #include <mox/object.hpp>
@@ -34,27 +35,6 @@ SignalType::SignalType(VariantDescriptorContainer&& args)
 {
 }
 
-Signal* SignalType::getSignalForInstance(ObjectLock& instance) const
-{
-    lock_guard lock(const_cast<SignalType&>(*this));
-    auto it = m_instances.find(&instance);
-    if (it != m_instances.cend())
-    {
-        return it->second;
-    }
-    return nullptr;
-}
-
-int SignalType::activate(ObjectLock& sender, const Callable::ArgumentPack &args) const
-{
-    auto signal = getSignalForInstance(sender);
-    if (!signal)
-    {
-        return -1;
-    }
-    return signal->activate(args);
-}
-
 bool SignalType::isCompatible(const SignalType &other) const
 {
     return m_argumentDescriptors.isInvocableWith(other.m_argumentDescriptors);
@@ -65,58 +45,43 @@ const VariantDescriptorContainer& SignalType::getArguments() const
     return m_argumentDescriptors;
 }
 
-void SignalType::addSignalInstance(Signal& signal)
-{
-    lock_guard lock(*this);
-    auto it = m_instances.insert(std::make_pair(signal.m_owner, &signal));
-    FATAL(it != m_instances.end(), "The SignalType is already in use for signal " << typeid(m_instances.find(signal.m_owner)->second).name())
-}
-
-void SignalType::removeSignalInstance(Signal& signal)
-{
-    lock_guard lock(*this);
-#if 1
-    auto pv = std::make_pair(signal.m_owner, &signal);
-    mox::erase(m_instances, pv);
-#else
-    const auto it = m_instances.find(signal.m_owner);
-    FATAL(it != m_instances.cend(), "Signal corrupted or not in host!")
-    m_instances.erase(it, it);
-#endif
-    signal.m_signalType = nullptr;
-    signal.m_owner = nullptr;
-}
-
 /******************************************************************************
  *
  */
-Signal::Signal(ObjectLock& owner, SignalType& signalType)
+Signal::Signal(MetaBase& owner, const SignalType& signalType)
     : SharedLock(owner)
-    , m_signalType(&signalType)
-    , m_owner(&owner)
+    , d_ptr(pimpl::make_d_ptr<SignalStorage>(*this, owner, signalType))
 {
-    m_signalType->addSignalInstance(*this);
 }
 
 Signal::~Signal()
 {
-    for_each(m_connections, [](ConnectionSharedPtr connection) { if (connection) connection->m_signal = nullptr; });
-    if (m_signalType)
+    if (d_ptr)
     {
-        m_signalType->removeSignalInstance(*this);
+        d_ptr->destroy();
     }
 }
 
+bool Signal::isBlocked() const
+{
+    return d_ptr->m_blocked;
+}
+void Signal::setBlocked(bool blocked)
+{
+    d_ptr->m_blocked = blocked;
+}
+
+
 void Signal::addConnection(ConnectionSharedPtr connection)
 {
-    FATAL(m_signalType, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal")
     lock_guard lock(*this);
-    m_connections.push_back(connection);
+    d_ptr->connections.push_back(connection);
 }
 
 void Signal::removeConnection(ConnectionSharedPtr connection)
 {
-    FATAL(m_signalType, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal")
     lock_guard lock(*this);
 
     auto eraser = [&connection](ConnectionSharedPtr conn)
@@ -129,28 +94,23 @@ void Signal::removeConnection(ConnectionSharedPtr connection)
         connection->invalidate();
         return true;
     };
-    erase_if(m_connections, eraser);
-}
-
-SignalType* Signal::getType()
-{
-    return m_signalType;
+    erase_if(d_ptr->connections, eraser);
 }
 
 const SignalType* Signal::getType() const
 {
-    return m_signalType;
+    return &d_ptr->getType();
 }
 
 Signal::ConnectionSharedPtr Signal::connect(Callable&& lambda)
 {
-    FATAL(m_signalType, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal")
     return Signal::Connection::create<FunctionConnection>(*this, std::forward<Callable>(lambda));
 }
 
 Signal::ConnectionSharedPtr Signal::connect(Variant receiver, Callable&& slot)
 {
-    FATAL(m_signalType, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal")
 
     auto connection = ConnectionSharedPtr();
     if (receiver.canConvert<Object*>())
@@ -163,9 +123,9 @@ Signal::ConnectionSharedPtr Signal::connect(Variant receiver, Callable&& slot)
 
 Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 {
-    FATAL(m_signalType, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal")
     // Check if the two arguments match.
-    if (!signal.getType()->isCompatible(*m_signalType))
+    if (!signal.getType()->isCompatible(d_ptr->getType()))
     {
         return nullptr;
     }
@@ -175,7 +135,7 @@ Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 
 bool Signal::disconnect(const Signal& signal)
 {
-    FATAL(m_signalType, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal")
     lock_guard lock(*this);
 
     auto predicate = [&signal](ConnectionSharedPtr connection)
@@ -188,32 +148,39 @@ bool Signal::disconnect(const Signal& signal)
         }
         return false;
     };
-    return erase_if(m_connections, predicate);
+    return erase_if(d_ptr->connections, predicate);
 }
 
 bool Signal::disconnectImpl(Variant receiver, const Callable& callable)
 {
-    FATAL(m_signalType, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal")
     lock_guard lock(*this);
 
     auto predicate = [&receiver, &callable](ConnectionSharedPtr connection)
     {
         return (connection && connection->disconnect(receiver, callable));
     };
-    return erase_if(m_connections, predicate);
+    return erase_if(d_ptr->connections, predicate);
 }
 
 int Signal::activate(const Callable::ArgumentPack& arguments)
 {
-    FATAL(m_signalType, "Invalid signal")
-    if (m_triggering || m_blocked)
+    FATAL(d_ptr, "Invalid signal")
+    D();
+    if (d->triggering || d->m_blocked)
     {
         return 0;
     }
 
     lock_guard lock(*this);
 
-    FlagScope<true> triggerLock(m_triggering);
+    // If the signal has more arguments than it had activated with, return -1. Consider it as signal not found.
+    if (arguments.size() < d->type.getArguments().size())
+    {
+        return -1;
+    }
+
+    FlagScope<true> triggerLock(d->triggering);
     int count = 0;
 
     auto activator = [&arguments, self = this, &count](ConnectionSharedPtr connection)
@@ -226,7 +193,7 @@ int Signal::activate(const Callable::ArgumentPack& arguments)
         connection->activate(arguments);
         ++count;
     };
-    for_each(m_connections, activator);
+    for_each(d->connections, activator);
 
     return count;
 }

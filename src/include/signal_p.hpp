@@ -30,6 +30,44 @@ TUuid nextUuid();
 class Object;
 using ObjectWeakPtr = std::weak_ptr<Object>;
 /******************************************************************************
+ * SignalStorage
+ */
+class SignalStorage
+{
+public:
+    DECLARE_PUBLIC(Signal, SignalStorage)
+
+    explicit SignalStorage(Signal& signal, MetaBase& host, const SignalType& type);
+    ~SignalStorage();
+
+    void destroy();
+
+    inline const SignalType& getType() const
+    {
+        return type;
+    }
+    inline Signal* getSignal() const
+    {
+        return p_ptr;
+    }
+
+protected:
+    /// The collection of active connections.
+    using ConnectionContainer = SharedVector<Signal::ConnectionSharedPtr>;
+    ConnectionContainer connections;
+    /// The signal owner.
+    MetaBase& host;
+    /// The signal type.
+    const SignalType& type;
+    /// The signal object.
+    Signal* p_ptr = nullptr;
+    /// Triggering flag. Locks the signal from recursive triggering.
+    bool triggering = false;
+    /// The signal activation is blocked.
+    bool m_blocked = false;
+};
+
+/******************************************************************************
  * Connect concept
  */
 template <typename DerivedConnectionType>

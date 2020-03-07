@@ -19,6 +19,7 @@
 #ifndef METACLASS_IMPL_HPP
 #define METACLASS_IMPL_HPP
 
+#include <mox/meta/metabase/metabase.hpp>
 namespace mox
 {
 
@@ -57,13 +58,20 @@ MetaClass::MetaSignal<HostClass, Arguments...>::MetaSignal(std::string_view name
 {
 }
 
+template <class HostClass, typename... Arguments>
+template <typename... ConvertibleArgs>
+int MetaClass::MetaSignal<HostClass, Arguments...>::emit(MetaBase& sender, ConvertibleArgs... arguments)
+{
+    auto argPack = Callable::ArgumentPack(arguments...);
+    return sender.activateSignal(*this, argPack);
+}
 /******************************************************************************
  * MetaClass::MetaProperty
  */
 template <class HostClass, typename ValueType, PropertyAccess access>
-MetaClass::MetaProperty<HostClass, ValueType, access>::MetaProperty(std::string_view name, ValueType defaultValue)
-    : MetaPropertyBase(*ensureMetaClass<HostClass>(), VariantDescriptor::get<ValueType>(), access, Variant(defaultValue), name)
-    , ChangedSignalType(std::string(name) + "Changed")
+MetaClass::MetaProperty<HostClass, ValueType, access>::MetaProperty(const MetaSignalBase& sigChanged, std::string_view name, const ValueType& defaultValue)
+    : PropertyDefaultValue<ValueType>(defaultValue)
+    , MetaPropertyBase(*ensureMetaClass<HostClass>(), VariantDescriptor::get<ValueType>(), access, sigChanged, *this, name)
 {
 }
 
@@ -90,8 +98,8 @@ StaticMetaClass<MetaClassDecl, BaseClass, SuperClasses...>::StaticMetaClass()
         MetatypeDescriptor::registerConverter(MetatypeDescriptor::Converter::dynamicCast<SuperClasses*, BaseClass*>(), mox::metaType<SuperClasses*>(), getMetaTypes().second)...
     }};
     UNUSED(casters);
-    MetatypeDescriptor::registerConverter(MetatypeDescriptor::Converter::dynamicCast<BaseClass*, ObjectLock*>(), getMetaTypes().second, mox::registerClassMetaTypes<ObjectLock>().second);
-    MetatypeDescriptor::registerConverter(MetatypeDescriptor::Converter::dynamicCast<ObjectLock*, BaseClass*>(), mox::metaType<ObjectLock*>(), getMetaTypes().second);
+    MetatypeDescriptor::registerConverter(MetatypeDescriptor::Converter::dynamicCast<BaseClass*, MetaBase*>(), getMetaTypes().second, mox::registerClassMetaTypes<MetaBase>().second);
+    MetatypeDescriptor::registerConverter(MetatypeDescriptor::Converter::dynamicCast<MetaBase*, BaseClass*>(), mox::metaType<MetaBase*>(), getMetaTypes().second);
 }
 
 template <class MetaClassDecl, class BaseClass, class... SuperClasses>
@@ -146,7 +154,7 @@ int emit(Class& instance, std::string_view signalName, Arguments... arguments)
     auto signal = metaClass->visitSignals(signalVisitor);
     if (signal)
     {
-        return signal->activate(instance, Callable::ArgumentPack(arguments...));
+        return instance.activateSignal(*signal, Callable::ArgumentPack(arguments...));
     }
 
     return -1;
@@ -195,7 +203,7 @@ std::optional<ValueType> getProperty(Class& instance, std::string_view property)
     auto metaProperty = metaClass->visitProperties(finder);
     if (metaProperty)
     {
-        ValueType value = metaProperty->get(instance);
+        ValueType value = instance.getProperty(*metaProperty);
         return std::make_optional(value);
     }
     return std::nullopt;
@@ -212,7 +220,7 @@ bool setProperty(Class& instance, std::string_view property, ValueType value)
     auto metaProperty = metaClass->visitProperties(finder);
     if (metaProperty)
     {
-        return metaProperty->set(instance, Variant(value));
+        return instance.setProperty(*metaProperty, Variant(value)) != nullptr;
     }
     return false;
 }
@@ -230,7 +238,7 @@ Signal::ConnectionSharedPtr connect(Sender& sender, std::string_view signal, Rec
     {
         return nullptr;
     }
-    auto sig = metaSignal->getSignalForInstance(sender);
+    auto sig = sender.findSignal(*metaSignal);
     if (!sig)
     {
         return nullptr;

@@ -36,7 +36,7 @@ using BindingSharedPtr = std::shared_ptr<Binding>;
 /// Mox provides two types of properties: read-write, or writable properties, and read-only properties.
 /// Each property type has a change signal included, which reports value changes of the property.
 ///
-/// The property storage is provided by an AbstractPropertyData derived class. Such derivate is simply called
+/// The property storage is provided by an PropertyDataProvider derived class. Such derivate is simply called
 /// property data provider, and Mox provides a templated default implementation you can use to maintain
 /// the data of your property. This property data provider can also update the read-only property value
 /// you declare on a class.
@@ -46,11 +46,9 @@ using BindingSharedPtr = std::shared_ptr<Binding>;
 ///
 /// Bindings provide automatic property value updates. A property can hold several bindings, but only one
 /// of those is enabled at a time.
-class PropertyPrivate;
-class MOX_API Property : public SharedLock
+class PropertyStorage;
+class MOX_API Property : public SharedLock<MetaBase>
 {
-    DECLARE_PRIVATE_PTR(Property)
-
 public:
     /// The change signal of the property. The signal is automatically emitted whenever a property
     /// value is changed.
@@ -61,10 +59,10 @@ public:
     /// \param host The host of the property.
     /// \param type The type of the property defined by a PropertyType instance.
     /// \param dataProvider The default value of the property.
-    Property(ObjectLock& host, PropertyType& type, AbstractPropertyData& data);
+    Property(MetaBase& host, const PropertyType& type, PropertyDataProvider& data);
 
     /// Destructor.
-    ~Property();
+    virtual ~Property();
 
     /// Checks the validity of a property. A property is valid if its type is set.
     /// \return If the property is valid, returns \e true, otherwise \e false.
@@ -105,8 +103,39 @@ public:
     }
 
 private:
+    Property(MetaBase& host, const PropertyType& type);
     Property() = delete;
     DISABLE_COPY_OR_MOVE(Property)
+
+    DECLARE_PRIVATE(PropertyStorage)
+    pimpl::d_ptr_type<PropertyStorage> d_ptr;
+};
+
+class DynamicProperty;
+using DynamicPropertyPtr = std::shared_ptr<DynamicProperty>;
+using DynamicPropertyWeak = std::weak_ptr<DynamicProperty>;
+
+/// DynamicProperty is a type of property that is attached runtime to an object derived from MetaBase.
+/// Similarly to the static properties, their lifetime is defined by the lifetime of the host object.
+/// You can add dynamic properties to your object using MetaBase::setProperty() method.
+class MOX_API DynamicProperty : public PropertyDataProvider, public Property, public std::enable_shared_from_this<DynamicProperty>
+{
+    Variant m_value;
+
+    Variant getData() const override
+    {
+        return m_value;
+    }
+    void setData(const Variant &value) override
+    {
+        m_value = value;
+    }
+
+    explicit DynamicProperty(MetaBase& host, const PropertyType& type);
+
+public:
+
+    static DynamicPropertyPtr create(MetaBase& host, const PropertyType& type);
 };
 
 }

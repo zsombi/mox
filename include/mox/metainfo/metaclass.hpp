@@ -102,7 +102,7 @@ private:
     class MOX_API MetaPropertyBase : public PropertyType, public AbstractMetaInfo
     {
     public:
-        explicit MetaPropertyBase(MetaClass& hostClass, VariantDescriptor&& typeDes, PropertyAccess access, const Variant& defaultValue, std::string_view name);
+        explicit MetaPropertyBase(MetaClass& hostClass, VariantDescriptor&& typeDes, PropertyAccess access, const MetaSignalBase& signal, PropertyDataProviderInterface& defaultValue, std::string_view name);
         std::string signature() const override;
     };
 
@@ -140,34 +140,34 @@ public:
     /// Metaclass visitor function.
     using MetaClassVisitor = std::function<VisitorResultType(const MetaClass&)>;
 
+    /// Metasignal class, declares a signal type with an associated name.
     template <class HostClass, typename... Arguments>
     class MOX_API MetaSignal : public MetaSignalBase
     {
     public:
         /// Constructor.
-        explicit MetaSignal(std::string_view name);
+        MetaSignal(std::string_view name);
+
+        /// Emits the signal on a sender object passing the arguments.
+        template <typename... ConvertibleArgs>
+        int emit(MetaBase& sender, ConvertibleArgs... arguments);
     };
 
+    /// Metaproperty class, declares a property type with an associated name.
     template <class HostClass, typename ValueType, PropertyAccess access>
-    class MOX_API MetaProperty : public MetaPropertyBase
+    class MOX_API MetaProperty : private PropertyDefaultValue<ValueType>, public MetaPropertyBase
     {
     public:
-        /// The change signal type.
-        MetaSignal<HostClass, ValueType> ChangedSignalType;
-
         /// Constructor.
-        explicit MetaProperty(std::string_view name, ValueType defaultValue);
-
-        SignalType & getChangedSignalType() override
-        {
-            return ChangedSignalType;
-        }
+        MetaProperty(const MetaSignalBase& sigChanged, std::string_view name, const ValueType& defaultValue = ValueType());
     };
 
+    /// Metamethod class, declares a callable with an associated name.
     template <class HostClass>
     class MOX_API MetaMethod : public MetaMethodBase
     {
     public:
+        /// Constructor.
         template <typename MethodType>
         MetaMethod(MethodType method, std::string_view name);
     };
@@ -315,15 +315,12 @@ std::optional<ValueType> getProperty(Class& instance, std::string_view property)
 /// \return If the property value is set with success, returns \e true, otherwise returns \e false.
 template <typename ValueType, class Class>
 bool setProperty(Class& instance, std::string_view property, ValueType value);
-/// \}
 
-/// \name Metasignal connection
-/// \{
 /// Creates a connection between a \a signal and a \a metaMethod of a \a receiver.
 /// \param receiver The receiver hosting the metamethod.
 /// \param metaMethod The metamethod to connect to.
 /// \return The connection shared object.
-MOX_API Signal::ConnectionSharedPtr connect(Signal& signal, ObjectLock& receiver, const Callable& metaMethod);
+MOX_API Signal::ConnectionSharedPtr connect(Signal& signal, MetaBase& receiver, const Callable& metaMethod);
 
 /// Connects a \a signal from \a sender to a \a slot in \a receiver.
 /// \tparam Sender The sender class type.

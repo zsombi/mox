@@ -54,13 +54,15 @@ ExpressionBindingSharedPtr ExpressionBinding::create(ExpressionType&& expression
 
 ExpressionBindingSharedPtr ExpressionBinding::bindPermanent(Property& target, ExpressionType&& expression)
 {
+    throwIf<ExceptionType::InvalidProperty>(!target.isValid());
     auto binding = create(std::forward<ExpressionType>(expression), true);
     binding->attach(target);
     return binding;
 }
 
-ExpressionBindingSharedPtr ExpressionBinding::bindAutoDetach(Property& target, ExpressionType&& expression)
+ExpressionBindingSharedPtr ExpressionBinding::bind(Property& target, ExpressionType&& expression)
 {
+    throwIf<ExceptionType::InvalidProperty>(!target.isValid());
     auto binding = create(std::forward<ExpressionType>(expression), false);
     binding->attach(target);
     return binding;

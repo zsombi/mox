@@ -53,7 +53,8 @@ void BindingPrivate::clearDependencies()
     auto psh = p_func()->shared_from_this();
     for (auto dep : dependencies)
     {
-        auto ddep = PropertyPrivate::get(*dep);
+        auto ddep = PropertyStorage::get(*dep);
+        FATAL(ddep, "Property storage for the dependency already wiped!")
         ddep->unsubscribe(psh);
     }
     dependencies.clear();
@@ -151,7 +152,7 @@ void Binding::attach(Property& target)
     }
     throwIf<ExceptionType::BindingAlreadyAttached>(isAttached());
 
-    auto dTarget = PropertyPrivate::get(target);
+    auto dTarget = PropertyStorage::get(target);
     dTarget->addBinding(shared_from_this());
 
     D();
@@ -181,7 +182,7 @@ void Binding::detach()
     bool wasEnabled = isEnabled();
     auto keepAlive = shared_from_this();
 
-    auto dTarget = PropertyPrivate::get(*getTarget());
+    auto dTarget = PropertyStorage::get(*getTarget());
     dTarget->removeBinding(*this);
 
     // Detach from target.
@@ -214,7 +215,7 @@ void Binding::evaluateBinding()
         return;
     }
 
-    auto dTarget = PropertyPrivate::get(*d->target);
+    auto dTarget = PropertyStorage::get(*d->target);
     Variant data = dTarget->fetchDataUnsafe();
     BindingLoopDetector detector(*d);
 
@@ -229,7 +230,7 @@ void Binding::updateTarget(Variant &value)
     {
         return;
     }
-    auto dTarget = PropertyPrivate::get(*d_func()->target);
+    auto dTarget = PropertyStorage::get(*d_func()->target);
     dTarget->updateData(value);
 }
 
@@ -274,7 +275,7 @@ void Binding::setEnabled(bool enabled)
 
     if (d->enabled && d->target)
     {
-        PropertyPrivate::get(*d->target)->activateBinding(*this);
+        PropertyStorage::get(*d->target)->activateBinding(*this);
     }
 
     onEnabledChanged();

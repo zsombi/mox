@@ -38,55 +38,40 @@ using atomic_bool = std::atomic_bool;
 using atomic_int32_t = std::atomic_int32_t;
 using std::lock_guard;
 
-/// Provides shareable locking functionality on objects, lock being shared with properties, signals and
-/// other callables of the object.
-class MOX_API ObjectLock : public AtomicRefCounted<int32_t>
+/// Base class sharing the locking with an MetaBase.
+template <typename RefLockable>
+class MOX_API SharedLock : public RefCounter<RefLockable&>
 {
-    mutable std::mutex m_mutex;
-
-#ifdef DEBUG
-    mutable atomic_int32_t m_lockCount = 0;
-    mutable std::atomic<std::thread::id> m_owner = std::thread::id();
-#endif
-
-public:
-    /// Construct the object lock.
-    explicit ObjectLock();
-    /// Destruct the object lock. The destruction fails if the object's lock is still shared.
-    virtual ~ObjectLock();
-
-    /// Locks the object.
-    void lock();
-
-    /// Unlocks the object.
-    void unlock();
-
-    /// Tries to lock the object.
-    /// \return If the object locking succeeds, returns \e true, otherwise \e false.
-    bool try_lock();
-};
-
-/// Base class sharing the locking with an ObjectLock.
-class MOX_API SharedLock : public RefCounter<ObjectLock&>
-{
-    using BaseClass = RefCounter<ObjectLock&>;
+    using BaseClass = RefCounter<RefLockable&>;
     DISABLE_MOVE(SharedLock)
     DISABLE_COPY(SharedLock)
 
 public:
     /// Construct the shared lock with the given \a sharedLock. Does not retain the lock, but
     /// increases the shared count of the object lock.
-    explicit SharedLock(ObjectLock& sharedLock);
+    explicit SharedLock(RefLockable& sharedLock)
+      : BaseClass(sharedLock)
+    {
+    }
     /// Destructs the shared lock and releases the object lock shared count.
-    virtual ~SharedLock();
+    virtual ~SharedLock() = default;
 
     /// Locks the shared object.
-    void lock();
+    void lock()
+    {
+        this->m_refCounted.lock();
+    }
     /// Unlocks the shared object.
-    void unlock();
+    void unlock()
+    {
+        this->m_refCounted.unlock();
+    }
     /// Tries to lock the shared object.
     /// \return If the object locking succeeds, returns \e true, otherwise \e false.
-    bool try_lock();
+    bool try_lock()
+    {
+        return this->m_refCounted.try_lock();
+    }
 };
 
 /// The template works the opposite to the std::lock_guard class: unlocks the lock on construction

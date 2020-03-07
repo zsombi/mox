@@ -23,7 +23,7 @@
 
 using namespace mox;
 
-class PropertyTest : public ObjectLock
+class PropertyTest : public MetaBase
 {
     class StatusVP : public PropertyData<bool>
     {
@@ -37,7 +37,7 @@ class PropertyTest : public ObjectLock
 
         void evaluate(int value)
         {
-            updateData(Variant((value %3) != 0));
+            update(Variant((value %3) != 0));
         }
     };
 
@@ -48,9 +48,12 @@ class PropertyTest : public ObjectLock
 
 public:
 
-    static inline PropertyTypeDecl<bool, PropertyAccess::ReadWrite> BoolPropertyType = true;
-    static inline PropertyTypeDecl<bool, PropertyAccess::ReadOnly> ReadOnlyBoolPropertyType = true;
-    static inline PropertyTypeDecl<int, PropertyAccess::ReadWrite> StateChangedPropertyType = 0;
+    static inline SignalTypeDecl<bool> BoolChangedSignalType;
+    static inline SignalTypeDecl<bool> ReadOnlyChangedSignalType;
+    static inline SignalTypeDecl<int> StateChangedSignalType;
+    static inline PropertyTypeDecl<bool, PropertyAccess::ReadWrite> BoolPropertyType = {BoolChangedSignalType, true};
+    static inline PropertyTypeDecl<bool, PropertyAccess::ReadOnly> ReadOnlyBoolPropertyType = {ReadOnlyChangedSignalType, true};
+    static inline PropertyTypeDecl<int, PropertyAccess::ReadWrite> StateChangedPropertyType = {StateChangedSignalType};
 
     Property boolValue{*this, BoolPropertyType, boolValueData};
     Property status{*this, ReadOnlyBoolPropertyType, statusVP};
@@ -90,9 +93,12 @@ public:
 
     MetaInfo(PropertyMetatypeTest, Object)
     {
-        static inline MetaProperty<PropertyMetatypeTest, int, PropertyAccess::ReadWrite> IntPropertyType{"intValue", -1};
-        static inline MetaProperty<PropertyMetatypeTest, bool, PropertyAccess::ReadOnly> ReadOnlyBoolPropertyType{"enabled", true};
-        static inline MetaProperty<PropertyMetatypeTest, std::string, PropertyAccess::ReadWrite> StringPropertyType{"stringValue", "alpha"s};
+        static inline MetaSignal<PropertyMetatypeTest, int> IntChangedSignalType{"intValueChanged"};
+        static inline MetaSignal<PropertyMetatypeTest, bool> ReadOnlyBoolChangedSignalType{"enabledChanged"};
+        static inline MetaSignal<PropertyMetatypeTest, int> StringChangedSignalType{"stringValueChanged"};
+        static inline MetaProperty<PropertyMetatypeTest, int, PropertyAccess::ReadWrite> IntPropertyType{IntChangedSignalType, "intValue", -1};
+        static inline MetaProperty<PropertyMetatypeTest, bool, PropertyAccess::ReadOnly> ReadOnlyBoolPropertyType{ReadOnlyBoolChangedSignalType, "enabled", true};
+        static inline MetaProperty<PropertyMetatypeTest, std::string, PropertyAccess::ReadWrite> StringPropertyType{StringChangedSignalType, "stringValue", "alpha"s};
     };
 
     Property intValue{*this, StaticMetaClass::IntPropertyType, intValueData};
@@ -115,7 +121,7 @@ protected:
     }
 };
 
-TEST_F(Properties, test_property_type)
+TEST_F(Properties, test_property_types_used)
 {
     EXPECT_EQ(Metatype::String, Object::StaticMetaClass::ObjectNameProperty.getValueType().getType());
     EXPECT_EQ(Metatype::Bool, PropertyTest::BoolPropertyType.getValueType().getType());
@@ -213,9 +219,9 @@ TEST_F(Properties, test_metaproperty)
 {
     PropertyMetatypeTest test;
 
-    EXPECT_EQ(-1, PropertyMetatypeTest::StaticMetaClass::IntPropertyType.get(test));
-    EXPECT_EQ(true, PropertyMetatypeTest::StaticMetaClass::ReadOnlyBoolPropertyType.get(test));
-    EXPECT_EQ("alpha"s, PropertyMetatypeTest::StaticMetaClass::StringPropertyType.get(test));
+    EXPECT_EQ(-1, int(test.getProperty(PropertyMetatypeTest::StaticMetaClass::IntPropertyType)));
+    EXPECT_EQ(true, bool(test.getProperty(PropertyMetatypeTest::StaticMetaClass::ReadOnlyBoolPropertyType)));
+    EXPECT_EQ("alpha"s, std::string(test.getProperty(PropertyMetatypeTest::StaticMetaClass::StringPropertyType)));
 }
 
 TEST_F(Properties, test_metaproperty_get)
@@ -224,9 +230,9 @@ TEST_F(Properties, test_metaproperty_get)
     auto mc = PropertyMetatypeTest::StaticMetaClass::get();
     test.objectName = "testObject"s;
 
-    EXPECT_EQ(-1, mc->IntPropertyType.get(test));
-    EXPECT_EQ(true, mc->ReadOnlyBoolPropertyType.get(test));
-    EXPECT_EQ("alpha"s, mc->StringPropertyType.get(test));
+    EXPECT_EQ(-1, int(test.getProperty(mc->IntPropertyType)));
+    EXPECT_EQ(true, bool(test.getProperty(mc->ReadOnlyBoolPropertyType)));
+    EXPECT_EQ("alpha"s, std::string(test.getProperty(mc->StringPropertyType)));
 
     EXPECT_EQ(-1, *metainfo::getProperty<int>(test, "intValue"));
     EXPECT_EQ(true, *metainfo::getProperty<bool>(test, "enabled"));
@@ -240,9 +246,9 @@ TEST_F(Properties, test_metaproperty_set)
     PropertyMetatypeTest test;
     auto mc = PropertyMetatypeTest::StaticMetaClass::get();
 
-    EXPECT_TRUE(mc->IntPropertyType.set(test, Variant(2)));
-    EXPECT_THROW(mc->ReadOnlyBoolPropertyType.set(test, Variant(true)), mox::Exception);
-    EXPECT_TRUE(mc->StringPropertyType.set(test, Variant("stew"s)));
+    EXPECT_NOT_NULL(test.setProperty(mc->IntPropertyType, Variant(2)));
+    EXPECT_THROW(test.setProperty(mc->ReadOnlyBoolPropertyType, Variant(true)), mox::Exception);
+    EXPECT_NOT_NULL(test.setProperty(mc->StringPropertyType, Variant("stew"s)));
 
     EXPECT_TRUE(metainfo::setProperty(test, "intValue", 20));
     EXPECT_THROW(metainfo::setProperty(test, "enabled", true), mox::Exception);
@@ -250,14 +256,56 @@ TEST_F(Properties, test_metaproperty_set)
     EXPECT_FALSE(metainfo::setProperty(test, "IntValue", 21));
 }
 
-static PropertyTypeDecl<int, PropertyAccess::ReadWrite> StandaloneIntPropertyType = 0;
+static SignalTypeDecl<int> StandaloneIntSignalType;
+static PropertyTypeDecl<int, PropertyAccess::ReadWrite> StandaloneIntPropertyType = {StandaloneIntSignalType};
 
 TEST_F(Properties, test_property_added_runtime)
 {
     PropertyTest test;
     PropertyData<int> dynamicData1{-1};
-    PropertyData<int> dynamicData2{-101};
 
-    Property runtimeInt1(test, StandaloneIntPropertyType, dynamicData1);
-    EXPECT_DEATH(Property runtimeInt2(test, StandaloneIntPropertyType, dynamicData2), "");
+    Property runtimeInt(test, StandaloneIntPropertyType, dynamicData1);
+
+    EXPECT_EQ(-1, int(runtimeInt));
+
+    int callCount = 0;
+    auto slot = [&callCount]() { ++callCount; };
+    runtimeInt.changed.connect(slot);
+
+    runtimeInt = 101;
+    EXPECT_EQ(1, callCount);
+    EXPECT_EQ(101, int(runtimeInt));
+}
+
+TEST_F(Properties, test_dynamic_property)
+{
+    auto test = std::make_shared<PropertyTest>();
+    PropertyData<int> dataProvider{1};
+
+    auto runtime = test->setProperty(StandaloneIntPropertyType, Variant(1));
+    EXPECT_NOT_NULL(dynamic_cast<DynamicProperty*>(runtime));
+    DynamicPropertyWeak runtimeInt = dynamic_cast<DynamicProperty*>(runtime)->shared_from_this();
+
+    EXPECT_EQ(1, int(*runtime));
+    EXPECT_TRUE(runtime->isValid());
+
+    test.reset();
+    EXPECT_TRUE(runtimeInt.expired());
+}
+
+TEST_F(Properties, test_dynamic_property_pointer_held_after_host_deletion)
+{
+    auto test = std::make_shared<PropertyTest>();
+    PropertyData<int> dataProvider{1};
+
+    auto runtime = test->setProperty(StandaloneIntPropertyType, Variant(1));
+    EXPECT_NOT_NULL(dynamic_cast<DynamicProperty*>(runtime));
+    DynamicPropertyPtr runtimeInt = dynamic_cast<DynamicProperty*>(runtime)->shared_from_this();
+
+    EXPECT_EQ(1, int(*runtime));
+    EXPECT_TRUE(runtime->isValid());
+
+    test.reset();
+    EXPECT_NOT_NULL(runtimeInt);
+    EXPECT_FALSE(runtimeInt->isValid());
 }

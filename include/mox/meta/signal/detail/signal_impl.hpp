@@ -30,7 +30,7 @@ std::enable_if_t<std::is_member_function_pointer_v<SlotFunction>, Signal::Connec
 Signal::connect(typename function_traits<SlotFunction>::object& receiver, SlotFunction method)
 {
     Callable slotCallable(method);
-    if (!slotCallable.isInvocableWith(m_signalType->getArguments()))
+    if (!slotCallable.isInvocableWith(getType()->getArguments()))
     {
         return nullptr;
     }
@@ -53,7 +53,7 @@ std::enable_if_t<!std::is_base_of_v<Signal, Function>, Signal::ConnectionSharedP
 Signal::connect(const Function& slot)
 {
     Callable lambda(slot);
-    if (!lambda.isInvocableWith(m_signalType->getArguments()))
+    if (!lambda.isInvocableWith(getType()->getArguments()))
     {
         return nullptr;
     }
@@ -72,7 +72,7 @@ int Signal::operator()(Arguments... arguments)
 {
 #ifdef DEBUG
     auto signalArgs = VariantDescriptorContainer::getArgs<Arguments...>();
-    FATAL(m_signalType->getArguments() == signalArgs, "Signal arguments and signal type arguments mismatch")
+    FATAL(getType()->getArguments() == signalArgs, "Signal arguments and signal type arguments mismatch")
 #endif
     return activate(Callable::ArgumentPack(arguments...));
 }

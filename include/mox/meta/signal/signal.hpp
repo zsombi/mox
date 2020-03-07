@@ -20,6 +20,7 @@
 #define SIGNAL_HPP
 
 #include <mox/config/deftypes.hpp>
+#include <mox/config/pimpl.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 #include <mox/metatype.core/callable.hpp>
@@ -30,10 +31,6 @@ namespace mox
 {
 
 class SignalType;
-
-/******************************************************************************
- *
- */
 
 /// Signal defines the signals in your class, and holds the connections made against the
 /// signal. You can connect a signal to a method, a metamethod, a function, a functor or
@@ -49,11 +46,9 @@ class SignalType;
 /// When the object to which the signal belongs is destroyed, all the signal connections are
 /// also disconnected. All asynchronous connections are marked as invalid, so when scheduled,
 /// those will not get processed.
-class MOX_API Signal : public SharedLock
+class SignalStorage;
+class MOX_API Signal : public SharedLock<MetaBase>
 {
-    friend class SignalType;
-    friend class Property;
-
 public:
     class Connection;
     /// The connection type.
@@ -107,24 +102,30 @@ public:
 
         /// Internal disconnect method, to disconnect a connection specific receiver.
         /// \return If the connection's receiver matches the one passed as argument,
-        /// return tru, otherwise false.
+        /// return true, otherwise false.
         virtual bool disconnect(Variant receiver, const Callable& callable) = 0;
 
         /// The signal the connection is attached to.
         Signal* m_signal = nullptr;
 
         friend class Signal;
+        friend class SignalStorage;
         friend class DeferredSignalEvent;
     };
 
+    /// Constructs the signal.
+    Signal(MetaBase& owner, const SignalType& signalType);
+
+    /// Destructor.
+    ~Signal();
+
     /// Returns the signal type.
     /// \return The signal type.
-    SignalType* getType();
     const SignalType* getType() const;
 
     /// Activates the connections of the signal by invoking the slots from each connection passing
     /// the \a arguments to the slots. Connections created during the activation are not invoked
-    /// in the same activation cicle.
+    /// in the same activation cycle.
     /// \param arguments The arguments to pass to the slots, being the arguments passed to the signal.
     /// \return The number of connections activated.
     int activate(const Callable::ArgumentPack& arguments);
@@ -171,23 +172,12 @@ public:
     std::enable_if_t<!std::is_base_of_v<Signal, Function>, bool>
     disconnect(const Function& slot);
 
-    /// Destructor.
-    ~Signal();
-
-    bool isBlocked() const
-    {
-        return m_blocked;
-    }
-    void setBlocked(bool blocked)
-    {
-        m_blocked = blocked;
-    }
-
-    template <class SignalHost>
-    Signal(SignalHost& host, SignalType& type)
-        : Signal(static_cast<ObjectLock&>(host), type)
-    {
-    }
+    /// Returns the blocked state of a signal.
+    /// \return If the signal is blocked, returns \e true, otherwise \e false.
+    bool isBlocked() const;
+    /// Sets the blocked state of a signal.
+    /// \param blocked Pass \e true to block the signal, \e false to unblock it.
+    void setBlocked(bool blocked);
 
     /// Signal emitter. Packs the \a arguments into a Callable::ArgumentPack pack and activates
     /// the signal connections.
@@ -200,8 +190,6 @@ protected:
     Signal() = delete;
     DISABLE_COPY(Signal)
 
-    /// Construct the
-    explicit Signal(ObjectLock& owner, SignalType& signalType);
 
     /// Adds a \a connection to the signal.
     void addConnection(ConnectionSharedPtr connection);
@@ -216,18 +204,8 @@ protected:
     /// Disconnects a connection that holds a \a receiver and \a callableAddress.
     bool disconnectImpl(Variant receiver, const Callable& callable);
 
-
-    /// The collection of active connections.
-    using ConnectionContainer = SharedVector<ConnectionSharedPtr>;
-    ConnectionContainer m_connections;
-    /// The signal type.
-    SignalType* m_signalType = nullptr;
-    /// The signal owner.
-    ObjectLock* m_owner = nullptr;
-    /// Triggering flag. Locks the signal from recursive triggering.
-    bool m_triggering = false;
-    /// The signal activation is blocked.
-    bool m_blocked = false;
+    DECLARE_PRIVATE(SignalStorage)
+    pimpl::d_ptr_type<SignalStorage> d_ptr;
 };
 
 class MOX_API SignalBlocker

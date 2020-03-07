@@ -35,7 +35,7 @@ class PropertyBindingPrivate;
 /// Use BindingGroup to enable two-way binding.
 class MOX_API PropertyBinding : public Binding
 {
-    DECLARE_PRIVATE(PropertyBinding)
+    DECLARE_PRIVATE(PropertyBindingPrivate)
 
 public:
     /// Creates a property binding with a source. You must attach the binding to a target to evaluate.
@@ -52,13 +52,13 @@ public:
     /// \return The binding handler, nullptr if \a target or both \a target and \a source are read-only.
     static PropertyBindingSharedPtr bindPermanent(Property& target, Property& source);
 
-    /// Creates an auto-discarding binding between a \a target and \a source property, and attaches the binding
-    /// to the \a target. The binding is discarded when write operation occurs on \a target.
+    /// Creates an auto-detaching binding between a \a target and \a source property, and attaches the binding
+    /// to the \a target. The binding is detached when write operation occurs on \a target.
     /// \param target The target property.
     /// \param source The source property.
     /// \return The binding handler, nullptr if \a target or both \a target and \a source are read-only. The
     /// binding is added to the target.
-    static PropertyBindingSharedPtr bindAutoDiscard(Property& target, Property& source);
+    static PropertyBindingSharedPtr bind(Property& target, Property& source);
 
 protected:
     /// Constructor.

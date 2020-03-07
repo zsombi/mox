@@ -21,6 +21,7 @@
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/event_handling/event_handling_declarations.hpp>
+#include <mox/meta/metabase/metabase.hpp>
 
 #include <functional>
 #include <queue>
@@ -36,7 +37,7 @@ struct MOX_API EventQueueComparator
 using EventQueueBase = std::priority_queue<EventPtr, std::vector<EventPtr>, EventQueueComparator>;
 
 /// EventQueue implements the prioritized queueing of events to handle.
-class MOX_API EventQueue : protected EventQueueBase, public mox::ObjectLock
+class MOX_API EventQueue : protected EventQueueBase, public mox::MetaBase
 {
 public:
     /// Constructor.

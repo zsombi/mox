@@ -26,7 +26,7 @@
 
 using namespace mox;
 
-class TestEmitterNoMetaClass : public ObjectLock
+class TestEmitterNoMetaClass : public MetaBase
 {
 public:
     explicit TestEmitterNoMetaClass() = default;
@@ -38,7 +38,7 @@ public:
     Signal intSig{*this, IntSignalType};
 };
 
-class TestEmitterWithMetaClass : public ObjectLock
+class TestEmitterWithMetaClass : public MetaBase
 {
 public:
     explicit TestEmitterWithMetaClass() = default;
@@ -82,7 +82,7 @@ public:
     };
 };
 
-class  SlotHolder : public ObjectLock
+class  SlotHolder : public MetaBase
 {
     int slot1Call = 0;
     int slot2Call = 0;
@@ -222,8 +222,8 @@ TEST_F(SignalTest, test_signal_without_metaclass)
     EXPECT_EQ(0, test.voidSig());
     EXPECT_EQ(0, test.intSig(10));
 
-    EXPECT_EQ(0, TestEmitterNoMetaClass::VoidSignalType.activate(test, Callable::ArgumentPack()));
-    EXPECT_EQ(0, TestEmitterNoMetaClass::IntSignalType.activate(test, Callable::ArgumentPack(100)));
+    EXPECT_EQ(0, test.activateSignal(TestEmitterNoMetaClass::VoidSignalType));
+    EXPECT_EQ(0, test.activateSignal(TestEmitterNoMetaClass::IntSignalType, Callable::ArgumentPack(100)));
 }
 
 TEST_F(SignalTest, test_signal_with_metaclass)
@@ -231,11 +231,11 @@ TEST_F(SignalTest, test_signal_with_metaclass)
     TestEmitterWithMetaClass test;
 
     EXPECT_EQ(0, test.voidSig());
-    EXPECT_EQ(0, TestEmitterWithMetaClass::StaticMetaClass::VoidSignalType.activate(test, Callable::ArgumentPack()));
+    EXPECT_EQ(0, test.activateSignal(TestEmitterWithMetaClass::StaticMetaClass::VoidSignalType));
 
     auto param = "alpha"sv;
     EXPECT_EQ(0, test.string(param));
-    EXPECT_EQ(0, TestEmitterWithMetaClass::StringSignalType.activate(test, Callable::ArgumentPack(param)));
+    EXPECT_EQ(0, test.activateSignal(TestEmitterWithMetaClass::StringSignalType, Callable::ArgumentPack(param)));
 }
 
 

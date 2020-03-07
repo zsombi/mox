@@ -44,7 +44,7 @@ TEST(MetaDataEnum, test_find_user_metatypes)
 {
     std::array<std::string, 8> typeNames = {
         "mox::Object"s, "mox::Object*"s, "mox::MetaObject"s, "mox::MetaObject*"s,
-        "mox::ObjectLock"s, "mox::ObjectLock*"s, "mox::ThreadLoop"s, "mox::ThreadLoop*"s,
+        "mox::MetaBase"s, "mox::MetaBase*"s, "mox::ThreadLoop"s, "mox::ThreadLoop*"s,
     };
     for (auto name : typeNames)
     {

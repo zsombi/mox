@@ -27,30 +27,30 @@
 namespace mox
 {
 
-class PropertyPrivate
+class PropertyStorage
 {
-    using SubscriberCollection = std::unordered_set<BindingSharedPtr>;
-    using BindingCollection = std::vector<BindingSharedPtr>;
-
-    /// The bindings subscribed for the property changes.
-    SubscriberCollection bindingSubscribers;
-    /// The list of bindings.
-    BindingCollection bindings;
-    /// The p-object.
-    Property* p_ptr;
-    /// The property data.
-    AbstractPropertyData& dataProvider;
-    /// The type of the property.
-    PropertyType* type = nullptr;
-    /// The host object of the property.
-    ObjectLock* host = nullptr;
-
 public:
-    DECLARE_PUBLIC(Property)
+    DECLARE_PUBLIC(Property, PropertyStorage)
+    explicit PropertyStorage(Property& property, MetaBase& host, const PropertyType& type, PropertyDataProvider& dataProvider);
+    virtual ~PropertyStorage();
 
-    /// Constructor.
-    explicit PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, ObjectLock& host);
-    ~PropertyPrivate();
+    /// Clears and desproys the property storage,. Called from the Property destructor.
+    void destroy();
+
+    // Non thread-safe.
+    inline const PropertyType& getType() const
+    {
+        return type;
+    }
+    inline const MetaBase* getHost() const
+    {
+        return &host;
+    }
+    inline Property* getProperty() const
+    {
+        return p_ptr;
+    }
+    BindingSharedPtr getTopBinding();
 
     /// Thread-safe functions.
     /// Thread-safe. Adds a binding to the property. Called by Binding::attach().
@@ -59,6 +59,7 @@ public:
     /// the next binding in the binding stack is activated.
     /// \param binding The binding to remove.
     void removeBinding(Binding& binding);
+    void detachNonPermanentBindings();
     /// Tries to activate the binding on head.
     void tryActivateHeadBinding();
     /// Activates a binding by moving the binding to the top of the list.
@@ -69,20 +70,29 @@ public:
     void unsubscribe(BindingSharedPtr binding);
 
     /// Non thread-safe.
+    /// Informs the property being accessed.
+    void notifyAccessed();
     Variant fetchDataUnsafe() const;
-    inline const ObjectLock* getHost() const
-    {
-        return host;
-    }
+    /// Non thread-safe functions.
+    void resetToDefault();
 
-private:
+protected:
+    using SubscriberCollection = std::unordered_set<BindingSharedPtr>;
+    using BindingCollection = std::vector<BindingSharedPtr>;
+
+    /// The bindings subscribed for the property changes.
+    SubscriberCollection bindingSubscribers;
+    /// The list of bindings.
+    BindingCollection bindings;
+
+    Property* p_ptr = nullptr;
+    const PropertyType& type;
+    MetaBase& host;
+    PropertyDataProvider& dataProvider;
+
     /// Clears the bindings.
     void clearBindings();
 
-    /// Non thread-safe functions.
-    void resetToDefault();
-    /// Informs the property being accessed.
-    void notifyAccessed();
     /// Notifies the subscribers about the property value change.
     void notifyChanges();
 };

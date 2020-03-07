@@ -20,8 +20,8 @@
 #define SIGNAL_TYPE_HPP
 
 #include <mox/utils/globals.hpp>
-#include <mox/utils/locks.hpp>
 #include <mox/utils/containers/flat_map.hpp>
+#include <mox/meta/metabase/metabase.hpp>
 #include <mox/metatype.core/callable.hpp>
 
 namespace mox
@@ -29,42 +29,28 @@ namespace mox
 
 class Signal;
 
-/// SignalType declares the type of the signal. Holds the argument signatures (descriptors)
-/// of a signal type, and the instances of the signal.
+/// SignalType declares the type of a signal and holds the argument signatures (descriptors)
+/// of a signal type.
 ///
-/// You must declare the signal type before using signals in Mox. To declare the signal type
-/// put a static member in your class using SignalTypeDecl<> template.
+/// You must declare the signal type before using signals in Mox. You can declare signal types
+/// using SignalTypeDecl<> template class.
 ///
 /// To declare a signal which takes an \e int as argument:
 /// \code static inline SignalTypeDecl<int> IntSignalType.
 ///
 /// To declare a signal with no arguments:
 /// \code static inline SignalTypeDecl<> SimpleSignalType;
-class MOX_API SignalType : public ObjectLock
+///
+/// To declare a signal which takes an \e int and a \s std::string as argument:
+/// \code static inline SignalTypeDecl<int, std::string> IntAndStringSignalType.
+///
+/// \note: An object can have only one signal instance with a given argument type set. Define multiple
+/// signal types with similar arguments to have multiple signals with same arguments.
+class MOX_API SignalType
 {
 public:
     /// Destructor.
-    ~SignalType() = default;
-
-    Signal* getSignalForInstance(ObjectLock& instance) const;
-
-    /// Activates the signal on an instance.
-    /// \param sender The signal sender instance.
-    /// \param args The arguments to pass to the signal packed for metainvocation.
-    /// \return The activation count, the number of times the signal was activated.
-    /// If the signal is not activable with the arguments, or the sender has no
-    /// signal with this type, returns -1.
-    int activate(ObjectLock& sender, const Callable::ArgumentPack& args = Callable::ArgumentPack()) const;
-
-    template <class SenderObject, typename... Arguments>
-    int emit(SenderObject& sender, Arguments... args) const
-    {
-        if (!m_argumentDescriptors.isInvocableWith(VariantDescriptorContainer::getArgs<Arguments...>()))
-        {
-            return -1;
-        }
-        return activate(sender, Callable::ArgumentPack(args...));
-    }
+    virtual ~SignalType() = default;
 
     /// Checks if a signal type is compatible with the \a other. Two signal types
     /// are compatible if their arguments are compatible. Two argument sets are
@@ -79,23 +65,14 @@ public:
     /// \return The argument descriptors of the signal type.
     const VariantDescriptorContainer& getArguments() const;
 
-    /// Adds a signal instance to the signal type.
-    /// \param signal The signal instance to add.
-    void addSignalInstance(Signal& signal);
-
-    /// Removes a signal instance from the signal type.
-    /// \param signal The signal instance to remove.
-    void removeSignalInstance(Signal& signal);
-
 protected:
     /// Constructor.
     SignalType(VariantDescriptorContainer&& args);
 
-    using InstanceContainer = FlatMap<ObjectLock*, Signal*>;
-    /// The instances of the signal type.
-    InstanceContainer m_instances;
     /// Holds the argument descriptors of the signal type.
     VariantDescriptorContainer m_argumentDescriptors;
+
+    DISABLE_COPY_OR_MOVE(SignalType)
 };
 
 /// Signal type declarator template. Use this template to declare your signal types

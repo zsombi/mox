@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 bitWelder
+ * Copyright (C) 2017-2020 bitWelder
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -16,29 +16,29 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#ifndef METAOBJECT_HPP
-#define METAOBJECT_HPP
-
-#include <mox/metainfo/metaclass.hpp>
-#include <mox/utils/locks.hpp>
+#include <signal_p.hpp>
+#include <metabase_p.hpp>
 
 namespace mox
 {
 
-/// Base class for the classes that provide standalone type reflection.
-class MOX_API MetaObject : public MetaBase
+SignalStorage::SignalStorage(Signal& signal, MetaBase& host, const SignalType& type)
+    : host(host)
+    , type(type)
+    , p_ptr(&signal)
 {
-public:
-    /// Constructor.
-    explicit MetaObject();
-    /// Destructor.
-    virtual ~MetaObject();
+    MetaBasePrivate::get(host)->addSignal(*this);
+}
 
-    MetaInfo(MetaObject)
-    {
-    };
-};
+SignalStorage::~SignalStorage()
+{
+}
 
-} // namespace mox
+void SignalStorage::destroy()
+{
+    for_each(connections, [](Signal::ConnectionSharedPtr connection) { if (connection) connection->m_signal = nullptr; });
+    MetaBasePrivate::get(host)->removeSignal(this);
+    p_ptr->d_ptr.reset();
+}
 
-#endif // METAOBJECT_HPP
+} // mox

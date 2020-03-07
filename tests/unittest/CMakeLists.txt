@@ -33,12 +33,13 @@ set(SOURCES
     test_callables.cpp
     test_metamethod.cpp
     test_signal.cpp
+    test_property_type.cpp
+    test_properties.cpp
     test_object.cpp
     test_event.cpp
     test_event_queue.cpp
     test_event_handling.cpp
     test_threads.cpp
-    test_properties.cpp
     test_bindings.cpp
     )
 

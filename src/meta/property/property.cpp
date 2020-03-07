@@ -23,276 +23,92 @@
 #include <mox/binding/binding.hpp>
 
 #include <binding_p.hpp>
+#include <metabase_p.hpp>
 
 namespace mox
 {
 
-void AbstractPropertyData::updateData(const Variant& newValue)
+void PropertyDataProvider::update(const Variant& newValue)
 {
+    FATAL(m_property, "The property data provider is not attached to a property")
     m_property->updateData(newValue);
-}
-
-
-PropertyPrivate::PropertyPrivate(Property& p, AbstractPropertyData& data, PropertyType& type, ObjectLock& host)
-    : p_ptr(&p)
-    , dataProvider(data)
-    , type(&type)
-    , host(&host)
-{
-    dataProvider.m_property = this;
-}
-
-PropertyPrivate::~PropertyPrivate()
-{
-    TRACE("Private data for property discarded");
-}
-
-void PropertyPrivate::resetToDefault()
-{
-    // Detach all bindings, and restore the default value.
-    clearBindings();
-    updateData(type->getDefault());
-}
-
-void PropertyPrivate::notifyAccessed()
-{
-    P();
-    if (BindingScope::currentBinding && BindingScope::currentBinding->getTarget() != p)
-    {
-        bindingSubscribers.insert(BindingScope::currentBinding->shared_from_this());
-
-        auto currentBinding = BindingPrivate::get(*BindingScope::currentBinding);
-        currentBinding->addDependency(*p);
-    }
-}
-
-void PropertyPrivate::notifyChanges()
-{
-    auto copy = SubscriberCollection();
-    {
-        lock_guard lock(*p_func());
-        copy = bindingSubscribers;
-    }
-    for (auto subscriber : copy)
-    {
-        if (!subscriber->isEnabled())
-        {
-            continue;
-        }
-        subscriber->evaluateBinding();
-    }
-}
-
-void PropertyPrivate::unsubscribe(BindingSharedPtr binding)
-{
-    lock_guard lock(*p_func());
-    bindingSubscribers.erase(binding);
-}
-
-Variant PropertyPrivate::fetchDataUnsafe() const
-{
-    return dataProvider.getData();
-}
-
-void PropertyPrivate::clearBindings()
-{
-    P();
-
-    // Block property change signal activation.
-    SignalBlocker block(p->changed);
-    lock_guard lock(*p);
-    while (!bindings.empty())
-    {
-        ScopeRelock relock(*p);
-        bindings.front()->detach();
-    }
-}
-
-void PropertyPrivate::addBinding(BindingSharedPtr binding)
-{
-    lock_guard lock(*p_func());
-    if (!bindings.empty())
-    {
-        bindings.back()->setEnabled(false);
-    }
-
-    bindings.push_back(binding);
-}
-
-void PropertyPrivate::removeBinding(Binding& binding)
-{
-    lock_guard lock(*p_func());
-    erase(bindings, binding.shared_from_this());
-}
-
-void PropertyPrivate::tryActivateHeadBinding()
-{
-    auto binding = BindingSharedPtr();
-    {
-        lock_guard lock(*p_func());
-        if (bindings.empty())
-        {
-            return;
-        }
-        binding = bindings.back();
-    }
-    binding->setEnabled(true);
-}
-
-// Moves the binding to the front.
-void PropertyPrivate::activateBinding(Binding& binding)
-{
-    lock_guard lock(*p_func());
-    if (!bindings.empty() && bindings.back().get() == &binding)
-    {
-        return;
-    }
-    bindings.back()->setEnabled(false);
-
-    auto shBinding = binding.shared_from_this();
-    erase(bindings, shBinding);
-    bindings.push_back(shBinding);
-}
-
-void PropertyPrivate::updateData(const Variant& newValue)
-{
-    P();
-    {
-        lock_guard lock(*p);
-        if (newValue == dataProvider.getData())
-        {
-            return;
-        }
-        dataProvider.setData(newValue);
-    }
-
-    notifyChanges();
-
-    p->changed.activate(Callable::ArgumentPack(newValue));
 }
 
 /******************************************************************************
  * Property - public API
  */
-
-Property::Property(ObjectLock& host, PropertyType& type, AbstractPropertyData& data)
+Property::Property(MetaBase& host, const PropertyType& type, PropertyDataProvider& data)
     : SharedLock(host)
-    , d_ptr(pimpl::make_d_ptr<PropertyPrivate>(*this, data, type, host))
-    , changed(host, type.getChangedSignalType())
+    , changed(host, type.ChangedSignalType)
+    , d_ptr(pimpl::make_d_ptr<PropertyStorage>(*this, host, type, data))
 {
-    D();
-    d->type->addPropertyInstance(*this);
-    data.initialize();
 }
 
 Property::~Property()
 {
-    D();
-
-    lock_guard lock(*this);
-    // First make it invalid. Remove the instance from the property type, and reset the host.
-    d->type->removePropertyInstance(*this);
-    d->type = nullptr;
-    d->host = nullptr;
-
+    if (d_ptr)
     {
-        ScopeRelock relock(*this);
-        d->clearBindings();
+        d_ptr->destroy();
     }
-
-    // Clear subscribers
-    while (!d->bindingSubscribers.empty())
-    {
-        auto subscriber = *d->bindingSubscribers.begin();
-        auto pSubscriber = BindingPrivate::get(*subscriber);
-        // The property is dying, so the binding subscribed to it shall too.
-        if (subscriber->isAttached())
-        {
-            ScopeRelock relock(*this);
-            subscriber->detach();
-        }
-        else
-        {
-            erase(d->bindings, subscriber);
-            {
-                ScopeRelock relock(*this);
-                pSubscriber->clearDependencies();
-            }
-        }
-        pSubscriber->invalidate();
-    }
-    d->bindingSubscribers.clear();
-    TRACE("Property died");
 }
 
 bool Property::isValid() const
 {
-    return d_ptr && d_func()->type != nullptr;
+    return d_ptr != nullptr;
 }
 
 bool Property::isReadOnly() const
 {
-    return d_ptr && (d_func()->type->getAccess() == PropertyAccess::ReadOnly);
+    return isValid() && (d_ptr->getType().getAccess() == PropertyAccess::ReadOnly);
 }
 
 Variant Property::get() const
 {
-    FATAL(isValid(), "Invalid property accessed")
+    throwIf<ExceptionType::InvalidProperty>(!isValid());
     lock_guard lock(const_cast<Property&>(*this));
-    D();
-    const_cast<PropertyPrivate*>(d)->notifyAccessed();
-    return d->fetchDataUnsafe();
+    const_cast<PropertyStorage*>(d_ptr.get())->notifyAccessed();
+    return d_ptr->fetchDataUnsafe();
 }
 
 void Property::set(const Variant& value)
 {
-    FATAL(isValid(), "Invalid property accessed")
+    throwIf<ExceptionType::InvalidProperty>(!isValid());
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
-    D();
 
     // Detach bindings that are not permanent.
-    {
-        // lock as we mangle property data
-        lock_guard lock(*this);
-        SignalBlocker block(changed);
-
-        auto copy = d->bindings;
-        for (auto it = copy.begin(); it != copy.end(); ++it)
-        {
-            auto binding = *it;
-            if (binding->isPermanent())
-            {
-                continue;
-            }
-
-            ScopeRelock relock(*this);
-            binding->detach();
-        }
-
-        // Mark the top binding as enabled, silently.
-        if (!d->bindings.empty() && d->bindings.back()->isAttached())
-        {
-            BindingPrivate::get(*d->bindings.back())->setEnabled(true);
-        }
-    }
+    d_ptr->detachNonPermanentBindings();
 
     // Set the value.
-    d->updateData(value);
+    d_ptr->updateData(value);
 }
 
 void Property::reset()
 {
-    FATAL(isValid(), "Invalid property accessed")
+    throwIf<ExceptionType::InvalidProperty>(!isValid());
     throwIf<ExceptionType::AttempWriteReadOnlyProperty>(isReadOnly());
-    d_func()->resetToDefault();
+    d_ptr->resetToDefault();
 }
 
 BindingSharedPtr Property::getCurrentBinding()
 {
-    FATAL(isValid(), "Invalid property accessed")
-    D();
+    throwIf<ExceptionType::InvalidProperty>(!isValid());
     lock_guard lock(*this);
-    return !d->bindings.empty() && d->bindings.back()->isEnabled() ? d->bindings.back() : nullptr;
+    return d_ptr->getTopBinding();
+}
+
+/******************************************************************************
+ * DynamicProperty
+ */
+DynamicProperty::DynamicProperty(MetaBase& host, const PropertyType& type)
+    : Property(host, type, *this)
+{
+}
+
+DynamicPropertyPtr DynamicProperty::create(MetaBase &host, const PropertyType &type)
+{
+    auto property = DynamicPropertyPtr(new DynamicProperty(host, type));
+    MetaBasePrivate::get(host)->addDynamicProperty(property);
+    return property;
 }
 
 }

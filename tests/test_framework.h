@@ -35,6 +35,20 @@ protected:
     void TearDown() override;
 };
 
+template <typename T>
+class UpdatingPropertyData : public mox::PropertyData<T>
+{
+public:
+    UpdatingPropertyData(T value)
+        : mox::PropertyData<T>(value)
+    {}
+
+    void update(T value)
+    {
+        mox::PropertyData<T>::update(mox::Variant(value));
+    }
+};
+
 class TestApp : public mox::Application
 {
 public:

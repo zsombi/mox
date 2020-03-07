@@ -55,6 +55,7 @@ void PropertyBinding::evaluate()
 
 PropertyBindingSharedPtr PropertyBinding::create(Property& source, bool permanent)
 {
+    throwIf<ExceptionType::InvalidProperty>(!source.isValid());
     auto binding = make_polymorphic_shared_ptr<Binding>(new PropertyBinding(source, permanent));
     binding->initialize();
     return binding;
@@ -66,13 +67,12 @@ PropertyBindingSharedPtr PropertyBinding::bindPermanent(Property &target, Proper
     {
         return nullptr;
     }
-
     auto binding = PropertyBinding::create(source, true);
     binding->attach(target);
     return binding;
 }
 
-PropertyBindingSharedPtr PropertyBinding::bindAutoDiscard(Property &target, Property &source)
+PropertyBindingSharedPtr PropertyBinding::bind(Property &target, Property &source)
 {
     if (target.isReadOnly())
     {

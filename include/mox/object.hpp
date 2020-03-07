@@ -47,7 +47,8 @@ public:
     /// The static metaclass of Object.
     MetaInfo(Object, MetaObject)
     {
-        static inline MetaProperty<Object, std::string, PropertyAccess::ReadWrite> ObjectNameProperty{"objectName", ""s};
+        static inline MetaSignal<Object, std::string> ObjectNameChangedSignalType{"objectNameChanged"};
+        static inline MetaProperty<Object, std::string, PropertyAccess::ReadWrite> ObjectNameProperty{ObjectNameChangedSignalType, "objectName", ""s};
     };
     Property objectName{*this, StaticMetaClass::ObjectNameProperty, objectNameValue};
 

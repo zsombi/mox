@@ -40,28 +40,28 @@ auto pimplGetPtrHelper(Ptr& ptr) -> decltype(ptr.operator->())
     return ptr.operator->();
 }
 
-#define DECLARE_GETTERS(Class) \
-    static Class##Private* get(Class& p) \
-    { \
-        return p.d_func(); \
-    } \
-    static const Class##Private* get(const Class& p) \
-    { \
-        return p.d_func(); \
+#define DECLARE_GETTERS(Class, PrivateClass)        \
+    static PrivateClass* get(Class& p)              \
+    {                                               \
+        return p.d_func();                          \
+    }                                               \
+    static const PrivateClass* get(const Class& p)  \
+    {                                               \
+        return p.d_func();                          \
     }
 
-#define DECLARE_PRIVATE(Class)                                                      \
-    inline Class##Private* d_func()                                                 \
+#define DECLARE_PRIVATE(PrivateClass)                                               \
+    inline PrivateClass* d_func()                                                   \
     {                                                                               \
-        return reinterpret_cast<Class##Private*>(pimplGetPtrHelper(d_ptr));         \
+        return reinterpret_cast<PrivateClass*>(pimplGetPtrHelper(d_ptr));           \
     }                                                                               \
-    inline const Class##Private* d_func() const                                     \
+    inline const PrivateClass* d_func() const                                       \
     {                                                                               \
-        return reinterpret_cast<const Class##Private*>(pimplGetPtrHelper(d_ptr));   \
+        return reinterpret_cast<const PrivateClass*>(pimplGetPtrHelper(d_ptr));     \
     }                                                                               \
-    friend class Class##Private;
+    friend class PrivateClass;
 
-#define DECLARE_PUBLIC(Class)                                                       \
+#define DECLARE_PUBLIC(Class, PrivateClass)                                         \
     inline Class* p_func()                                                          \
     {                                                                               \
         return static_cast<Class*>(p_ptr);                                          \
@@ -71,16 +71,12 @@ auto pimplGetPtrHelper(Ptr& ptr) -> decltype(ptr.operator->())
         return static_cast<const Class *>(p_ptr);                                   \
     }                                                                               \
     friend class Class;                                                             \
-    DECLARE_GETTERS(Class)
+    DECLARE_GETTERS(Class, PrivateClass)
 
 
-#define D_PTR(Class) \
-    auto const d = d_func()
 #define D() \
     auto const d = d_func()
 
-#define P_PTR(Class) \
-    auto const p = p_func()
 #define P() \
     auto const p = p_func()
 
@@ -104,10 +100,10 @@ inline d_ptr_type<T> make_d_ptr(Args&&... args)
 
 #define DECLARE_PRIVATE_PTR(Class)          \
     pimpl::d_ptr_type<Class##Private> d_ptr;\
-    DECLARE_PRIVATE(Class)                  \
+    DECLARE_PRIVATE(Class##Private)
 
-#define DECLARE_PUBLIC_PTR(Class)   \
-    Class* p_ptr = nullptr;         \
-    DECLARE_PUBLIC(Class)
+#define DECLARE_PUBLIC_PTR(Class)           \
+    Class* p_ptr = nullptr;                 \
+    DECLARE_PUBLIC(Class, Class##Private)
 
 #endif // PIMPL_HPP

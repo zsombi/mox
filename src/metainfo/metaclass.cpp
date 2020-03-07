@@ -68,8 +68,8 @@ std::string MetaClass::MetaSignalBase::signature() const
 /******************************************************************************
  * MetaClass::MetaPropertyType
  */
-MetaClass::MetaPropertyBase::MetaPropertyBase(MetaClass& hostClass, VariantDescriptor&& typeDes, PropertyAccess access, const Variant& defaultValue, std::string_view name)
-    : PropertyType(std::forward<VariantDescriptor>(typeDes), access, defaultValue)
+MetaClass::MetaPropertyBase::MetaPropertyBase(MetaClass& hostClass, VariantDescriptor&& typeDes, PropertyAccess access, const MetaSignalBase& signal, PropertyDataProviderInterface& defaultValue, std::string_view name)
+    : PropertyType(std::forward<VariantDescriptor>(typeDes), access, signal, defaultValue)
     , AbstractMetaInfo(name)
 {
     hostClass.addMetaProperty(*this);
@@ -242,7 +242,7 @@ const PropertyType* MetaClass::visitProperties(const PropertyVisitor& visitor) c
 /******************************************************************************
  * meta
  */
-Signal::ConnectionSharedPtr connect(Signal& signal, ObjectLock& receiver, const Callable& metaMethod)
+Signal::ConnectionSharedPtr connect(Signal& signal, MetaBase& receiver, const Callable& metaMethod)
 {
     Object* recv = dynamic_cast<Object*>(&receiver);
     if (recv)

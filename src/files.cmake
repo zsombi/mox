@@ -49,6 +49,8 @@ set(HEADERS
 
     # Meta-programming support
 
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/metabase/metabase.hpp
+
     # Signal handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/signal_type.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/signal.hpp
@@ -93,6 +95,7 @@ set(HEADERS
 
     # Private includes
     ${CMAKE_CURRENT_SOURCE_DIR}/include/metadata_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/metabase_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/property_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/binding_p.hpp    
     ${CMAKE_CURRENT_SOURCE_DIR}/include/signal_p.hpp
@@ -109,11 +112,14 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/callable.cpp
 
     # Signal
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/metabase/metabase.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/meta/signal/signal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/signal/signal_storage.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/meta/signal/signal_connections.cpp
 
     # Property handling
     ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property_storages.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property_type.cpp
 
     # Metainfo

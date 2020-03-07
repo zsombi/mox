@@ -81,7 +81,7 @@ class BindingPrivate;
 /// the binding. You can disable the feature by calling setEvaluateOnEnabled() method.
 class MOX_API Binding : public std::enable_shared_from_this<Binding>
 {
-    DECLARE_PRIVATE(Binding)
+    DECLARE_PRIVATE(BindingPrivate)
 
 public:
     /// Destructor.

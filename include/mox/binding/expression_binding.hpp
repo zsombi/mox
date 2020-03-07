@@ -50,11 +50,11 @@ public:
     /// \return The expression binding attached to the \a target.
     static ExpressionBindingSharedPtr bindPermanent(Property& target, ExpressionType&& expression);
 
-    /// Creates a detachable expression binding and attaches it to the \a target property.
+    /// Creates an auto-detaching expression binding and attaches it to the \a target property.
     /// \param target The target property.
     /// \param expression The binding expression.
     /// \return The expression binding attached to the \a target.
-    static ExpressionBindingSharedPtr bindAutoDetach(Property& target, ExpressionType&& expression);
+    static ExpressionBindingSharedPtr bind(Property& target, ExpressionType&& expression);
 
 protected:
     /// Constructor.

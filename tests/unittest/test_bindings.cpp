@@ -31,7 +31,8 @@ class WritablePropertyHolder
 {
     PropertyData<int> writableValue{0};
 public:
-    static inline PropertyTypeDecl<int, PropertyAccess::ReadWrite> WritablePropertyType{0};
+    static inline SignalTypeDecl<int> WritablePropertyChangedSignalType;
+    static inline PropertyTypeDecl<int, PropertyAccess::ReadWrite> WritablePropertyType = {WritablePropertyChangedSignalType};
     Property writable;
 
     explicit WritablePropertyHolder(LockableObject& lockable)
@@ -54,9 +55,10 @@ public:
 class ReadableTest : public Object
 {
 public:
-    PropertyData<int> vpReadable = 99;
+    UpdatingPropertyData<int> vpReadable = 99;
 
-    static inline PropertyTypeDecl<int, PropertyAccess::ReadOnly> ReadablePropertyType = 99;
+    static inline SignalTypeDecl<int> ReadablePropertyChangedSignalType;
+    static inline PropertyTypeDecl<int, PropertyAccess::ReadOnly> ReadablePropertyType = {ReadablePropertyChangedSignalType, 99};
     Property readable{*this, ReadablePropertyType, vpReadable};
 
     explicit ReadableTest() = default;
@@ -136,7 +138,7 @@ TEST_F(Bindings, test_bind_writable_properties)
     EXPECT_TRUE(binding1->isEnabled());
     EXPECT_TRUE(binding1->isPermanent());
 
-    auto binding2 = PropertyBinding::bindAutoDiscard(o2.writable, o1.writable);
+    auto binding2 = PropertyBinding::bind(o2.writable, o1.writable);
     EXPECT_NOT_NULL(binding2);
     EXPECT_EQ(&o2.writable, binding2->getTarget());
     EXPECT_EQ(binding2, o2.writable.getCurrentBinding());
@@ -168,7 +170,7 @@ TEST_F(Bindings, test_auto_discard_binding_detached_on_target_write)
     WritableTest o1;
     WritableTest o2;
 
-    auto binding = PropertyBinding::bindAutoDiscard(o1.writable, o2.writable);
+    auto binding = PropertyBinding::bind(o1.writable, o2.writable);
     EXPECT_NOT_NULL(binding);
     EXPECT_TRUE(binding->isAttached());
     EXPECT_FALSE(binding->isPermanent());
@@ -262,7 +264,7 @@ TEST_F(Bindings, test_disable_all_bindings)
     EXPECT_EQ(99, int(o1.writable));
 
     // update readable
-    o3.vpReadable.updateData(Variant(1000));
+    o3.vpReadable.update(1000);
     EXPECT_EQ(99, int(o1.writable));
 
     o2.writable = 1;
@@ -292,7 +294,7 @@ TEST_F(Bindings, test_one_way_property_binding)
     EXPECT_EQ(0, o2ChangeCount);
 
     // Update o2 property. This will change o1
-    o2.vpReadable.updateData(Variant(101));
+    o2.vpReadable.update(101);
     EXPECT_EQ(101, int(o1.writable));
     EXPECT_EQ(2, o1ChangeCount);
     EXPECT_EQ(1, o2ChangeCount);
@@ -313,7 +315,7 @@ TEST_F(Bindings, test_one_way_property_binding_removed_explicitly)
     EXPECT_FALSE(binding->isAttached());
 
     // Update o2 property. This will no longer change o1, as the binding is removed.
-    o2.vpReadable.updateData(Variant(101));
+    o2.vpReadable.update(101);
     EXPECT_EQ(99, int(o1.writable));
 }
 
@@ -386,7 +388,7 @@ TEST_F(Bindings, test_multiple_permanent_bindings_on_target)
 
     o1.writable = 10;
     o2.writable = 20;
-    o3.vpReadable.updateData(Variant(30));
+    o3.vpReadable.update(30);
 
     auto bo12 = PropertyBinding::bindPermanent(o1.writable, o2.writable);
     EXPECT_TRUE(bo12->isEnabled());
@@ -458,17 +460,17 @@ TEST_F(Bindings, test_group_bindings_explicitly)
     EXPECT_EQ(0u, group->getBindingCount());
 
     group->addBinding(*PropertyBinding::bindPermanent(o1.writable, o3.readable));
-    group->addBinding(*PropertyBinding::bindAutoDiscard(o1.writable, o2.writable));
+    group->addBinding(*PropertyBinding::bind(o1.writable, o2.writable));
 
     EXPECT_EQ(2u, group->getBindingCount());
-    auto b1 = (*group)[0];
+    auto b1 = group->at(0);
     EXPECT_NOT_NULL(b1);
     EXPECT_EQ(&o1.writable, b1->getTarget());
     EXPECT_TRUE(b1->isAttached());
     EXPECT_FALSE(b1->isEnabled());
     EXPECT_TRUE(b1->isPermanent());
 
-    auto b2 = (*group)[1];
+    auto b2 = group->at(1);
     EXPECT_NOT_NULL(b2);
     EXPECT_EQ(&o1.writable, b2->getTarget());
     EXPECT_TRUE(b2->isAttached());
@@ -488,30 +490,30 @@ TEST_F(Bindings, test_group_explicitly_created_with_mixed_property_binding_types
     EXPECT_EQ(0u, group->getBindingCount());
 
     group->addBinding(*PropertyBinding::bindPermanent(o1.writable, o3.readable));
-    group->addBinding(*PropertyBinding::bindAutoDiscard(o1.writable, o2.writable));
-    EXPECT_FALSE((*group)[0]->isEnabled());
-    EXPECT_TRUE((*group)[1]->isEnabled());
+    group->addBinding(*PropertyBinding::bind(o1.writable, o2.writable));
+    EXPECT_FALSE(group->at(0)->isEnabled());
+    EXPECT_TRUE(group->at(1)->isEnabled());
 
     // Enable b1, and write to the target. Write operation removes all discardable bindings from
     // the target. Both bindings on the target being grouped, the group removes the permanent binding too.
-    (*group)[0]->setEnabled(true);
-    EXPECT_TRUE((*group)[0]->isEnabled());
-    EXPECT_FALSE((*group)[1]->isEnabled());
+    group->at(0)->setEnabled(true);
+    EXPECT_TRUE(group->at(0)->isEnabled());
+    EXPECT_FALSE(group->at(1)->isEnabled());
 
     o1.writable = 1;
-    EXPECT_FALSE((*group)[0]->isAttached());
-    EXPECT_FALSE((*group)[1]->isAttached());
+    EXPECT_FALSE(group->at(0)->isAttached());
+    EXPECT_FALSE(group->at(1)->isAttached());
 }
 
 TEST_F(Bindings, test_empty_arguments)
 {
     auto group = BindingGroup::bindPermanent();
     EXPECT_NULL(group);
-    group = BindingGroup::bindAutoDiscard();
+    group = BindingGroup::bind();
     EXPECT_NULL(group);
     group = BindingGroup::bindPermanentCircular();
     EXPECT_NULL(group);
-    group = BindingGroup::bindAutoDiscardCircular();
+    group = BindingGroup::bindCircular();
     EXPECT_NULL(group);
 }
 
@@ -531,7 +533,7 @@ TEST_F(Bindings, test_binding_groups_with_one_readonly_property_auto_discard)
     WritableTest o2(1);
     WritableTest o3(2);
 
-    auto group = BindingGroup::bindAutoDiscard(o1.readable, o2.writable, o3.writable);
+    auto group = BindingGroup::bind(o1.readable, o2.writable, o3.writable);
     EXPECT_NOT_NULL(group);
 }
 
@@ -551,7 +553,7 @@ TEST_F(Bindings, test_binding_groups_with_one_readonly_property_auto_discard_cir
     WritableTest o2(1);
     WritableTest o3(2);
 
-    auto group = BindingGroup::bindAutoDiscardCircular(o1.readable, o2.writable, o3.writable);
+    auto group = BindingGroup::bindCircular(o1.readable, o2.writable, o3.writable);
     EXPECT_NOT_NULL(group);
 }
 
@@ -563,11 +565,11 @@ TEST_F(Bindings, test_binding_groups_with_two_readonly_property_fails)
 
     auto group = BindingGroup::bindPermanent(o1.readable, o2.readable, o3.writable);
     EXPECT_NULL(group);
-    group = BindingGroup::bindAutoDiscard(o1.readable, o2.readable, o3.writable);
+    group = BindingGroup::bind(o1.readable, o2.readable, o3.writable);
     EXPECT_NULL(group);
     group = BindingGroup::bindPermanentCircular(o1.readable, o2.readable, o3.writable);
     EXPECT_NULL(group);
-    group = BindingGroup::bindAutoDiscardCircular(o1.readable, o2.readable, o3.writable);
+    group = BindingGroup::bindCircular(o1.readable, o2.readable, o3.writable);
     EXPECT_NULL(group);
 }
 
@@ -581,8 +583,8 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_permanent)
     EXPECT_NOT_NULL(group);
 
     EXPECT_EQ(2u, group->getBindingCount());
-    EXPECT_EQ(&o2.writable, (*group)[0]->getTarget());
-    EXPECT_EQ(&o1.writable, (*group)[1]->getTarget());
+    EXPECT_EQ(&o2.writable, group->at(0)->getTarget());
+    EXPECT_EQ(&o1.writable, group->at(1)->getTarget());
 
     // Write to o3 updates all, but writes to o2 updates o1 only, and o1 write does not update any.
     o3.writable = 100;
@@ -608,9 +610,9 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_permanent_circular
     EXPECT_NOT_NULL(group);
 
     EXPECT_EQ(3u, group->getBindingCount());
-    EXPECT_EQ(&o2.writable, (*group)[0]->getTarget());
-    EXPECT_EQ(&o1.writable, (*group)[1]->getTarget());
-    EXPECT_EQ(&o3.writable, (*group)[2]->getTarget());
+    EXPECT_EQ(&o2.writable, group->at(0)->getTarget());
+    EXPECT_EQ(&o1.writable, group->at(1)->getTarget());
+    EXPECT_EQ(&o3.writable, group->at(2)->getTarget());
 
     // Writes to any property updates all.
     o1.writable = 100;
@@ -630,12 +632,12 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_auto_discard)
     WritableTest o2(1);
     WritableTest o3(2);
 
-    auto group = BindingGroup::bindAutoDiscard(o1.writable, o2.writable, o3.writable);
+    auto group = BindingGroup::bind(o1.writable, o2.writable, o3.writable);
     EXPECT_NOT_NULL(group);
 
     EXPECT_EQ(2u, group->getBindingCount());
-    EXPECT_EQ(&o2.writable, (*group)[0]->getTarget());
-    EXPECT_EQ(&o1.writable, (*group)[1]->getTarget());
+    EXPECT_EQ(&o2.writable, group->at(0)->getTarget());
+    EXPECT_EQ(&o1.writable, group->at(1)->getTarget());
 
     // Write on any property detaches all the bindings
     o2.writable = 100;
@@ -644,8 +646,8 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_auto_discard)
     EXPECT_EQ(2, int(o3.writable));
 
     EXPECT_EQ(2u, group->getBindingCount());
-    EXPECT_FALSE((*group)[0]->isAttached());
-    EXPECT_FALSE((*group)[1]->isAttached());
+    EXPECT_FALSE(group->at(0)->isAttached());
+    EXPECT_FALSE(group->at(1)->isAttached());
 }
 
 TEST_F(Bindings, test_binding_groups_with_writable_properties_auto_discard_circular)
@@ -654,13 +656,13 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_auto_discard_circu
     WritableTest o2(1);
     WritableTest o3(2);
 
-    auto group = BindingGroup::bindAutoDiscardCircular(o1.writable, o2.writable, o3.writable);
+    auto group = BindingGroup::bindCircular(o1.writable, o2.writable, o3.writable);
     EXPECT_NOT_NULL(group);
 
     EXPECT_EQ(3u, group->getBindingCount());
-    EXPECT_EQ(&o2.writable, (*group)[0]->getTarget());
-    EXPECT_EQ(&o1.writable, (*group)[1]->getTarget());
-    EXPECT_EQ(&o3.writable, (*group)[2]->getTarget());
+    EXPECT_EQ(&o2.writable, group->at(0)->getTarget());
+    EXPECT_EQ(&o1.writable, group->at(1)->getTarget());
+    EXPECT_EQ(&o3.writable, group->at(2)->getTarget());
 
     // Write on any property detaches all the bindings
     o2.writable = 100;
@@ -669,9 +671,9 @@ TEST_F(Bindings, test_binding_groups_with_writable_properties_auto_discard_circu
     EXPECT_EQ(2, int(o3.writable));
 
     EXPECT_EQ(3u, group->getBindingCount());
-    EXPECT_FALSE((*group)[0]->isAttached());
-    EXPECT_FALSE((*group)[1]->isAttached());
-    EXPECT_FALSE((*group)[2]->isAttached());
+    EXPECT_FALSE(group->at(0)->isAttached());
+    EXPECT_FALSE(group->at(1)->isAttached());
+    EXPECT_FALSE(group->at(2)->isAttached());
 }
 
 
@@ -796,7 +798,7 @@ TEST_F(Bindings, test_expression_binding_conditional_with_multiple_properties)
     EXPECT_EQ(3, int(o1.writable));
 
     // update o4 to divide by 2. this makes o1 to get o2.
-    o4.vpReadable.updateData(Variant(2));
+    o4.vpReadable.update(2);
     EXPECT_EQ(2, int(o1.writable));
 }
 
@@ -1224,4 +1226,245 @@ TEST_F(Bindings, test_expression_binding_between_threads)
     // The binding is no longer valid, nor attached.
     EXPECT_FALSE(binding->isValid());
     EXPECT_FALSE(binding->isAttached());
+}
+
+static SignalTypeDecl<int> RuntimeChangedSignalType;
+static PropertyTypeDecl<int, PropertyAccess::ReadWrite> RuntimePropertyType = {RuntimeChangedSignalType};
+
+TEST_F(Bindings, test_property_binding_with_runtime_property)
+{
+    WritableTest target;
+    MetaBase source;
+
+    auto runtime = source.setProperty(RuntimePropertyType, 12);
+    auto binding = PropertyBinding::bindPermanent(target.writable, *runtime);
+    EXPECT_NOT_NULL(binding);
+    EXPECT_EQ(12, int(target.writable));
+
+    *runtime = 100;
+    EXPECT_EQ(100, int(target.writable));
+}
+
+TEST_F(Bindings, test_expression_binding_with_runtime_property)
+{
+    WritableTest target;
+    MetaBase source;
+
+    auto runtime = source.setProperty(RuntimePropertyType, 12);
+    auto binding = ExpressionBinding::bindPermanent(target.writable, [runtime]() { return Variant(int(*runtime) * 10); });
+    EXPECT_NOT_NULL(binding);
+    EXPECT_EQ(120, int(target.writable));
+
+    *runtime = 100;
+    EXPECT_EQ(1000, int(target.writable));
+}
+
+TEST_F(Bindings, test_property_binding_to_runtime_property)
+{
+    WritableTest source;
+    MetaBase target;
+
+    auto runtime = target.setProperty(RuntimePropertyType, 12);
+    auto binding = PropertyBinding::bindPermanent(*runtime, source.writable);
+    EXPECT_NOT_NULL(binding);
+    EXPECT_EQ(0, int(*runtime));
+
+    source.writable = 100;
+    EXPECT_EQ(100, int(*runtime));
+}
+
+TEST_F(Bindings, test_expression_binding_to_runtime_property)
+{
+    WritableTest source;
+    MetaBase target;
+
+    auto runtime = target.setProperty(RuntimePropertyType, 12);
+    auto binding = ExpressionBinding::bindPermanent(*runtime, [&source]() { return Variant(int(source.writable) * 10); });
+    EXPECT_NOT_NULL(binding);
+    EXPECT_EQ(0, int(*runtime));
+
+    source.writable = 100;
+    EXPECT_EQ(1000, int(*runtime));
+}
+
+TEST_F(Bindings, test_binding_detaches_when_target_is_deleted)
+{
+    auto target = std::make_shared<MetaBase>();
+    WritableTest source(100);
+
+    auto runtime = target->setProperty(RuntimePropertyType, 12);
+    EXPECT_EQ(12, int(*runtime));
+
+    auto binding = PropertyBinding::bindPermanent(*runtime, source.writable);
+    EXPECT_NOT_NULL(binding);
+    EXPECT_EQ(100, int(*runtime));
+
+    target.reset();
+    EXPECT_EQ(BindingState::Detached, binding->getState());
+}
+
+TEST_F(Bindings, test_binding_invalid_when_source_is_deleted)
+{
+    auto source = std::make_shared<MetaBase>();
+    WritableTest target;
+
+    auto runtime = source->setProperty(RuntimePropertyType, 12);
+    EXPECT_EQ(12, int(*runtime));
+
+    auto binding = PropertyBinding::bindPermanent(target.writable, *runtime);
+    EXPECT_NOT_NULL(binding);
+    EXPECT_EQ(12, int(target.writable));
+
+    source.reset();
+    EXPECT_EQ(BindingState::Invalid, binding->getState());
+}
+
+TEST_F(Bindings, test_bind_to_invalid_runtime_property)
+{
+    auto target = std::make_shared<MetaBase>();
+    auto p = target->setProperty(RuntimePropertyType, 12);
+    DynamicPropertyPtr runtime = dynamic_cast<DynamicProperty*>(p)->shared_from_this();
+    target.reset();
+
+    WritableTest source;
+    EXPECT_THROW(PropertyBinding::bindPermanent(*runtime, source.writable), Exception);
+}
+
+TEST_F(Bindings, test_bind_with_invalid_runtime_property)
+{
+    auto source = std::make_shared<MetaBase>();
+    auto p = source->setProperty(RuntimePropertyType, 12);
+    DynamicPropertyPtr runtime = dynamic_cast<DynamicProperty*>(p)->shared_from_this();
+    source.reset();
+
+    WritableTest target;
+    EXPECT_THROW(PropertyBinding::bindPermanent(target.writable, *runtime), Exception);
+}
+
+TEST_F(Bindings, test_bind_autodiscard_to_invalid_runtime_property)
+{
+    auto target = std::make_shared<MetaBase>();
+    auto p = target->setProperty(RuntimePropertyType, 12);
+    DynamicPropertyPtr runtime = dynamic_cast<DynamicProperty*>(p)->shared_from_this();
+    target.reset();
+
+    WritableTest source;
+    EXPECT_THROW(PropertyBinding::bind(*runtime, source.writable), Exception);
+}
+
+TEST_F(Bindings, test_bind_autodiscard_with_invalid_runtime_property)
+{
+    auto source = std::make_shared<MetaBase>();
+    auto p = source->setProperty(RuntimePropertyType, 12);
+    DynamicPropertyPtr runtime = dynamic_cast<DynamicProperty*>(p)->shared_from_this();
+    source.reset();
+
+    WritableTest target;
+    EXPECT_THROW(PropertyBinding::bind(target.writable, *runtime), Exception);
+}
+
+TEST_F(Bindings, test_bind_expression_to_invalid_runtime_property)
+{
+    auto target = std::make_shared<MetaBase>();
+    auto p = target->setProperty(RuntimePropertyType, 12);
+    DynamicPropertyPtr runtime = dynamic_cast<DynamicProperty*>(p)->shared_from_this();
+    target.reset();
+
+    WritableTest source;
+    auto expression = [&source]() { return source.writable.get(); };
+    EXPECT_THROW(ExpressionBinding::bindPermanent(*runtime, expression), Exception);
+}
+
+TEST_F(Bindings, test_bind_autodiscard_expression_to_invalid_runtime_property)
+{
+    auto target = std::make_shared<MetaBase>();
+    auto p = target->setProperty(RuntimePropertyType, 12);
+    DynamicPropertyPtr runtime = dynamic_cast<DynamicProperty*>(p)->shared_from_this();
+    target.reset();
+
+    WritableTest source;
+    auto expression = [&source]() { return source.writable.get(); };
+    EXPECT_THROW(ExpressionBinding::bind(*runtime, expression), Exception);
+}
+
+TEST_F(Bindings, test_bind_expression_with_invalid_runtime_property)
+{
+    auto source = std::make_shared<MetaBase>();
+    auto p = source->setProperty(RuntimePropertyType, 12);
+    DynamicPropertyPtr runtime = dynamic_cast<DynamicProperty*>(p)->shared_from_this();
+    source.reset();
+
+    WritableTest target;
+    auto expression = [&runtime]() { return runtime->get(); };
+    EXPECT_THROW(ExpressionBinding::bindPermanent(target.writable, expression), Exception);
+}
+
+TEST_F(Bindings, test_bind_autodetaching_expression_with_invalid_runtime_property)
+{
+    auto source = std::make_shared<MetaBase>();
+    auto p = source->setProperty(RuntimePropertyType, 12);
+    DynamicPropertyPtr runtime = dynamic_cast<DynamicProperty*>(p)->shared_from_this();
+    source.reset();
+
+    WritableTest target;
+    auto expression = [&runtime]() { return runtime->get(); };
+    EXPECT_THROW(ExpressionBinding::bind(target.writable, expression), Exception);
+}
+
+TEST_F(Bindings, test_delete_runtime_property_host_in_permanent_binding_group)
+{
+    auto target = std::make_shared<MetaBase>();
+    auto runtime = target->setProperty(RuntimePropertyType, 10);
+    WritableTest source(20);
+    auto group = BindingGroup::bindPermanent(*runtime, source.writable);
+    EXPECT_NOT_NULL(group);
+    EXPECT_EQ(1u, group->getBindingCount());
+
+    target.reset();
+    EXPECT_FALSE(group->isEmpty());
+    EXPECT_EQ(BindingState::Detached, group->at(0u)->getState());
+}
+
+TEST_F(Bindings, test_delete_runtime_property_host_in_autodetach_binding_group)
+{
+    auto target = std::make_shared<MetaBase>();
+    auto runtime = target->setProperty(RuntimePropertyType, 10);
+    WritableTest source(20);
+    auto group = BindingGroup::bind(*runtime, source.writable);
+    EXPECT_NOT_NULL(group);
+    EXPECT_EQ(1u, group->getBindingCount());
+
+    target.reset();
+    EXPECT_FALSE(group->isEmpty());
+    EXPECT_EQ(BindingState::Detached, group->at(0u)->getState());
+}
+
+TEST_F(Bindings, test_delete_runtime_property_host_in_permanent_cyclic_binding_group)
+{
+    auto target = std::make_shared<MetaBase>();
+    auto runtime = target->setProperty(RuntimePropertyType, 10);
+    WritableTest source(20);
+    auto group = BindingGroup::bindPermanentCircular(*runtime, source.writable);
+    EXPECT_NOT_NULL(group);
+    EXPECT_EQ(2u, group->getBindingCount());
+
+    target.reset();
+    EXPECT_FALSE(group->isEmpty());
+    EXPECT_EQ(BindingState::Detached, group->at(0u)->getState());
+    EXPECT_EQ(BindingState::Detached, group->at(1u)->getState());
+}
+
+TEST_F(Bindings, test_delete_runtime_property_host_in_autodetach_cyclic_binding_group)
+{
+    auto target = std::make_shared<MetaBase>();
+    auto runtime = target->setProperty(RuntimePropertyType, 10);
+    WritableTest source(20);
+    auto group = BindingGroup::bindCircular(*runtime, source.writable);
+    EXPECT_NOT_NULL(group);
+    EXPECT_EQ(2u, group->getBindingCount());
+
+    target.reset();
+    EXPECT_FALSE(group->isEmpty());
+    EXPECT_EQ(BindingState::Detached, group->at(0u)->getState());
+    EXPECT_EQ(BindingState::Detached, group->at(1u)->getState());
 }

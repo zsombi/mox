@@ -34,7 +34,7 @@ namespace mox
 class BindingPrivate : public RefCounted<size_t>
 {
 public:
-    DECLARE_PUBLIC(Binding)
+    DECLARE_PUBLIC(Binding, BindingPrivate)
 
     using Base = RefCounted<size_t>;
 
@@ -73,7 +73,7 @@ protected:
 class PropertyBindingPrivate : public BindingPrivate
 {
 public:
-    DECLARE_PUBLIC(PropertyBinding)
+    DECLARE_PUBLIC(PropertyBinding, PropertyBindingPrivate)
 
     explicit PropertyBindingPrivate(PropertyBinding* pp, Property& source, bool permanent);
 

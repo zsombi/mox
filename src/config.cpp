@@ -43,6 +43,8 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "Tye RTTI has no metatype registered";
         case ExceptionType::BadTypeConversion:
             return "No converter or faulty metatype conversion.";
+        case ExceptionType::InvalidProperty:
+            return "Accessing invalid property.";
         case ExceptionType::AttempWriteReadOnlyProperty:
             return "Attempt writing a read-only property";
         case ExceptionType::BindingNotAttached:

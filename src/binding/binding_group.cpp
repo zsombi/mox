@@ -84,7 +84,7 @@ size_t BindingGroup::getBindingCount() const
     return m_bindings.size();
 }
 
-BindingSharedPtr BindingGroup::operator[](size_t index)
+BindingSharedPtr BindingGroup::at(size_t index)
 {
     return m_bindings[index];
 }

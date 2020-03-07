@@ -64,7 +64,7 @@ public:
     size_t getBindingCount() const;
 
     /// Returns the binding at \a index. The method asserts if the group is empty.
-    BindingSharedPtr operator[](size_t index);
+    BindingSharedPtr at(size_t index);
 
     /// \name Binding loop normalization
     /// \{
@@ -105,9 +105,9 @@ public:
     }
 
     /// Creates a binding group by adding property bindings built from the \a properties. The bindings
-    /// created between the properties are discardable.
+    /// created between the properties are auto-detachable.
     template <typename... TProperty>
-    static BindingGroupSharedPtr bindAutoDiscard(TProperty&... properties)
+    static BindingGroupSharedPtr bind(TProperty&... properties)
     {
         std::array<Property*, sizeof...(TProperty)> propArray = {{&properties...}};
         return bindProperties({propArray.begin(), propArray.end()}, false, false);
@@ -125,7 +125,7 @@ public:
     /// Creates a binding group by adding property bindings built from the \a properties. The bindings
     /// created between the properties are discardable, and circular.
     template <typename... TProperty>
-    static BindingGroupSharedPtr bindAutoDiscardCircular(TProperty&... properties)
+    static BindingGroupSharedPtr bindCircular(TProperty&... properties)
     {
         std::array<Property*, sizeof...(TProperty)> propArray = {{&properties...}};
         return bindProperties({propArray.begin(), propArray.end()}, false, true);

@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2017-2019 bitWelder
+ * Copyright (C) 2017-2020 bitWelder
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU Lesser General Public License as published by
@@ -25,39 +25,66 @@
 namespace mox
 {
 
-class PropertyPrivate;
+class PropertyStorage;
 
-/// Abstract property data storage.
-class MOX_API AbstractPropertyData
+/// Declares the interface for the property data providers. These data providers serve the default value for
+/// the property types and the value for the properties.
+class MOX_API PropertyDataProviderInterface
 {
 public:
     /// Destructor.
-    virtual ~AbstractPropertyData() = default;
+    virtual ~PropertyDataProviderInterface() = default;
+    /// Data getter.
+    virtual Variant getData() const = 0;
+    /// Data setter.
+    virtual void setData(const Variant& value) = 0;
+};
+
+/// Property data provider.
+class MOX_API PropertyDataProvider : public PropertyDataProviderInterface
+{
+    friend class PropertyStorage;
+    PropertyStorage* m_property = nullptr;
+
+protected:
+    /// Constructor.
+    explicit PropertyDataProvider() = default;
 
     /// Updates property data. If the new value differs from the current value, the method activates
     /// the change signal of the property, and notifies the bindings subscribed to receive changes on
     /// the property data.
     /// \param newValue The variant holding the value to update.
-    void updateData(const Variant& newValue);
+    void update(const Variant& newValue);
 
-    virtual void initialize() = 0;
-
-protected:
-    /// Constructor.
-    explicit AbstractPropertyData() = default;
-
-    virtual Variant getData() const = 0;
-    virtual void setData(const Variant& value) = 0;
-
-    friend class PropertyPrivate;
-    PropertyPrivate* m_property = nullptr;
+public:
+    /// Destructor.
+    virtual ~PropertyDataProvider() = default;
 };
 
+/// Template class, provides the default value storage for a proeprty type.
+template <typename ValueType>
+class PropertyDefaultValue : public PropertyDataProviderInterface
+{
+    ValueType m_defaultValue;
+public:
+    PropertyDefaultValue(ValueType value)
+        : m_defaultValue(value)
+    {}
 
-/// Property data storage template.
+    Variant getData() const override
+    {
+        return Variant(m_defaultValue);
+    }
+    void setData(const Variant&) override
+    {
+        FATAL(false, "You cannot change default value of a property type.")
+    }
+};
+
+/// Property data provider template. Stores the data of the property
 /// \tparam ValueType The type of the data stored.
 template <typename ValueType>
-class PropertyData : public AbstractPropertyData
+class PropertyData : public PropertyDataProvider
 {
     ValueType m_value = ValueType();
 
@@ -76,16 +103,10 @@ protected:
 
 public:
     /// Constructs a property data from a value.
-    PropertyData(ValueType v)
+    PropertyData(const ValueType& v = ValueType())
         : m_value(v)
     {
     }
-
-    void initialize() override
-    {
-        updateData(Variant(m_value));
-    }
-
 };
 
 } //mox

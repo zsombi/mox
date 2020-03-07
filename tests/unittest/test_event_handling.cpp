@@ -24,7 +24,7 @@
 
 using namespace mox;
 
-class TestTimer : public ObjectLock, public TimerSource::TimerRecord
+class TestTimer : public MetaBase, public TimerSource::TimerRecord
 {
 public:
     static inline SignalTypeDecl<> TestTimerExpiredSignalType;
@@ -45,7 +45,7 @@ public:
     }
 };
 
-class TestSocket : public ObjectLock, public SocketNotifierSource::Notifier
+class TestSocket : public MetaBase, public SocketNotifierSource::Notifier
 {
 public:
     static inline SignalTypeDecl<Modes> TestSocketSignalType;

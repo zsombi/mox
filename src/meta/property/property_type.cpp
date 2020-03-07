@@ -24,8 +24,9 @@
 namespace mox
 {
 
-PropertyType::PropertyType(VariantDescriptor&& typeDes, PropertyAccess access, const Variant& defaultValue)
-    : m_typeDescriptor(typeDes)
+PropertyType::PropertyType(VariantDescriptor&& typeDes, PropertyAccess access, const SignalType& signal, PropertyDataProviderInterface& defaultValue)
+    : ChangedSignalType(signal)
+    , m_typeDescriptor(typeDes)
     , m_defaultValue(defaultValue)
     , m_access(access)
 {
@@ -47,47 +48,9 @@ const VariantDescriptor& PropertyType::getValueType() const
     return m_typeDescriptor;
 }
 
-void PropertyType::addPropertyInstance(Property& property)
-{
-    lock_guard lock(*this);
-    FATAL(m_instances.find(PropertyPrivate::get(property)->getHost()) == m_instances.end(), "Property instance already registered!")
-
-    m_instances.insert(std::make_pair(PropertyPrivate::get(property)->getHost(), &property));
-}
-
-void PropertyType::removePropertyInstance(Property& property)
-{
-    lock_guard lock(*this);
-    auto pv = std::make_pair(PropertyPrivate::get(property)->getHost(), &property);
-    mox::erase(m_instances, pv);
-}
-
-Variant PropertyType::get(ObjectLock& instance) const
-{
-    const auto it = m_instances.find(&instance);
-    if (it != m_instances.cend())
-    {
-        return it->second->get();
-    }
-    return Variant();
-}
-
-bool PropertyType::set(ObjectLock& instance, const Variant& value) const
-{
-    throwIf<ExceptionType::AttempWriteReadOnlyProperty>(m_access == PropertyAccess::ReadOnly);
-
-    auto it = m_instances.find(&instance);
-    if (it != m_instances.cend())
-    {
-        it->second->set(value);
-        return true;
-    }
-    return false;
-}
-
 Variant PropertyType::getDefault() const
 {
-    return m_defaultValue;
+    return m_defaultValue.getData();
 }
 
 } // namespace mox

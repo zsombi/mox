@@ -32,7 +32,7 @@ namespace mox
 
 void MoxModule::registerModule()
 {
-    registerClassMetaTypes<ObjectLock>();
+    registerClassMetaTypes<MetaBase>();
 
     registerMetaType<SocketNotifierSharedPtr>("shared_ptr<SocketNotifier>");
     registerMetaClass<SocketNotifier>();

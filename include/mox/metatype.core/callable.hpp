@@ -55,6 +55,11 @@ public:
         template <typename... Args>
         ArgumentPack(Args... arguments);
 
+        size_t size() const
+        {
+            return ArgumentsBase::size();
+        }
+
         /// Returns the argument from a given \a index that is less than the count().
         /// \param index The index of the argument requested.
         /// \return The argument value.

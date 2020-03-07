@@ -33,6 +33,7 @@ enum class ExceptionType
     AttempThreadJoinWithin,
     MetatypeNotRegistered,
     BadTypeConversion,
+    InvalidProperty,
     AttempWriteReadOnlyProperty,
     BindingNotAttached,
     BindingAlreadyAttached,
