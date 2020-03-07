@@ -74,6 +74,16 @@ EventType Event::registerNewType()
     return ++userType;
 }
 
+bool Event::isCompressible() const
+{
+    return true;
+}
+
+bool Event::canCompress(const Event& other)
+{
+    return (m_type == other.m_type) && (m_target.lock() == other.m_target.lock());
+}
+
 /******************************************************************************
  * QuitEvent
  */

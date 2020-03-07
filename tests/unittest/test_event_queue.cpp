@@ -22,6 +22,18 @@
 
 using namespace mox;
 
+class NoCompressEvent : public Event
+{
+public:
+    explicit NoCompressEvent(ObjectSharedPtr target, EventType type, Priority priority = Priority::Normal)
+        : Event(target, type, priority)
+    {}
+    bool isCompressible() const override
+    {
+        return false;
+    }
+};
+
 TEST(EventQueue, test_queue_api)
 {
     EventQueue queue;
@@ -35,6 +47,33 @@ TEST(EventQueue, test_queue_api)
 
     queue.clear();
     EXPECT_TRUE(queue.empty());
+}
+
+TEST(EventQueue, test_push_same_event_type_triggers_compression)
+{
+    EventQueue queue;
+    auto target = Object::create();
+
+    queue.push(make_event<Event>(target, EventType::Base));
+    queue.push(make_event<Event>(target, EventType::Quit));
+    queue.push(make_event<Event>(target, EventType::DeferredSignal));
+    EXPECT_EQ(3u, queue.size());
+
+    queue.push(make_event<Event>(target, EventType::Base));
+    EXPECT_EQ(3u, queue.size());
+}
+
+TEST(EventQueue, test_push_event_no_compress)
+{
+    EventQueue queue;
+    auto target = Object::create();
+
+    queue.push(make_event<Event>(target, EventType::Base));
+    queue.push(make_event<Event>(target, EventType::Quit));
+    queue.push(make_event<Event>(target, EventType::DeferredSignal));
+
+    queue.push(make_event<NoCompressEvent>(target, EventType::Base));
+    EXPECT_EQ(4u, queue.size());
 }
 
 TEST(EventQueue, test_process_events_with_same_priority)

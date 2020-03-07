@@ -81,6 +81,25 @@ public:
     /// Returns the timestamp of the event.
     Timestamp timestamp() const;
 
+    /// \name Event compression
+    /// Event compression is applied right before the event is pushed into an event queue. If an event
+    /// supports compression, the event is tested agains the queued events to see if the event compression
+    /// applies. The event type itself decides the clauses where event compression is applied. If the
+    /// event is tested positive on compression, the event will not land in the event queue.
+    /// \{
+    ///
+    /// Returns the event compression supported state.
+    /// \return If the event is compressible, returns \e true, otherwise \e false. The default implementation
+    /// returns \e true.
+    virtual bool isCompressible() const;
+
+    /// Called by the EventQueue when an Event::isCompressible() returns \e true on the event pushed
+    /// to the queue. Checks whether this event is compressable with the \a other.
+    /// \param other The other event to test.
+    /// \return If this event compresses into the \a other, returns \e true, otherwise \e false. The default
+    /// implementation takes the event type and the event target as criterias for compressibility.
+    virtual bool canCompress(const Event& other);
+    /// \}
 
     /// Registers a new event type. Returns the newly registered event type.
     static EventType registerNewType();

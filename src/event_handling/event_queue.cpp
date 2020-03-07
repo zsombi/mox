@@ -57,6 +57,22 @@ bool EventQueue::empty() const
 void EventQueue::push(EventPtr event)
 {
     lock_guard lock(*this);
+    if (event->isCompressible())
+    {
+        // loop through the container and find out if compression is needed
+        auto testCompression = [&event](const EventPtr& qEvent)
+        {
+            return event->canCompress(*qEvent);
+        };
+        auto compress = std::find_if(c.rbegin(), c.rend(), testCompression);
+        if (compress != c.rend())
+        {
+            // Compression required, so bail out.
+            return;
+        }
+    }
+
+    // No compression is required, proceed with push.
     event->markTimestamp();
     EventQueueBase::emplace(std::move(event));
 }
