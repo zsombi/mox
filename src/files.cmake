@@ -47,6 +47,9 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/metadata.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/metadata_impl.hpp
 
+    # Logger
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/log/logger.hpp
+
     # Meta-programming support
 
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/metabase/metabase.hpp
@@ -94,6 +97,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/object.hpp
 
     # Private includes
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/logger_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/metadata_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/metabase_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/property_p.hpp
@@ -104,6 +108,8 @@ set(HEADERS
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils/log/logger.cpp
+
 
     ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/metadata.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/metatype.cpp

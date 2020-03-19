@@ -26,7 +26,7 @@
 #include <mox/utils/function_traits.hpp>
 #include <mox/meta/signal/signal.hpp>
 
-#include <sstream>
+#include <mox/utils/log/logger.hpp>
 
 namespace mox
 {
@@ -91,7 +91,7 @@ MetatypeDescriptor::MetatypeDescriptor(std::string_view name, int id, const std:
     }
     FATAL(m_name, "Null name type!");
 
-    TRACE("New metatype: " << m_name);
+    CTRACE(metacore, "New metatype: " << m_name);
 }
 
 MetatypeDescriptor::~MetatypeDescriptor()
@@ -117,10 +117,10 @@ bool MetatypeDescriptor::isSupertypeOf(const MetatypeDescriptor& type) const
     }
 
     const auto* thisClass = MetaData::getMetaClass(m_id);
-    FATAL(thisClass, "No MetaClass for the class type.")
+    FATAL(thisClass, "No MetaClass for the class type.");
 
     const auto* typeClass = MetaData::getMetaClass(type.id());
-    FATAL(typeClass, "No MetaClass for the class type.")
+    FATAL(typeClass, "No MetaClass for the class type.");
     return thisClass->isSuperClassOf(*typeClass);
 }
 

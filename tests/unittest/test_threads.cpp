@@ -33,7 +33,7 @@ public:
 
     void quit()
     {
-        TRACE("Stop main thread")
+        TRACE("Stop main thread");
         threadData()->thread()->exit(10);
     }
 

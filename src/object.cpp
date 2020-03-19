@@ -20,6 +20,11 @@
 #include <mox/metatype.core/callable.hpp>
 #include <mox/module/thread_loop.hpp>
 
+#if MOX_ENABLE_LOGGING == ON
+#include <mox/metatype.core/metatype_descriptor.hpp>
+#include <mox/metainfo/metaclass.hpp>
+#endif
+
 namespace mox
 {
 
@@ -126,7 +131,7 @@ void Object::removeChildren()
 
         if (thread)
         {
-            TRACE("Destroying thread object's parent, exit thread and join.")
+            CTRACE(object, "Destroying thread object's parent, exit thread and join.");
             thread->exitAndJoin();
         }
     }
@@ -354,7 +359,7 @@ void Object::removeChild(Object& child)
 
 void Object::removeChildAt(size_t index)
 {
-    FATAL(index < m_children.size(), "Child index out of range")
+    FATAL(index < m_children.size(), "Child index out of range");
     {
         Object* child = m_children[index].get();
         OrderedLock lock(this, child);
@@ -372,7 +377,7 @@ size_t Object::childIndex(const Object& child)
 {
     if (child.parent() != this)
     {
-        TRACE("Object is not a child of the object!");
+        CTRACE(object, "Object is not a child of the object!");
         throw Exception(ExceptionType::InvalidArgument);
     }
 
@@ -460,4 +465,24 @@ ThreadDataSharedPtr Object::threadData() const
     return m_threadData;
 }
 
+#if defined(MOX_ENABLE_LOGS)
+LogLine& operator<<(LogLine& log, ObjectSharedPtr ptr)
+{
+    if (log.isEnabled())
+    {
+        if (!ptr)
+        {
+            log << " (null)";
+        }
+        else
+        {
+            const auto* mc = ptr->__getStaticMetaClass();
+            auto type = mc->getMetaTypes().first;
+            const auto& typeInfo = MetatypeDescriptor::get(type);
+            log << ' ' << typeInfo.name();
+        }
+    }
+    return log;
+}
+#endif
 }

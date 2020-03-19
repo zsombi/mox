@@ -19,6 +19,7 @@
 #ifndef METATYPE_DESCRIPTOR_HPP
 #define METATYPE_DESCRIPTOR_HPP
 
+#include <string_view>
 #include <array>
 #include <vector>
 #include <functional>

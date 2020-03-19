@@ -24,19 +24,31 @@
 #include <functional>
 #include <mox/config/deftypes.hpp>
 #include <mox/utils/containers/flat_map.hpp>
-#include <mox/metatype.core/metadata.hpp>
-#include <mox/metatype.core/metatype_descriptor.hpp>
 #include <mox/metatype.core/variant.hpp>
-#include <mox/metainfo/metaclass.hpp>
 #include <mox/metainfo/metaobject.hpp>
+#include <logger_p.hpp>
 
 namespace mox
 {
 
-struct MetaData : public MetaBase
+class MatetypeDescriptor;
+namespace metainfo
+{
+struct MetaClass;
+}
+
+struct MetaData
 {
     explicit MetaData();
     ~MetaData();
+    void lock()
+    {
+        selfLock.lock();
+    }
+    void unlock()
+    {
+        selfLock.unlock();
+    }
 
     static const MetatypeDescriptor& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer);
     static MetatypeDescriptor& getMetaType(Metatype type);
@@ -51,20 +63,30 @@ struct MetaData : public MetaBase
     typedef FlatMap<Metatype, const metainfo::MetaClass*> MetaClassTypeRegister;
     typedef FlatMap<std::string, const metainfo::MetaClass*> MetaClassContainer;
 
+    std::mutex selfLock;
     MetaTypeContainer metaTypes;
     SynonymContainer synonymTypes;
     MetaClassTypeRegister metaClassRegister;
     MetaClassContainer metaClasses;
     bool initialized = false;
 
-    static MetaData globalMetaData;
-    static MetaData* globalMetaDataPtr;
+    static inline MetaData* globalMetaDataPtr = nullptr;
 };
 
 void registerAtomicTypes(MetaData& metaData);
 void registerConverters();
 
 TUuid nextUuid();
+
+struct GlobalMetadataInitializer
+{
+#if defined(MOX_ENABLE_LOGS)
+    LoggerData logger;
+#endif
+    MetaData globalMetaData;
+
+    GlobalMetadataInitializer() = default;
+};
 
 } // namespace mox
 

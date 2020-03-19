@@ -50,7 +50,7 @@ public:
         context.perform = RunLoopSource::process;
 
         m_sourceRef = CFRunLoopSourceCreate(kCFAllocatorDefault, HighestPriority, &context);
-        FATAL(m_sourceRef, "CF runloop source creation failed")
+        FATAL(m_sourceRef, "CF runloop source creation failed");
     }
     ~RunLoopSource()
     {
@@ -110,7 +110,7 @@ public:
         context.info = this;
 
         m_observerRef = CFRunLoopObserverCreate(kCFAllocatorDefault, activities, true, 0, process, &context);
-        FATAL(m_observerRef, "CF observer creation failed")
+        FATAL(m_observerRef, "CF observer creation failed");
     }
     ~RunLoopObserver()
     {

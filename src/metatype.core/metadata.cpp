@@ -17,17 +17,18 @@
  */
 
 #include <metadata_p.hpp>
-#include <algorithm>
+#include <mox/metatype.core/metadata.hpp>
+#include <mox/metatype.core/metatype_descriptor.hpp>
+#include <mox/metainfo/metaclass.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/string.hpp>
 #include <mox/metatype.core/variant.hpp>
-
+#include <algorithm>
 
 namespace mox
 {
 
-MetaData MetaData::globalMetaData;
-MetaData *MetaData::globalMetaDataPtr = nullptr;
+static GlobalMetadataInitializer _g_init;
 
 TUuid nextUuid()
 {
@@ -38,29 +39,28 @@ TUuid nextUuid()
 MetaData::MetaData()
 {
     globalMetaDataPtr = this;
-    TRACE("Initialize metadata")
+    CTRACE(metacore, "Initialize metadata");
     registerAtomicTypes(*this);
 
     // Register converters.
     registerConverters();
 
     initialized = true;
-    TRACE("Metadata initialized")
+    CTRACE(metacore, "Metadata initialized");
 }
 
 MetaData::~MetaData()
 {
-    TRACE("Metadata died\n")
     globalMetaDataPtr = nullptr;
 }
 
 const MetatypeDescriptor& MetaData::addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer)
 {
-    FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    lock_guard locker(globalMetaData);
+    FATAL(globalMetaDataPtr, "mox is not initialized or down.");
+    lock_guard locker(*globalMetaDataPtr);
 
-    globalMetaData.metaTypes.emplace_back(new MetatypeDescriptor(name, int(globalMetaData.metaTypes.size()), rtti, isEnum, isClass, isPointer));
-    return *globalMetaData.metaTypes.back().get();
+    globalMetaDataPtr->metaTypes.emplace_back(new MetatypeDescriptor(name, int(globalMetaDataPtr->metaTypes.size()), rtti, isEnum, isClass, isPointer));
+    return *globalMetaDataPtr->metaTypes.back().get();
 }
 
 namespace metadata
@@ -70,12 +70,12 @@ const MetatypeDescriptor* findMetatype(const std::function<bool(const MetatypeDe
 {
     if (!MetaData::globalMetaDataPtr)
     {
-        std::cerr << "Warning: metatype lookup attempt after mox backend went down.\n";
+        CWARN(metacore, "metatype lookup attempt after mox backend went down.");
         return nullptr;
     }
-    lock_guard locker(MetaData::globalMetaData);
+    lock_guard locker(*MetaData::globalMetaDataPtr);
 
-    for (auto& type : MetaData::globalMetaData.metaTypes)
+    for (auto& type : MetaData::globalMetaDataPtr->metaTypes)
     {
         if (predicate(*type))
         {
@@ -89,12 +89,12 @@ MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti)
 {
     if (!MetaData::globalMetaDataPtr)
     {
-        std::cerr << "Warning: metatype lookup attempt after mox backend went down.\n";
+        CWARN(metacore, "metatype lookup attempt after mox backend went down.");
         return nullptr;
     }
-    lock_guard locker(MetaData::globalMetaData);
+    lock_guard locker(*MetaData::globalMetaDataPtr);
 
-    for (auto& type : MetaData::globalMetaData.metaTypes)
+    for (auto& type : MetaData::globalMetaDataPtr->metaTypes)
     {
         if (type->rtti()->hash_code() == rtti.hash_code())
         {
@@ -102,11 +102,11 @@ MetatypeDescriptor* findMetatypeDescriptor(const std::type_info& rtti)
         }
     }
     // Find synonym types.
-    for (auto& synonym : MetaData::globalMetaData.synonymTypes)
+    for (auto& synonym : MetaData::globalMetaDataPtr->synonymTypes)
     {
         if (synonym.first->hash_code() == rtti.hash_code())
         {
-            return MetaData::globalMetaData.metaTypes[static_cast<size_t>(synonym.second)].get();
+            return MetaData::globalMetaDataPtr->metaTypes[static_cast<size_t>(synonym.second)].get();
         }
     }
     return nullptr;
@@ -138,14 +138,14 @@ const MetaClass* find(std::function<bool(const MetaClass&)> predicate)
 {
     if (!MetaData::globalMetaDataPtr)
     {
-        std::cerr << "Warning: metaclass lookup attempt after mox backend went down.\n";
+        CWARN(metacore, "metaclass lookup attempt after mox backend went down.");
         return nullptr;
     }
-    lock_guard locker(MetaData::globalMetaData);
+    lock_guard locker(*MetaData::globalMetaDataPtr);
 
-    for (auto& metaclass : MetaData::globalMetaData.metaClasses)
+    for (auto& metaclass : MetaData::globalMetaDataPtr->metaClasses)
     {
-        ScopeRelock relock(MetaData::globalMetaData);
+        ScopeRelock relock(*MetaData::globalMetaDataPtr);
         if (predicate(*metaclass.second))
         {
             return metaclass.second;
@@ -158,65 +158,65 @@ const MetaClass* find(std::function<bool(const MetaClass&)> predicate)
 
 MetatypeDescriptor& MetaData::getMetaType(Metatype type)
 {
-    FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    lock_guard locker(globalMetaData);
-    FATAL(static_cast<size_t>(type) < globalMetaData.metaTypes.size(), "Type not registered to be reflectable.")
-    return *globalMetaData.metaTypes[static_cast<size_t>(type)].get();
+    FATAL(globalMetaDataPtr, "mox is not initialized or down.");
+    lock_guard locker(*globalMetaDataPtr);
+    FATAL(static_cast<size_t>(type) < globalMetaDataPtr->metaTypes.size(), "Type not registered to be reflectable.");
+    return *globalMetaDataPtr->metaTypes[static_cast<size_t>(type)].get();
 }
 
 void MetaData::addMetaClass(const metainfo::MetaClass& metaClass)
 {
-    FATAL(globalMetaDataPtr, "mox is not initialized or down.")
+    FATAL(globalMetaDataPtr, "mox is not initialized or down.");
     std::string name = MetatypeDescriptor::get(metaClass.getMetaTypes().first).name();
 
-    lock_guard locker(globalMetaData);
-    auto it = globalMetaData.metaClasses.find(name);
-    FATAL(it == globalMetaData.metaClasses.cend(), "Static metaclass for '" + name + "' already registered!")
+    lock_guard locker(*globalMetaDataPtr);
+    auto it = globalMetaDataPtr->metaClasses.find(name);
+    FATAL(it == globalMetaDataPtr->metaClasses.cend(), "Static metaclass for '" + name + "' already registered!");
 
-    globalMetaData.metaClassRegister.insert({metaClass.getMetaTypes().first, &metaClass});
-    globalMetaData.metaClasses.insert({name, &metaClass});
+    globalMetaDataPtr->metaClassRegister.insert({metaClass.getMetaTypes().first, &metaClass});
+    globalMetaDataPtr->metaClasses.insert({name, &metaClass});
 
-    TRACE("MetaClass added: " << name)
+    CTRACE(metacore, "MetaClass added:" << name);
 }
 
 void MetaData::removeMetaClass(const metainfo::MetaClass& metaClass)
 {
     if (!globalMetaDataPtr)
     {
-        std::cerr << "Warning: MetaClass removal attempt after mox backend went down.\n";
+        CWARN(metacore, "MetaClass removal attempt after mox backend went down.");
         return;
     }
     std::string name = MetatypeDescriptor::get(metaClass.getMetaTypes().first).name();
 
-    lock_guard locker(globalMetaData);
-    auto it = globalMetaData.metaClasses.find(name);
-    if (it != globalMetaData.metaClasses.cend())
+    lock_guard locker(*globalMetaDataPtr);
+    auto it = globalMetaDataPtr->metaClasses.find(name);
+    if (it != globalMetaDataPtr->metaClasses.cend())
     {
-        globalMetaData.metaClasses.erase(it, it);
+        globalMetaDataPtr->metaClasses.erase(it, it);
     }
-    auto cit = globalMetaData.metaClassRegister.find(metaClass.getMetaTypes().first);
-    if (cit != globalMetaData.metaClassRegister.cend())
+    auto cit = globalMetaDataPtr->metaClassRegister.find(metaClass.getMetaTypes().first);
+    if (cit != globalMetaDataPtr->metaClassRegister.cend())
     {
-        globalMetaData.metaClassRegister.erase(cit, cit);
+        globalMetaDataPtr->metaClassRegister.erase(cit, cit);
     }
 
-    TRACE("MetaClass " << name << " removed")
+    CTRACE(metacore, "MetaClass" << name << "removed");
 }
 
 const metainfo::MetaClass* MetaData::findMetaClass(std::string_view name)
 {
-    FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    lock_guard locker(globalMetaData);
-    auto it = globalMetaData.metaClasses.find(std::string(name));
-    return it != globalMetaData.metaClasses.cend() ? it->second : nullptr;
+    FATAL(globalMetaDataPtr, "mox is not initialized or down.");
+    lock_guard locker(*globalMetaDataPtr);
+    auto it = globalMetaDataPtr->metaClasses.find(std::string(name));
+    return it != globalMetaDataPtr->metaClasses.cend() ? it->second : nullptr;
 }
 
 const metainfo::MetaClass* MetaData::getMetaClass(Metatype metaType)
 {
-    FATAL(globalMetaDataPtr, "mox is not initialized or down.")
-    lock_guard locker(globalMetaData);
-    auto it = globalMetaData.metaClassRegister.find(metaType);
-    return it != globalMetaData.metaClassRegister.cend() ? it->second : nullptr;
+    FATAL(globalMetaDataPtr, "mox is not initialized or down.");
+    lock_guard locker(*globalMetaDataPtr);
+    auto it = globalMetaDataPtr->metaClassRegister.find(metaType);
+    return it != globalMetaDataPtr->metaClassRegister.cend() ? it->second : nullptr;
 }
 
 } // namespace mox

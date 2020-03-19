@@ -54,7 +54,7 @@ void BindingPrivate::clearDependencies()
     for (auto dep : dependencies)
     {
         auto ddep = PropertyStorage::get(*dep);
-        FATAL(ddep, "Property storage for the dependency already wiped!")
+        FATAL(ddep, "Property storage for the dependency already wiped!");
         ddep->unsubscribe(psh);
     }
     dependencies.clear();
@@ -80,7 +80,7 @@ BindingLoopDetector::BindingLoopDetector(BindingPrivate& binding)
 }
 BindingLoopDetector::~BindingLoopDetector()
 {
-    FATAL(last == this, "Some other binding messed up the binding loop detection")
+    FATAL(last == this, "Some other binding messed up the binding loop detection");
     last = prev;
     if (m_refCounted.group && m_refCounted.group->getNormalizer())
     {

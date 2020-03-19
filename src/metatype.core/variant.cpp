@@ -71,13 +71,13 @@ void Variant::reset()
 
 Metatype Variant::metaType() const
 {
-    FATAL(m_data, "Variant is not initialized.")
+    FATAL(m_data, "Variant is not initialized.");
     return m_data->m_typeDescriptor.getType();
 }
 
 const VariantDescriptor& Variant::descriptor() const
 {
-    FATAL(m_data, "Variant is not initialized.")
+    FATAL(m_data, "Variant is not initialized.");
     return m_data->m_typeDescriptor;
 }
 

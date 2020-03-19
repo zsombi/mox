@@ -108,21 +108,21 @@ std::string MetaClass::MetaMethodBase::signature() const
 void MetaClass::addMetaMethod(Callable& method)
 {
     auto metaMethod = dynamic_cast<MetaMethodBase*>(&method);
-    FATAL(metaMethod, "You can only add MetaMethods to a MetaClass.")
+    FATAL(metaMethod, "You can only add MetaMethods to a MetaClass.");
     m_metaMethods.push_back(metaMethod);
 }
 
 void MetaClass::addMetaSignal(SignalType& signal)
 {
     auto metaSignal = dynamic_cast<MetaSignalBase*>(&signal);
-    FATAL(metaSignal, "You can only add MetaSignals to a MetaClass.")
+    FATAL(metaSignal, "You can only add MetaSignals to a MetaClass.");
     m_metaSignals.push_back(metaSignal);
 }
 
 void MetaClass::addMetaProperty(PropertyType& property)
 {
     auto metaProperty = dynamic_cast<MetaPropertyBase*>(&property);
-    FATAL(metaProperty, "You can only add MetaProperty to a MetaClass.")
+    FATAL(metaProperty, "You can only add MetaProperty to a MetaClass.");
     m_metaProperties.push_back(metaProperty);
 }
 

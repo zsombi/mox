@@ -21,6 +21,7 @@
 #include <memory>
 #include <mox/config/platform_config.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
+#include <mox/utils/log/logger.hpp>
 
 namespace mox
 {
@@ -66,5 +67,7 @@ enum class ProcessFlags
 ENABLE_ENUM_OPERATORS(ProcessFlags);
 
 }
+
+DECLARE_LOG_CATEGORY(event)
 
 #endif // EVENT_HANDLING_DECLARATIONS_HPP

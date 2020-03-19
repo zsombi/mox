@@ -21,7 +21,7 @@
 
 #include <mox/metatype.core/metatype.hpp>
 #include <mox/utils/globals.hpp>
-
+#include <functional>
 #include <typeindex>
 #include <typeinfo>
 #include <type_traits>
@@ -113,5 +113,7 @@ MOX_API Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bo
 }} // namespace mox::metadata
 
 #include <mox/metatype.core/detail/metadata_impl.hpp>
+
+DECLARE_LOG_CATEGORY(metacore)
 
 #endif // METADATA_HPP

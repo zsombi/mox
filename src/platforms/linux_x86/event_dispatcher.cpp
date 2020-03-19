@@ -29,7 +29,7 @@ namespace mox
 GlibEventDispatcher::GlibEventDispatcher()
 {
     context = g_main_context_get_thread_default();
-    FATAL(!context, "There should not be any main context at this point!!!")
+    FATAL(!context, "There should not be any main context at this point!!!");
     context = g_main_context_new();
 
     initialize();
@@ -66,7 +66,7 @@ gboolean GlibEventDispatcher::idleFunc(gpointer userData)
     if (eventDispatcher)
     {
         eventDispatcher->runIdleTasks();
-        TRACE("Idle func count left: " << eventDispatcher->m_idleTasks.size());
+        CTRACE(platform, "Idle func count left: " << size_t(eventDispatcher->m_idleTasks.size()));
         return eventDispatcher->m_idleTasks.size() > 0u;
     }
     return false;

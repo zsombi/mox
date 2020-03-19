@@ -33,7 +33,7 @@ gboolean GPostEventSource::Source::prepare(GSource* src, gint *timeout)
     // If there's no event posted, wait for a second to poll again.
     *timeout = readyToDispatch ? -1 : 5000;
 
-    TRACE("posted event source ready " << readyToDispatch);
+    CTRACE(platform, "posted event source ready " << readyToDispatch);
 
     return readyToDispatch;
 }

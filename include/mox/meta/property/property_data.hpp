@@ -77,7 +77,7 @@ public:
     }
     void setData(const Variant&) override
     {
-        FATAL(false, "You cannot change default value of a property type.")
+        FATAL(false, "You cannot change default value of a property type.");
     }
 };
 

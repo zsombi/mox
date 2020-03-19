@@ -86,21 +86,21 @@ MetaBase::~MetaBase()
     d_ptr->invalidateDynamicProperties();
 
     // The share count shall be at maximum 2 times the dynamic properties count (1 property and 1 change signal).
-    FATAL(m_value == 2 * int(dynamicPropertyCount), "Object lock is still shared " << m_value << " times!")
-    FATAL(m_lockCount.load() == 0, "Destroying unlocked object! LockCount is " << m_lockCount.load())
+    FATAL(m_value == 2 * int(dynamicPropertyCount), "Object lock is still shared " << m_value << " times!");
+    FATAL(m_lockCount.load() == 0, "Destroying unlocked object! LockCount is " << m_lockCount.load());
     m_lockCount.store(-1);
 }
 
 void MetaBase::lock()
 {
-    FATAL(m_lockCount >= 0, "Invalid MetaBase")
+    FATAL(m_lockCount >= 0, "Invalid MetaBase");
 
     if (!try_lock())
     {
         // Is this the same owner?
         if (m_owner == std::this_thread::get_id())
         {
-            FATAL(false, "Already locked MetaBase! LockCount is " << m_lockCount)
+            FATAL(false, "Already locked MetaBase! LockCount is " << m_lockCount);
         }
         m_mutex.lock();
         m_owner = std::this_thread::get_id();
@@ -110,7 +110,7 @@ void MetaBase::lock()
 
 void MetaBase::unlock()
 {
-    FATAL(m_lockCount > 0, "Cannot unlock MetaBase if not locked! LockCount is " << m_lockCount)
+    FATAL(m_lockCount > 0, "Cannot unlock MetaBase if not locked! LockCount is " << m_lockCount);
     m_mutex.unlock();
     m_lockCount--;
     m_owner = std::thread::id();

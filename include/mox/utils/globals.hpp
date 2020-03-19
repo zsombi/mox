@@ -20,8 +20,8 @@
 #define GLOBALS_HPP
 
 #include <chrono>
-#include <iostream>
 #include <memory>
+#include <iostream>
 
 #include <mox/config/platform_config.hpp>
 
@@ -29,27 +29,6 @@
 
 // unused parameters
 #define UNUSED(x)       (void)x
-
-#define FATAL(test, message) \
-    if (!(test)) \
-    { \
-        std::cout << "FATAL: " << __FILE__ << ":" << __LINE__ << " - " << message << std::endl; \
-        abort(); \
-    }
-
-
-#if defined(DEBUG) && !defined(MOX_NO_DEBUG_LOGS)
-static inline std::string dbg_fileName(const char* path)
-{
-    std::string fname(path);
-    fname = fname.substr(fname.rfind('/') + 1);
-    return fname;
-}
-
-#   define TRACE(x)     std::cout << dbg_fileName(__FILE__) << " : " << __LINE__ << " :- " << x << std::endl;
-#else
-#   define TRACE(x)
-#endif
 
 //
 // disable copy construction and operator

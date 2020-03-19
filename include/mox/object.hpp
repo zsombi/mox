@@ -230,6 +230,12 @@ private:
     friend class ThreadLoop;
 };
 
+#if defined(MOX_ENABLE_LOGS)
+LogLine& operator<<(LogLine& log, ObjectSharedPtr ptr);
+#endif
+
 } // mox
+
+DECLARE_LOG_CATEGORY(object)
 
 #endif // OBJECT_HPP

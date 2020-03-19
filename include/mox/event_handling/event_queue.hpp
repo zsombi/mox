@@ -21,7 +21,9 @@
 #include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/event_handling/event_handling_declarations.hpp>
+#include <mox/event_handling/event.hpp>
 #include <mox/meta/metabase/metabase.hpp>
+#include <mox/utils/log/logger.hpp>
 
 #include <functional>
 #include <queue>
@@ -70,7 +72,7 @@ public:
             pop();
 
             ScopeRelock relock(*this);
-            TRACE("Processing event: " << int(event->type()))
+            CTRACE(event, "Processing event:" << int(event->type()));
             dispatcher(*event);
         }
     }

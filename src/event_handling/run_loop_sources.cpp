@@ -77,7 +77,7 @@ TimerSource::TimerRecord::~TimerRecord()
 
 void TimerSource::TimerRecord::start(TimerSource& timerSource)
 {
-    FATAL(!m_source || m_source.get() == &timerSource, "Invalid or different source applied")
+    FATAL(!m_source || m_source.get() == &timerSource, "Invalid or different source applied");
     m_source = std::static_pointer_cast<TimerSource>(timerSource.shared_from_this());
     m_source->addTimer(*this);
 }
@@ -107,10 +107,10 @@ EventSource::EventSource(std::string_view name)
 
 void EventSource::dispatchQueuedEvents()
 {
-    FATAL(getRunLoop(), "Orphan event source?")
+    FATAL(getRunLoop(), "Orphan event source?");
     if (!getRunLoop()->isRunning())
     {
-        std::cerr << "Warning: source attempting processing posted events when the event loop is not running." << std::endl;
+        WARN("source attempting processing posted events when the event loop is not running.");
         return;
     }
 

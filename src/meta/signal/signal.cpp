@@ -74,14 +74,14 @@ void Signal::setBlocked(bool blocked)
 
 void Signal::addConnection(ConnectionSharedPtr connection)
 {
-    FATAL(d_ptr, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal");
     lock_guard lock(*this);
     d_ptr->connections.push_back(connection);
 }
 
 void Signal::removeConnection(ConnectionSharedPtr connection)
 {
-    FATAL(d_ptr, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal");
     lock_guard lock(*this);
 
     auto eraser = [&connection](ConnectionSharedPtr conn)
@@ -104,13 +104,13 @@ const SignalType* Signal::getType() const
 
 Signal::ConnectionSharedPtr Signal::connect(Callable&& lambda)
 {
-    FATAL(d_ptr, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal");
     return Signal::Connection::create<FunctionConnection>(*this, std::forward<Callable>(lambda));
 }
 
 Signal::ConnectionSharedPtr Signal::connect(Variant receiver, Callable&& slot)
 {
-    FATAL(d_ptr, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal");
 
     auto connection = ConnectionSharedPtr();
     if (receiver.canConvert<Object*>())
@@ -123,7 +123,7 @@ Signal::ConnectionSharedPtr Signal::connect(Variant receiver, Callable&& slot)
 
 Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 {
-    FATAL(d_ptr, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal");
     // Check if the two arguments match.
     if (!signal.getType()->isCompatible(d_ptr->getType()))
     {
@@ -135,7 +135,7 @@ Signal::ConnectionSharedPtr Signal::connect(const Signal& signal)
 
 bool Signal::disconnect(const Signal& signal)
 {
-    FATAL(d_ptr, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal");
     lock_guard lock(*this);
 
     auto predicate = [&signal](ConnectionSharedPtr connection)
@@ -153,7 +153,7 @@ bool Signal::disconnect(const Signal& signal)
 
 bool Signal::disconnectImpl(Variant receiver, const Callable& callable)
 {
-    FATAL(d_ptr, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal");
     lock_guard lock(*this);
 
     auto predicate = [&receiver, &callable](ConnectionSharedPtr connection)
@@ -165,7 +165,7 @@ bool Signal::disconnectImpl(Variant receiver, const Callable& callable)
 
 int Signal::activate(const Callable::ArgumentPack& arguments)
 {
-    FATAL(d_ptr, "Invalid signal")
+    FATAL(d_ptr, "Invalid signal");
     D();
     if (d->triggering || d->m_blocked)
     {

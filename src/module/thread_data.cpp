@@ -33,7 +33,7 @@ static thread_local ThreadData* ltsThreadData = nullptr;
  */
 ThreadData::ThreadData()
 {
-    FATAL(!ltsThreadData, "This thread already has a thread data specified!")
+    FATAL(!ltsThreadData, "This thread already has a thread data specified!");
     ltsThreadData = this;
     if (!mainThreadData)
     {

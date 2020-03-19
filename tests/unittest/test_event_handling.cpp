@@ -136,7 +136,7 @@ TEST(TestEventDispatcher, test_single_shot_timer_quits_loop)
 
     auto handler = [&wrapper]()
     {
-        TRACE("Call exit with 1")
+        TRACE("Call exit with 1");
         wrapper.exitCode = 1;
         wrapper.runLoop->stopExecution();
     };

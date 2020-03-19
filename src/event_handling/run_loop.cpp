@@ -61,7 +61,7 @@ RunLoop::RunLoop()
 
 RunLoop::~RunLoop()
 {
-    TRACE("RunLoop died")
+    CTRACE(event, "RunLoop died");
 }
 
 EventSourcePtr RunLoop::getActiveEventSource()

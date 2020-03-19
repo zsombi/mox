@@ -17,6 +17,7 @@
  */
 
 #include "event_dispatcher.h"
+#include <mox/utils/log/logger.hpp>
 
 namespace mox
 {
@@ -30,7 +31,7 @@ CFTimerSource::CFTimerRecord::~CFTimerRecord()
 {
     if (timerRef)
     {
-        TRACE("Deleting timer: " << timerRef)
+        TRACE("Deleting timer:" << timerRef);
         CFRunLoopTimerInvalidate(timerRef);
         CFRelease(timerRef);
         timerRef = nullptr;
@@ -40,14 +41,14 @@ CFTimerSource::CFTimerRecord::~CFTimerRecord()
 
 void CFTimerSource::CFTimerRecord::create(CFTimerSource& source)
 {
-    TRACE("Create timer record for source")
+    TRACE("Create timer record for source");
     if (!timerHandler || (timerRef && CFRunLoopTimerIsValid(timerRef)))
     {
         return;
     }
     if (timerRef)
     {
-        TRACE("WARNING: recreating timer?!")
+        WARN("recreating timer?!");
         CFRelease(timerRef);
     }
     CFAbsoluteTime timeout = CFAbsoluteTime(timerHandler->getInterval().count()) / 1000;
@@ -62,16 +63,16 @@ void CFTimerSource::CFTimerRecord::create(CFTimerSource& source)
         }
 
         lock_guard lock(source.timers);
-        TRACE("Signaling timer " << self->timerRef << " of self[" << self << ']' << source.timers.lockCount())
+        TRACE("Signaling timer" << self->timerRef << "of self[" << self << ']' << source.timers.lockCount());
         TimerPtr keepAlive = self->timerHandler;
         keepAlive->signal();
-        TRACE("Timer signaled: " << self->timerRef << " of self[" << self << ']' << source.timers.lockCount())
+        TRACE("Timer signaled:" << self->timerRef << "of self[" << self << ']' << source.timers.lockCount());
     };
     timerRef = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, timeToFire, interval, 0, 0, proc);
     FoundationRunLoop* foundationLoop = static_cast<FoundationRunLoop*>(source.getRunLoop().get());
     CFRunLoopAddTimer(foundationLoop->runLoop, timerRef, kCFRunLoopCommonModes);
-    FATAL(CFRunLoopTimerIsValid(timerRef), "Invalid timer created!")
-    TRACE("Timer created with interval: " << interval << ", timeout " << timeout << ", ref: " << timerRef)
+    FATAL(CFRunLoopTimerIsValid(timerRef), "Invalid timer created!");
+    TRACE("Timer created with interval:" << interval << ", timeout" << timeout << ", ref:" << timerRef);
 }
 
 /******************************************************************************
@@ -148,7 +149,7 @@ void CFTimerSource::activate()
             // Recreate timeRef if invalid.
             if (!timer->timerRef || !CFRunLoopTimerIsValid(timer->timerRef))
             {
-                TRACE("Recreate repeating timer")
+                TRACE("Recreate repeating timer");
                 timer->create(*self);
             }
         }

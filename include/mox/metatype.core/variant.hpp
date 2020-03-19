@@ -22,12 +22,12 @@
 #include <any>
 
 #include <mox/utils/globals.hpp>
-#include <mox/metatype.core/metatype_descriptor.hpp>
 #include <mox/metatype.core/variant_descriptor.hpp>
 
 namespace mox
 {
 
+struct VariantDescriptor;
 /// The Variant class holds a value and its metatype passed as argument in metacalls.
 struct MOX_API Variant
 {

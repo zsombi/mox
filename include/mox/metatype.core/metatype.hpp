@@ -21,6 +21,7 @@
 
 #include <any>
 #include <mox/utils/type_traits/enum_operators.hpp>
+#include <mox/utils/log/logger.hpp>
 
 namespace mox
 {

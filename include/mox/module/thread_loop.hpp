@@ -21,10 +21,9 @@
 
 #include <mox/module/module.hpp>
 #include <mox/object.hpp>
-
 #include <mox/meta/signal/signal.hpp>
-
 #include <mox/config/thread.hpp>
+#include <mox/utils/log/logger.hpp>
 
 #include <future>
 
@@ -163,5 +162,7 @@ private:
 };
 
 }
+
+DECLARE_LOG_CATEGORY(threads)
 
 #endif // THREAD_LOOP_HPP

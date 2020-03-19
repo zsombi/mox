@@ -30,7 +30,7 @@ Event::Event(ObjectSharedPtr target, EventType type, Priority priority)
     , m_type(type)
     , m_priority(priority)
 {
-    FATAL(target, "Event created without a valid target")
+    FATAL(target, "Event created without a valid target");
 }
 
 ObjectSharedPtr Event::target() const
@@ -106,12 +106,12 @@ DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, Signal::Connect
     , m_connection(connection.shared_from_this())
     , m_arguments(args)
 {
-    FATAL(target, "Cannot post deferred call on a null target")
+    FATAL(target, "Cannot post deferred call on a null target");
 }
 
 void DeferredSignalEvent::activate()
 {
-    TRACE("Asynchronously activate connection for target " << target())
+    TRACE("Asynchronously activate connection for target" << target());
     if (target() && m_connection && m_connection->isConnected())
     {
         TRACE("Activate...");

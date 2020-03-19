@@ -72,7 +72,7 @@ int Signal::operator()(Arguments... arguments)
 {
 #ifdef DEBUG
     auto signalArgs = VariantDescriptorContainer::getArgs<Arguments...>();
-    FATAL(getType()->getArguments() == signalArgs, "Signal arguments and signal type arguments mismatch")
+    FATAL(getType()->getArguments() == signalArgs, "Signal arguments and signal type arguments mismatch");
 #endif
     return activate(Callable::ArgumentPack(arguments...));
 }

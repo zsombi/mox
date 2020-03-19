@@ -51,7 +51,7 @@ CFSocketNotifierSource::Socket::Socket(CFSocketNotifierSource& socketSource, Not
     constexpr int callbackTypes = kCFSocketReadCallBack | kCFSocketWriteCallBack;
     CFSocketContext context = {0, this, nullptr, nullptr, nullptr};
     cfSocket = CFSocketCreateWithNative(kCFAllocatorDefault, handler, callbackTypes, &Socket::callback, &context);
-    FATAL(CFSocketIsValid(cfSocket), "Native socket creation failed")
+    FATAL(CFSocketIsValid(cfSocket), "Native socket creation failed");
 
     CFOptionFlags flags = CFSocketGetSocketFlags(cfSocket);
     // SocketNotifier doesn't close the socket on descruction.
@@ -137,7 +137,7 @@ bool CFSocketNotifierSource::Socket::removeNotifier(Notifier& notifier)
 
 void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackType callbackType, CFDataRef, const void *, void *info)
 {
-    TRACE("Socket notified, dispatch")
+    TRACE("Socket notified, dispatch");
     Socket* socket = static_cast<Socket*>(info);
     int nativeHandler = CFSocketGetNative(s);
 
@@ -173,7 +173,7 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
         }
     };
     for_each(socket->notifiers, process);
-    TRACE("Leaving socket notifications.")
+    TRACE("Leaving socket notifications.");
 }
 
 /******************************************************************************
@@ -203,12 +203,12 @@ void CFSocketNotifierSource::enableSockets()
             if (socket->cfSource)
             {
                 FoundationRunLoop* loop = static_cast<FoundationRunLoop*>(m_runLoop.lock().get());
-                FATAL(loop, "The event loop is destroyed!")
+                FATAL(loop, "The event loop is destroyed!");
                 CFRunLoopAddSource(loop->runLoop, socket->cfSource, loop->currentMode);
             }
             else
             {
-                TRACE("CFSocketNotifier invalidated")
+                TRACE("CFSocketNotifier invalidated");
                 CFSocketInvalidate(socket->cfSocket);
             }
         }
@@ -225,7 +225,7 @@ void CFSocketNotifierSource::addNotifier(Notifier& notifier)
     if (socket == sockets.end())
     {
         sockets.emplace_back(std::make_unique<Socket>(*this, notifier));
-        TRACE("Socket:: " << sockets.back().get())
+        TRACE("Socket::" << sockets.back().get());
     }
     else
     {
@@ -259,7 +259,7 @@ void CFSocketNotifierSource::prepare()
 
 void CFSocketNotifierSource::clean()
 {
-    TRACE("Shutting down sockets")
+    TRACE("Shutting down sockets");
     sockets.clear();
     TRACE("SocketNotifiers down");
 }

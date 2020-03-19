@@ -22,6 +22,7 @@
 
 #include <string_view>
 #include <mox/event_handling/event_handling_declarations.hpp>
+#include <mox/utils/log/logger.hpp>
 
 namespace mox
 {
@@ -39,5 +40,7 @@ public:
 };
 
 } // namespace mox
+
+DECLARE_LOG_CATEGORY(platform)
 
 #endif // ADAPTATION_HPP

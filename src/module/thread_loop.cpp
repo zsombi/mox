@@ -81,7 +81,7 @@ bool ThreadLoop::isRunning() const
 
 void ThreadLoop::threadMain(std::promise<void> notifier)
 {
-    TRACE("Preparing thread")
+    CTRACE(threads, "Preparing thread");
     ThreadDataSharedPtr threadData;
     {
         lock_guard locker(*this);
@@ -100,11 +100,11 @@ void ThreadLoop::threadMain(std::promise<void> notifier)
     started(this);
 
     // Notify caller thread that this thread is ready to receive messages.
-    TRACE("Notify thread starter")
+    CTRACE(threads, "Notify thread starter");
     notifier.set_value();
-    TRACE("Thread running")
+    CTRACE(threads, "Thread running");
     run();
-    TRACE("Thread stopped")
+    CTRACE(threads, "Thread stopped");
 
     // The thread data is no longer valid, therefore reset it, and remove from all the objects owned by this thread loop.
     auto cleaner = [](Object& object)
@@ -118,7 +118,7 @@ void ThreadLoop::threadMain(std::promise<void> notifier)
 
     threadData->m_thread.reset();
     m_threadData.reset();
-    TRACE("Thread really stopped")
+    CTRACE(threads, "Thread really stopped");
 }
 
 void ThreadLoop::start()
@@ -158,10 +158,10 @@ void ThreadLoop::join()
         throw Exception(ExceptionType::DetachedThread);
     }
 
-    TRACE("Joining thread")
+    CTRACE(threads, "Joining thread");
     m_thread.join();
     m_status.store(Status::PostMortem);
-    TRACE("Thread joined with success")
+    CTRACE(threads, "Thread joined with success");
 }
 
 void ThreadLoop::exitAndJoin(int exitCode)
@@ -192,7 +192,7 @@ ThreadLoopSharedPtr ThreadLoop::thisThread()
 void ThreadLoop::addIdleTask(RunLoop::IdleFunction idleTask)
 {
     auto thread = ThreadLoop::thisThread();
-    FATAL(thread, "Invalid thread")
+    FATAL(thread, "Invalid thread");
     lock_guard lock(*thread);
     thread->m_runLoop->addIdleTask(std::move(idleTask));
 }
@@ -200,16 +200,16 @@ void ThreadLoop::addIdleTask(RunLoop::IdleFunction idleTask)
 bool ThreadLoop::postEvent(EventPtr event)
 {
     auto target = event->target();
-    FATAL(target, "Cannot post event without target")
+    FATAL(target, "Cannot post event without target");
 
     auto thread = target->threadData()->thread();
-    FATAL(thread, "No thread!")
+    FATAL(thread, "No thread!");
     if (!thread)
     {
         return false;
     }
     lock_guard lock(*thread);
-    FATAL(thread->m_runLoop, "No more run loop for event " << int(event->type()))
+    FATAL(thread->m_runLoop, "No more run loop for event " << int(event->type()));
     if (!thread->m_runLoop)
     {
         return false;

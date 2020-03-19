@@ -30,7 +30,7 @@ namespace mox
 
 void PropertyDataProvider::update(const Variant& newValue)
 {
-    FATAL(m_property, "The property data provider is not attached to a property")
+    FATAL(m_property, "The property data provider is not attached to a property");
     m_property->updateData(newValue);
 }
 

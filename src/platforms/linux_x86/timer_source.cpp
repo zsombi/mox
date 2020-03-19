@@ -54,7 +54,7 @@ gboolean GTimerSource::Source::prepare(GSource *src, gint *timeout)
     *timeout = (nextTimeout > G_MAXINT)
             ? G_MAXINT
             : static_cast<gint>(nextTimeout);
-    TRACE("Timer " << source->timer->id() << " to kick in " << nextTimeout << " msecs");
+    CTRACE(platform, "Timer " << source->timer->id() << " to kick in " << nextTimeout << " msecs");
 
     return (nextTimeout == 0);
 }
@@ -68,7 +68,7 @@ gboolean GTimerSource::Source::dispatch(GSource *src, GSourceFunc, gpointer)
     }
 
     // Trigger the timer signal. Hold the timer object so it is not deleted!
-    TRACE("Timer " << source->timer->id() << " kicked");
+    CTRACE(platform, "Timer " << source->timer->id() << " kicked");
 
     if (!source->timer->isSingleShot())
     {
@@ -128,7 +128,7 @@ void GTimerSource::addTimer(TimerRecord& timer)
     if (!timers.push_back_if(gtimer, finder))
     {
         Source::destroy(gtimer);
-        FATAL(false, "The timer is already registered")
+        CWARN(platform, "The timer is already registered");
         return;
     }
 
