@@ -27,10 +27,44 @@
 #include <mox/module/application.hpp>
 #include <mox/module/thread_loop.hpp>
 #include <mox/config/error.hpp>
+#include <mox/utils/log/logger.hpp>
 
 class UnitTest : public ::testing::Test
 {
+#if defined(MOX_ENABLE_LOGS)
+    class TestLogger : public mox::ScreenLogger
+    {
+        static TestLogger* logger;
+    public:
+        TestLogger();
+        ~TestLogger() override;
+        bool log(mox::LogCategory& category, mox::LogType type, const std::string &text) override;
+
+        static TestLogger* get()
+        {
+            return logger;
+        }
+        void testLogs();
+
+        struct LogData
+        {
+            mox::LogCategory* category;
+            mox::LogType type;
+            std::string message;
+            LogData(mox::LogCategory* category, mox::LogType type, std::string_view message);
+
+            bool operator==(const LogData& other);
+        };
+        using LogContainer = std::vector<LogData>;
+
+        LogContainer expectedLogs;
+    };
+#endif
+
 protected:
+#if defined(MOX_ENABLE_LOGS)
+    void expectLog(mox::LogCategory* category, mox::LogType type, std::string_view message, size_t count = 1);
+#endif
     void SetUp() override;
     void TearDown() override;
 };
@@ -95,5 +129,19 @@ protected:
 #define EXPECT_NULL(ptr)        EXPECT_EQ(nullptr, ptr)
 #define EXPECT_NOT_NULL(ptr)    EXPECT_NE(nullptr, ptr)
 #define EXPECT_NOT_EQ(A, B)     EXPECT_NE(A, B)
+
+#if defined(MOX_ENABLE_LOGS)
+
+#define EXPECT_TRACE(c, message)    expectLog(logCategoryRegistrar_##c.category(), mox::LogType::Debug, message, 1)
+#define EXPECT_WARNING(c, message)  expectLog(logCategoryRegistrar_##c.category(), mox::LogType::Warning, message, 1)
+#define EXPECT_INFO(c, message)     expectLog(logCategoryRegistrar_##c.category(), mox::LogType::Info, message, 1)
+
+#else
+
+#define EXPECT_TRACE(c, message)
+#define EXPECT_WARNING(c, message)
+#define EXPECT_INFO(c, message)
+
+#endif
 
 #endif // TEST_FRAMEWORK_H

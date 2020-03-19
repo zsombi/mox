@@ -67,7 +67,7 @@ static CFStringRef runLoopMode(NSDictionary *dictionary)
         }
         else
         {
-            TRACE("Encountered run loop push notification without run loop mode!");
+            CTRACE(event, "Encountered run loop push notification without run loop mode!");
         }
 
     }
@@ -80,7 +80,7 @@ static CFStringRef runLoopMode(NSDictionary *dictionary)
         }
         else
         {
-            TRACE("Tried to pop run loop mode" << mode << "that was never pushed!");
+            CTRACE(event, "Tried to pop run loop mode" << mode << "that was never pushed!");
         }
 
         FATAL(m_runLoopModes.size() >= 1, "Broken runloop modes");
@@ -120,27 +120,27 @@ void FoundationRunLoop::processRunLoopActivity(CFRunLoopActivity activity)
     {
         case kCFRunLoopEntry:
         {
-            TRACE("Entering runloop");
+            CTRACE(event, "Entering runloop");
             break;
         }
         case kCFRunLoopBeforeTimers:
         {
             if (!m_runOnce)
             {
-                TRACE("Before timers...");
+                CTRACE(event, "Before timers...");
                 forEachSource<CFTimerSource>(&CFTimerSource::activate);
             }
             break;
         }
         case kCFRunLoopBeforeSources:
         {
-            TRACE("Before sources...");
+            CTRACE(event, "Before sources...");
             forEachSource<CFSocketNotifierSource>(&CFSocketNotifierSource::enableSockets);
             break;
         }
         case kCFRunLoopBeforeWaiting:
         {
-            TRACE("RunLoop is about to sleep, run idle tasks");
+            CTRACE(event, "RunLoop is about to sleep, run idle tasks");
             // Run idle tasks
             if (runIdleTasks())
             {
@@ -148,21 +148,21 @@ void FoundationRunLoop::processRunLoopActivity(CFRunLoopActivity activity)
             }
             if (m_runOnce && !runningTimerCount())
             {
-                TRACE("runOnce invoked");
+                CTRACE(event, "runOnce invoked");
                 stopExecution();
             }
             break;
         }
         case kCFRunLoopAfterWaiting:
         {
-            TRACE("After waiting, resumed");
+            CTRACE(event, "After waiting, resumed");
             break;
         }
         case kCFRunLoopExit:
         {
             if (!m_runOnce)
             {
-                TRACE("Exiting");
+                CTRACE(event, "Exiting");
                 forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::clean);
             }
             break;
@@ -180,7 +180,7 @@ void FoundationRunLoop::processRunLoopActivity(CFRunLoopActivity activity)
 RunLoopSharedPtr Adaptation::createRunLoop(bool main)
 {
     UNUSED(main);
-    TRACE("Run loop for main?" << main);
+    CTRACE(event, "Run loop for main?" << main);
     return make_polymorphic_shared<RunLoop, FoundationRunLoop>();
 }
 
@@ -207,13 +207,13 @@ void FoundationRunLoop::runOnce()
     currentMode = [modeTracker currentMode];
     CFTimeInterval duration = waitForEvents ? kCFTimeIntervalDistantFuture : kCFTimeIntervalMinimum;
     SInt32 result = CFRunLoopRunInMode(currentMode, duration, returnAfterSingleSourceHandled);
-    TRACE("result in mode [" << currentMode << "]:" << result << ", duration:" << duration);
+    CTRACE(event, "result in mode [" << currentMode << "]:" << result << ", duration:" << duration);
     UNUSED(result);
 }
 
 void FoundationRunLoop::stopExecution()
 {
-    TRACE("Stop run loop");
+    CTRACE(event, "Stop run loop");
     CFRunLoopStop(runLoop);
 }
 
@@ -222,7 +222,7 @@ void FoundationRunLoop::wakeUp()
     forEachSource<EventSource>(&EventSource::wakeUp);
     if (runLoop)
     {
-        TRACE("WakeUp...");
+        CTRACE(event, "WakeUp...");
         CFRunLoopWakeUp(runLoop);
     }
 }

@@ -35,48 +35,6 @@
 namespace mox
 {
 
-/// The LoggerInterface declares the interface for the loggers. Mox has two logger types,
-/// the screen and the file logger.
-class MOX_API LoggerInterface
-{
-public:
-    /// Destructor.
-    virtual ~LoggerInterface() = default;
-    /// Logs a text.
-    /// \param test The text to log.
-    virtual bool log(const std::string& text) = 0;
-};
-using LoggerInterfacePtr = std::unique_ptr<LoggerInterface>;
-
-/// Screen logger, logs a text to the screen.
-class MOX_API ScreenLogger : public LoggerInterface
-{
-public:
-    /// Constructor.
-    explicit ScreenLogger() = default;
-    /// Override of LoggerInterface::log().
-    bool log(const std::string &text) override;
-};
-
-/// File logger, logs a text to a file.
-class MOX_API FileLogger : public LoggerInterface
-{
-public:
-    /// Constructor, logs text to a file.
-    /// \param fileName The name of the file to log.
-    /// \param append Tells the logger to append to the file if exists. If the file does not exist,
-    /// the argument is ignored.
-    explicit FileLogger(std::string_view fileName, bool append);
-    /// Destructor, closes the log file.
-    ~FileLogger() override;
-
-    /// Override of LoggerInterface::log().
-    bool log(const std::string& text) override;
-
-private:
-    std::ofstream stream;
-};
-
 /// The log types.
 enum class LogType : byte
 {
@@ -112,6 +70,48 @@ struct MOX_API LogCategory
 private:
     std::string m_categoryName;
     LogType m_types;
+};
+
+/// The LoggerInterface declares the interface for the loggers. Mox has two logger types,
+/// the screen and the file logger.
+class MOX_API LoggerInterface
+{
+public:
+    /// Destructor.
+    virtual ~LoggerInterface() = default;
+    /// Logs a text.
+    /// \param test The text to log.
+    virtual bool log(LogCategory& category, LogType type, const std::string& text) = 0;
+};
+using LoggerInterfacePtr = std::unique_ptr<LoggerInterface>;
+
+/// Screen logger, logs a text to the screen.
+class MOX_API ScreenLogger : public LoggerInterface
+{
+public:
+    /// Constructor.
+    explicit ScreenLogger() = default;
+    /// Override of LoggerInterface::log().
+    bool log(LogCategory& category, LogType type, const std::string &text) override;
+};
+
+/// File logger, logs a text to a file.
+class MOX_API FileLogger : public LoggerInterface
+{
+public:
+    /// Constructor, logs text to a file.
+    /// \param fileName The name of the file to log.
+    /// \param append Tells the logger to append to the file if exists. If the file does not exist,
+    /// the argument is ignored.
+    explicit FileLogger(std::string_view fileName, bool append);
+    /// Destructor, closes the log file.
+    ~FileLogger() override;
+
+    /// Override of LoggerInterface::log().
+    bool log(LogCategory& category, LogType type, const std::string& text) override;
+
+private:
+    std::ofstream stream;
 };
 
 /// Logs a line to the current logger.
@@ -156,8 +156,10 @@ class MOX_API Logger
 {
 public:
     /// Logs a text using the current logger interface.
+    /// \param category The logging category.
+    /// \param type The log type.
     /// \param text The text to log.
-    static void log(const std::string& text);
+    static void log(LogCategory& category, LogType type, const std::string& text);
 
     /// Set the current logger interface.
     /// \param logger The logger to use.

@@ -46,7 +46,7 @@ public:
     void setRules(std::string rules);
     void setRule(std::string rule);
 
-    void log(const std::string& text);
+    void log(LogCategory& category, LogType type, const std::string& text);
 
     void setLogger(LoggerInterfacePtr logger);
 

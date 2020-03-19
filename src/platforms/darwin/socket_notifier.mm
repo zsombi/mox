@@ -137,7 +137,7 @@ bool CFSocketNotifierSource::Socket::removeNotifier(Notifier& notifier)
 
 void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackType callbackType, CFDataRef, const void *, void *info)
 {
-    TRACE("Socket notified, dispatch");
+    CTRACE(event, "Socket notified, dispatch");
     Socket* socket = static_cast<Socket*>(info);
     int nativeHandler = CFSocketGetNative(s);
 
@@ -173,7 +173,7 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
         }
     };
     for_each(socket->notifiers, process);
-    TRACE("Leaving socket notifications.");
+    CTRACE(event, "Leaving socket notifications.");
 }
 
 /******************************************************************************
@@ -208,7 +208,7 @@ void CFSocketNotifierSource::enableSockets()
             }
             else
             {
-                TRACE("CFSocketNotifier invalidated");
+                CTRACE(event, "CFSocketNotifier invalidated");
                 CFSocketInvalidate(socket->cfSocket);
             }
         }
@@ -225,7 +225,7 @@ void CFSocketNotifierSource::addNotifier(Notifier& notifier)
     if (socket == sockets.end())
     {
         sockets.emplace_back(std::make_unique<Socket>(*this, notifier));
-        TRACE("Socket::" << sockets.back().get());
+        CTRACE(event, "Socket::" << sockets.back().get());
     }
     else
     {
@@ -259,9 +259,9 @@ void CFSocketNotifierSource::prepare()
 
 void CFSocketNotifierSource::clean()
 {
-    TRACE("Shutting down sockets");
+    CTRACE(event, "Shutting down sockets");
     sockets.clear();
-    TRACE("SocketNotifiers down");
+    CTRACE(event, "SocketNotifiers down");
 }
 
 /******************************************************************************

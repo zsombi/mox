@@ -70,10 +70,10 @@ LoggerData* LoggerData::find()
     return g_logger;
 }
 
-void LoggerData::log(const std::string& text)
+void LoggerData::log(LogCategory& category, LogType type, const std::string& text)
 {
     lock_guard lock(m_mutex);
-    m_logger->log(text);
+    m_logger->log(category, type, text);
 }
 
 void LoggerData::setLogger(LoggerInterfacePtr logger)
@@ -185,8 +185,10 @@ void LoggerData::setRule(std::string rule)
 /******************************************************************************
  * ScreenLogger
  */
-bool ScreenLogger::log(const std::string& text)
+bool ScreenLogger::log(LogCategory& category, LogType type, const std::string& text)
 {
+    UNUSED(category);
+    UNUSED(type);
 #ifdef ANDROID
     __android_log_print(ANDROID_LOG_DEBUG, TAG, text.c_str());
 #else
@@ -217,8 +219,10 @@ FileLogger::~FileLogger()
     stream.close();
 }
 
-bool FileLogger::log(const std::string& text)
+bool FileLogger::log(LogCategory& category, LogType type, const std::string& text)
 {
+    UNUSED(category);
+    UNUSED(type);
     clock_t rawTime = clock();
     stream << "[tid<> " << std::to_string(rawTime) + "] "
            << text << std::endl;
@@ -228,9 +232,9 @@ bool FileLogger::log(const std::string& text)
 /******************************************************************************
  * Logger
  */
-void Logger::log(const std::string& text)
+void Logger::log(LogCategory& category, LogType type, const std::string& text)
 {
-    LoggerData::get().log(text);
+    LoggerData::get().log(category, type, text);
 }
 
 void Logger::setLogger(LoggerInterfacePtr logger)
@@ -344,7 +348,7 @@ LogLine::~LogLine()
 {
     if (isEnabled())
     {
-        LoggerData::get().log(m_data.str());
+        LoggerData::get().log(*m_category, m_logType, m_data.str());
     }
     if (m_logType == LogType::Fatal)
     {
