@@ -337,6 +337,6 @@ Signal::ConnectionSharedPtr connect(Sender& sender, std::string_view signal, Rec
 
 } // namespace mox
 
-#include <mox/metainfo/detail/metaclass_impl.hpp>
+#include <mox/meta/class/detail/metaclass_impl.hpp>
 
 #endif // METACLASS_HPP

@@ -17,7 +17,7 @@
  */
 
 #include <mox/config/error.hpp>
-#include <mox/metainfo/metaobject.hpp>
+#include <mox/meta/class/metaobject.hpp>
 
 namespace mox
 {

@@ -19,7 +19,7 @@
 #ifndef APPLICATION_HPP
 #define APPLICATION_HPP
 
-#include <mox/metainfo/metaclass.hpp>
+#include <mox/meta/class/metaclass.hpp>
 #include <mox/mox_module.hpp>
 #include <mox/object.hpp>
 #include <mox/event_handling/run_loop.hpp>

@@ -19,7 +19,7 @@
 #include <metadata_p.hpp>
 #include <mox/meta/core/metadata.hpp>
 #include <mox/meta/core/metatype_descriptor.hpp>
-#include <mox/metainfo/metaclass.hpp>
+#include <mox/meta/class/metaclass.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/config/string.hpp>
 #include <mox/meta/core/variant.hpp>

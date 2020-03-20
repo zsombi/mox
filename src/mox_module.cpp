@@ -17,7 +17,7 @@
  */
 
 #include <mox/mox_module.hpp>
-#include <mox/metainfo/metaobject.hpp>
+#include <mox/meta/class/metaobject.hpp>
 #include <mox/meta/signal/signal.hpp>
 #include <mox/event_handling/socket_notifier.hpp>
 #include <mox/object.hpp>

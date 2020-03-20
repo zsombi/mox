@@ -17,8 +17,8 @@
  */
 
 #include "test_framework.h"
-#include <mox/metainfo/metaclass.hpp>
-#include <mox/metainfo/metaobject.hpp>
+#include <mox/meta/class/metaclass.hpp>
+#include <mox/meta/class/metaobject.hpp>
 #include <mox/meta/core/callable.hpp>
 
 using namespace mox;

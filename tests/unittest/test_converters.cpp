@@ -19,7 +19,7 @@
 #include "test_framework.h"
 
 #include <mox/meta/core/variant.hpp>
-#include <mox/metainfo/metaobject.hpp>
+#include <mox/meta/class/metaobject.hpp>
 
 namespace converter_test
 {

@@ -21,7 +21,7 @@
 
 #include <mox/event_handling/event.hpp>
 #include <mox/event_handling/run_loop_sources.hpp>
-#include <mox/metainfo/metaobject.hpp>
+#include <mox/meta/class/metaobject.hpp>
 #include <mox/module/thread_data.hpp>
 #include <mox/meta/property/property.hpp>
 #include <mox/utils/containers/shared_vector.hpp>

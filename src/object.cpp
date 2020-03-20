@@ -22,7 +22,7 @@
 
 #if MOX_ENABLE_LOGGING == ON
 #include <mox/meta/core/metatype_descriptor.hpp>
-#include <mox/metainfo/metaclass.hpp>
+#include <mox/meta/class/metaclass.hpp>
 #endif
 
 namespace mox

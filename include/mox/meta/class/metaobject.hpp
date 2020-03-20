@@ -19,7 +19,7 @@
 #ifndef METAOBJECT_HPP
 #define METAOBJECT_HPP
 
-#include <mox/metainfo/metaclass.hpp>
+#include <mox/meta/class/metaclass.hpp>
 #include <mox/utils/locks.hpp>
 
 namespace mox

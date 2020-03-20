@@ -16,7 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/metainfo/metaclass.hpp>
+#include <mox/meta/class/metaclass.hpp>
 #include <metadata_p.hpp>
 #include <signal_p.hpp>
 #include <mox/object.hpp>

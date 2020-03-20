@@ -66,9 +66,9 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property.hpp
 
     # Metainfo
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/detail/metaclass_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/metaclass.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/metaobject.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/class/detail/metaclass_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/class/metaclass.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/class/metaobject.hpp
 
     # Bindings
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding.hpp
@@ -129,9 +129,9 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property_storages.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property_type.cpp
 
-    # Metainfo
-    ${CMAKE_CURRENT_SOURCE_DIR}/metainfo/metaclass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metainfo/metaobject.cpp
+    # meta/class
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/class/metaclass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/class/metaobject.cpp
 
     # Binding
     ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding.cpp

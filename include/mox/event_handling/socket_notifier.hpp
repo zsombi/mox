@@ -22,7 +22,7 @@
 #include <mox/event_handling/run_loop_sources.hpp>
 #include <mox/meta/signal/signal.hpp>
 #include <mox/event_handling/event_handling_declarations.hpp>
-#include <mox/metainfo/metaclass.hpp>
+#include <mox/meta/class/metaclass.hpp>
 
 namespace mox
 {

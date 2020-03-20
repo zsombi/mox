@@ -17,7 +17,7 @@
  */
 
 #include "test_framework.h"
-#include <mox/metainfo/metaclass.hpp>
+#include <mox/meta/class/metaclass.hpp>
 #include <mox/meta/core/metadata.hpp>
 #include <mox/meta/core/metatype.hpp>
 #include <mox/meta/core/metatype_descriptor.hpp>

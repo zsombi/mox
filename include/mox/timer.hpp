@@ -21,7 +21,7 @@
 
 #include <mox/meta/signal/signal.hpp>
 #include <mox/event_handling/run_loop.hpp>
-#include <mox/metainfo/metaclass.hpp>
+#include <mox/meta/class/metaclass.hpp>
 
 namespace mox
 {
