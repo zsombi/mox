@@ -22,10 +22,9 @@
 #include <functional>
 #include <type_traits>
 
-#include <mox/metatype.core/variant.hpp>
+#include <mox/meta/core/variant.hpp>
 #include <mox/utils/function_traits.hpp>
-#include <mox/utils/globals.hpp>
-#include <mox/metatype.core/metatype.hpp>
+#include <mox/meta/core/metatype.hpp>
 
 namespace mox
 {
@@ -152,6 +151,6 @@ private:
 
 } // namespace mox
 
-#include <mox/metatype.core/detail/callable_impl.hpp>
+#include <mox/meta/core/detail/callable_impl.hpp>
 
 #endif // CALLABLE_HPP

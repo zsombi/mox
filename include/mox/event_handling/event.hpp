@@ -20,7 +20,6 @@
 #define EVENT_HPP
 
 #include <mox/config/deftypes.hpp>
-#include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/type_traits.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>

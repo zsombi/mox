@@ -19,10 +19,9 @@
 #ifndef SIGNAL_TYPE_HPP
 #define SIGNAL_TYPE_HPP
 
-#include <mox/utils/globals.hpp>
 #include <mox/utils/containers/flat_map.hpp>
-#include <mox/meta/metabase/metabase.hpp>
-#include <mox/metatype.core/callable.hpp>
+#include <mox/meta/base/metabase.hpp>
+#include <mox/meta/core/callable.hpp>
 
 namespace mox
 {

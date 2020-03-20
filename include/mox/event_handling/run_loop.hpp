@@ -19,7 +19,6 @@
 #ifndef RUN_LOOP_HPP
 #define RUN_LOOP_HPP
 
-#include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
 #include <mox/event_handling/event.hpp>

@@ -18,7 +18,7 @@
 
 #include "test_framework.h"
 
-#include <mox/metatype.core/variant.hpp>
+#include <mox/meta/core/variant.hpp>
 #include <mox/utils/function_traits.hpp>
 
 TEST(Variant, test_argument_init)

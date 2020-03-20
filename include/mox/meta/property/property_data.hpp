@@ -20,7 +20,7 @@
 #define PROPERTY_DATA_HPP
 
 #include <mox/config/platform_config.hpp>
-#include <mox/metatype.core/variant.hpp>
+#include <mox/meta/core/variant.hpp>
 
 namespace mox
 {

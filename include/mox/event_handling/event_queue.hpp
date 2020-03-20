@@ -18,11 +18,10 @@
 #ifndef EVENT_QUEUE_HPP
 #define EVENT_QUEUE_HPP
 
-#include <mox/utils/globals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/event_handling/event_handling_declarations.hpp>
 #include <mox/event_handling/event.hpp>
-#include <mox/meta/metabase/metabase.hpp>
+#include <mox/meta/base/metabase.hpp>
 #include <mox/utils/log/logger.hpp>
 
 #include <functional>

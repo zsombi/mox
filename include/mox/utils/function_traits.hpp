@@ -24,9 +24,8 @@
 #include <tuple>
 #include <vector>
 
-#include <mox/utils/globals.hpp>
-#include <mox/metatype.core/metatype.hpp>
-#include <mox/metatype.core/variant_descriptor.hpp>
+#include <mox/meta/core/metatype.hpp>
+#include <mox/meta/core/variant_descriptor.hpp>
 
 namespace mox
 {

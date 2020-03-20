@@ -19,8 +19,18 @@
 #ifndef SIGNAL_IMPL_HPP
 #define SIGNAL_IMPL_HPP
 
+#include <mox/config/memory.hpp>
+
 namespace mox
 {
+
+template <class Derived, typename... Arguments>
+Signal::ConnectionSharedPtr Signal::Connection::create(Signal& sender, Arguments&&... args)
+{
+    auto connection = make_polymorphic_shared<Connection, Derived>(sender, std::forward<Arguments>(args)...);
+    sender.addConnection(connection);
+    return connection;
+}
 
 /******************************************************************************
  * Method connect.

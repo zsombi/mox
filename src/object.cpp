@@ -17,11 +17,11 @@
  */
 
 #include <mox/object.hpp>
-#include <mox/metatype.core/callable.hpp>
+#include <mox/meta/core/callable.hpp>
 #include <mox/module/thread_loop.hpp>
 
 #if MOX_ENABLE_LOGGING == ON
-#include <mox/metatype.core/metatype_descriptor.hpp>
+#include <mox/meta/core/metatype_descriptor.hpp>
 #include <mox/metainfo/metaclass.hpp>
 #endif
 

@@ -21,8 +21,7 @@
 
 #include <any>
 
-#include <mox/utils/globals.hpp>
-#include <mox/metatype.core/variant_descriptor.hpp>
+#include <mox/meta/core/variant_descriptor.hpp>
 
 namespace mox
 {
@@ -162,6 +161,6 @@ void swap(mox::Variant& lhs, mox::Variant& rhs);
 
 }
 
-#include <mox/metatype.core/detail/variant_impl.hpp>
+#include <mox/meta/core/detail/variant_impl.hpp>
 
 #endif // ANY_HPP

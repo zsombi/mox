@@ -19,11 +19,11 @@
 #ifndef OBJECT_HPP
 #define OBJECT_HPP
 
-#include <mox/config/thread.hpp>
+#include <mox/event_handling/event.hpp>
+#include <mox/event_handling/run_loop_sources.hpp>
 #include <mox/metainfo/metaobject.hpp>
 #include <mox/module/thread_data.hpp>
 #include <mox/meta/property/property.hpp>
-#include <mox/utils/globals.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 #include <mox/utils/containers/flat_map.hpp>
 

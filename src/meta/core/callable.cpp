@@ -16,7 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/metatype.core/callable.hpp>
+#include <mox/meta/core/callable.hpp>
 #include <type_traits>
 
 namespace mox

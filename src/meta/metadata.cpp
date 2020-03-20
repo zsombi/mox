@@ -17,12 +17,12 @@
  */
 
 #include <metadata_p.hpp>
-#include <mox/metatype.core/metadata.hpp>
-#include <mox/metatype.core/metatype_descriptor.hpp>
+#include <mox/meta/core/metadata.hpp>
+#include <mox/meta/core/metatype_descriptor.hpp>
 #include <mox/metainfo/metaclass.hpp>
 #include <mox/utils/locks.hpp>
-#include <mox/utils/string.hpp>
-#include <mox/metatype.core/variant.hpp>
+#include <mox/config/string.hpp>
+#include <mox/meta/core/variant.hpp>
 #include <algorithm>
 
 namespace mox

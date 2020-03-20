@@ -19,7 +19,6 @@
 #include <metabase_p.hpp>
 #include <signal_p.hpp>
 #include <mox/meta/property/property.hpp>
-#include <mox/utils/globals.hpp>
 
 namespace mox
 {

@@ -24,7 +24,6 @@
 #include <optional>
 
 #include <mox/utils/algorithm.hpp>
-#include <mox/utils/globals.hpp>
 #include <mox/utils/type_traits.hpp>
 #include <mox/utils/locks.hpp>
 

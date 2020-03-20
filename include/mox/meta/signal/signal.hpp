@@ -23,7 +23,7 @@
 #include <mox/config/pimpl.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
-#include <mox/metatype.core/callable.hpp>
+#include <mox/meta/core/callable.hpp>
 #include <mox/meta/signal/signal_type.hpp>
 #include <mox/utils/function_traits.hpp>
 
@@ -61,12 +61,7 @@ public:
     {
     public:
         template <class Derived, typename... Arguments>
-        static ConnectionSharedPtr create(Signal& sender, Arguments&&... args)
-        {
-            auto connection = make_polymorphic_shared<Connection, Derived>(sender, std::forward<Arguments>(args)...);
-            sender.addConnection(connection);
-            return connection;
-        }
+        static ConnectionSharedPtr create(Signal& sender, Arguments&&... args);
 
         /// Destructor.
         virtual ~Connection() = default;

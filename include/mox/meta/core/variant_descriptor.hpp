@@ -19,7 +19,7 @@
 #ifndef VARIANT_DESCRIPTOR_HPP
 #define VARIANT_DESCRIPTOR_HPP
 
-#include <mox/metatype.core/metadata.hpp>
+#include <mox/meta/core/metadata.hpp>
 
 #include <vector>
 

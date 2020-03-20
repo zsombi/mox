@@ -17,8 +17,8 @@
  */
 
 #include <mox/config/deftypes.hpp>
-#include <mox/metatype.core/metatype.hpp>
-#include <mox/metatype.core/metatype_descriptor.hpp>
+#include <mox/meta/core/metatype.hpp>
+#include <mox/meta/core/metatype_descriptor.hpp>
 #include <string.h>
 #include <metadata_p.hpp>
 #include <cxxabi.h>

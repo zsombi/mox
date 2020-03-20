@@ -20,8 +20,8 @@
 #define PROPERTY_TYPE_HPP
 
 #include <mox/config/platform_config.hpp>
-#include <mox/metatype.core/variant.hpp>
-#include <mox/meta/metabase/metabase.hpp>
+#include <mox/meta/core/variant.hpp>
+#include <mox/meta/base/metabase.hpp>
 #include <mox/meta/signal/signal_type.hpp>
 #include <mox/meta/property/property_data.hpp>
 

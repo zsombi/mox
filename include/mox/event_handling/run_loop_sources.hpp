@@ -19,7 +19,6 @@
 #ifndef RUN_LOOP_SOURCES_HPP
 #define RUN_LOOP_SOURCES_HPP
 
-#include <mox/utils/globals.hpp>
 #include <mox/event_handling/event.hpp>
 #include <mox/event_handling/event_handling_declarations.hpp>
 #include <mox/event_handling/event_queue.hpp>

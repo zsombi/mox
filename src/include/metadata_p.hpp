@@ -24,7 +24,7 @@
 #include <functional>
 #include <mox/config/deftypes.hpp>
 #include <mox/utils/containers/flat_map.hpp>
-#include <mox/metatype.core/variant.hpp>
+#include <mox/meta/core/variant.hpp>
 #include <mox/metainfo/metaobject.hpp>
 #include <logger_p.hpp>
 

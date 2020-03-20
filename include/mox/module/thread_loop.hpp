@@ -22,9 +22,8 @@
 #include <mox/module/module.hpp>
 #include <mox/object.hpp>
 #include <mox/meta/signal/signal.hpp>
-#include <mox/config/thread.hpp>
 #include <mox/utils/log/logger.hpp>
-
+#include <mox/event_handling/run_loop.hpp>
 #include <future>
 
 namespace mox

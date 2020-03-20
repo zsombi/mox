@@ -19,7 +19,7 @@
 #ifndef METACLASS_IMPL_HPP
 #define METACLASS_IMPL_HPP
 
-#include <mox/meta/metabase/metabase.hpp>
+#include <mox/meta/base/metabase.hpp>
 namespace mox
 {
 

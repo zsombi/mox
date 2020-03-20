@@ -23,10 +23,9 @@
 #include <string_view>
 
 #include <mox/config/deftypes.hpp>
-#include <mox/metatype.core/variant.hpp>
-#include <mox/metatype.core/callable.hpp>
-#include <mox/metatype.core/metatype_descriptor.hpp>
-#include <mox/utils/globals.hpp>
+#include <mox/meta/core/variant.hpp>
+#include <mox/meta/core/callable.hpp>
+#include <mox/meta/core/metatype_descriptor.hpp>
 
 #include <mox/meta/signal/signal.hpp>
 #include <mox/meta/signal/signal_type.hpp>

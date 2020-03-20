@@ -19,7 +19,7 @@
 #ifndef MODULE_HPP
 #define MODULE_HPP
 
-#include <mox/utils/globals.hpp>
+#include <mox/config/platform_config.hpp>
 
 namespace mox
 {

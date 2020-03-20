@@ -19,12 +19,8 @@
 #ifndef THREAD_DATA_HPP
 #define THREAD_DATA_HPP
 
-#include <mox/utils/globals.hpp>
-#include <mox/utils/locks.hpp>
-#include <mox/event_handling/event_queue.hpp>
-#include <mox/event_handling/run_loop.hpp>
-
-#include <stack>
+#include <mox/config/platform_config.hpp>
+#include <memory>
 
 namespace mox
 {

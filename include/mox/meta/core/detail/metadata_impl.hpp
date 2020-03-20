@@ -21,9 +21,8 @@
 
 #include <mox/utils/type_traits.hpp>
 #include <string>
-#include <mox/utils/globals.hpp>
 #include <mox/config/error.hpp>
-#include <mox/metatype.core/metatype_descriptor.hpp>
+#include <mox/meta/core/metatype_descriptor.hpp>
 
 namespace mox
 {

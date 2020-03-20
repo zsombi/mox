@@ -25,8 +25,7 @@
 #include <functional>
 #include <typeindex>
 #include <typeinfo>
-#include <mox/utils/globals.hpp>
-#include <mox/metatype.core/metatype.hpp>
+#include <mox/meta/core/metatype.hpp>
 
 #include <unordered_map>
 
@@ -233,6 +232,6 @@ private:
 
 } // namespace mox
 
-#include <mox/metatype.core/detail/metatype_descriptor_impl.hpp>
+#include <mox/meta/core/detail/metatype_descriptor_impl.hpp>
 
 #endif // METATYPE_DESCRIPTOR_HPP

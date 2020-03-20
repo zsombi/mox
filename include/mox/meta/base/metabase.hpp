@@ -21,8 +21,8 @@
 
 #include <mox/utils/locks.hpp>
 #include <mox/config/pimpl.hpp>
-#include <mox/metatype.core/variant.hpp>
-#include <mox/metatype.core/callable.hpp>
+#include <mox/meta/core/variant.hpp>
+#include <mox/meta/core/callable.hpp>
 
 #include <map>
 #include <memory>

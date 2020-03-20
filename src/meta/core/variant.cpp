@@ -18,7 +18,7 @@
 
 #include <metadata_p.hpp>
 
-#include <mox/metatype.core/variant.hpp>
+#include <mox/meta/core/variant.hpp>
 #include <mox/meta/signal/signal.hpp>
 
 #include <algorithm>

@@ -23,27 +23,6 @@
 #include <memory>
 #include <iostream>
 
-#include <mox/config/platform_config.hpp>
-
-#define FALLTHROUGH     [[fallthrough]]
-
-// unused parameters
-#define UNUSED(x)       (void)x
-
-//
-// disable copy construction and operator
-//
-#define DISABLE_COPY(Class) \
-    Class(const Class&) = delete;\
-    Class& operator=(const Class&) = delete;
-#define DISABLE_MOVE(Class) \
-    Class(Class&&) = delete; \
-    Class& operator=(Class&&) = delete;
-
-#define DISABLE_COPY_OR_MOVE(Class) \
-    DISABLE_COPY(Class) \
-    DISABLE_MOVE(Class)
-
 namespace mox
 {
 
