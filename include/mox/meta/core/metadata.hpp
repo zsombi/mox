@@ -19,6 +19,7 @@
 #ifndef METADATA_HPP
 #define METADATA_HPP
 
+#include <mox/config/platform_config.hpp>
 #include <mox/meta/core/metatype.hpp>
 #include <functional>
 #include <typeindex>

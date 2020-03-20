@@ -22,6 +22,7 @@
 #include <mox/object.hpp>
 
 #include <mox/module/thread_loop.hpp>
+#include <stack>
 
 namespace mox
 {
