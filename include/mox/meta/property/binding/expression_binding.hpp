@@ -19,7 +19,7 @@
 #ifndef EXPRESSION_BINDING_HPP
 #define EXPRESSION_BINDING_HPP
 
-#include <mox/binding/binding.hpp>
+#include <mox/meta/property/binding/binding.hpp>
 
 namespace mox
 {

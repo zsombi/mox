@@ -20,9 +20,9 @@
 #define BINDING_P_HPP
 
 #include <mox/meta/property/property.hpp>
-#include <mox/binding/binding.hpp>
-#include <mox/binding/binding_normalizer.hpp>
-#include <mox/binding/property_binding.hpp>
+#include <mox/meta/property/binding/binding.hpp>
+#include <mox/meta/property/binding/binding_normalizer.hpp>
+#include <mox/meta/property/binding/property_binding.hpp>
 #include <mox/config/pimpl.hpp>
 #include <mox/utils/ref_counted.hpp>
 

@@ -20,7 +20,7 @@
 #include <property_p.hpp>
 #include <mox/meta/property/property.hpp>
 #include <mox/config/error.hpp>
-#include <mox/binding/binding.hpp>
+#include <mox/meta/property/binding/binding.hpp>
 
 #include <binding_p.hpp>
 #include <metabase_p.hpp>

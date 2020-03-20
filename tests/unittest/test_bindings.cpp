@@ -17,11 +17,11 @@
  */
 
 #include "test_framework.h"
-#include <mox/binding/binding.hpp>
-#include <mox/binding/binding_normalizer.hpp>
-#include <mox/binding/binding_group.hpp>
-#include <mox/binding/property_binding.hpp>
-#include <mox/binding/expression_binding.hpp>
+#include <mox/meta/property/binding/binding.hpp>
+#include <mox/meta/property/binding/binding_normalizer.hpp>
+#include <mox/meta/property/binding/binding_group.hpp>
+#include <mox/meta/property/binding/property_binding.hpp>
+#include <mox/meta/property/binding/expression_binding.hpp>
 #include <mox/object.hpp>
 
 using namespace mox;

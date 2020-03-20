@@ -17,7 +17,7 @@
  */
 
 #include <binding_p.hpp>
-#include <mox/binding/expression_binding.hpp>
+#include <mox/meta/property/binding/expression_binding.hpp>
 
 namespace mox
 {

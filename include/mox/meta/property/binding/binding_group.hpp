@@ -20,7 +20,7 @@
 #define BINDING_GROUP_HPP
 
 #include <mox/config/deftypes.hpp>
-#include <mox/binding/binding_normalizer.hpp>
+#include <mox/meta/property/binding/binding_normalizer.hpp>
 #include <vector>
 
 namespace mox

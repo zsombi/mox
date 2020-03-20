@@ -17,7 +17,7 @@
  */
 
 #include <binding_p.hpp>
-#include <mox/binding/binding_group.hpp>
+#include <mox/meta/property/binding/binding_group.hpp>
 
 namespace mox
 {

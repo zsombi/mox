@@ -54,28 +54,28 @@ set(HEADERS
     # meta/base
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/base/metabase.hpp
 
-    # Signal handling
+    # meta/signal
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/signal_type.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/signal.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/detail/signal_impl.hpp
 
-    # Property handling
+    # meta/property
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_decl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_data.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_type.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property.hpp
 
-    # Metainfo
+    # meta/class
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/class/detail/metaclass_impl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/class/metaclass.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/class/metaobject.hpp
 
-    # Bindings
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding_normalizer.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding_group.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/property_binding.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/expression_binding.hpp
+    # meta/property/binding
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/binding/binding.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/binding/binding_normalizer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/binding/binding_group.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/binding/property_binding.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/binding/expression_binding.hpp
 
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event.hpp
@@ -133,11 +133,11 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/meta/class/metaclass.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/meta/class/metaobject.cpp
 
-    # Binding
-    ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding_group.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/binding/property_binding.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/binding/expression_binding.cpp
+    # meta/proeprty/binding
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/binding/binding.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/binding/binding_group.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/binding/property_binding.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/binding/expression_binding.cpp
 
     # Event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event.cpp
