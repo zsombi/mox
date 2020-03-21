@@ -16,8 +16,8 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/module/thread_loop.hpp>
-#include <mox/object.hpp>
+#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/object.hpp>
 #include "test_framework.h"
 
 static const mox::EventType evQuit = mox::Event::registerNewType();

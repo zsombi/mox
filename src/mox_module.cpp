@@ -17,13 +17,13 @@
  */
 
 #include <mox/mox_module.hpp>
-#include <mox/meta/class/metaobject.hpp>
-#include <mox/meta/signal/signal.hpp>
-#include <mox/event_handling/socket_notifier.hpp>
-#include <mox/object.hpp>
-#include <mox/timer.hpp>
-#include <mox/module/application.hpp>
-#include <mox/module/thread_loop.hpp>
+#include <mox/core/meta/class/metaobject.hpp>
+#include <mox/core/meta/signal/signal.hpp>
+#include <mox/core/event_handling/socket_notifier.hpp>
+#include <mox/core/object.hpp>
+#include <mox/core/timer.hpp>
+#include <mox/core/module/application.hpp>
+#include <mox/core/module/thread_loop.hpp>
 
 #include <vector>
 

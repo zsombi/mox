@@ -17,10 +17,10 @@
  */
 
 #include "test_framework.h"
-#include <mox/meta/class/metaclass.hpp>
-#include <mox/meta/core/metadata.hpp>
-#include <mox/meta/core/metatype.hpp>
-#include <mox/meta/core/metatype_descriptor.hpp>
+#include <mox/core/meta/class/metaclass.hpp>
+#include <mox/core/meta/core/metadata.hpp>
+#include <mox/core/meta/core/metatype.hpp>
+#include <mox/core/meta/core/metatype_descriptor.hpp>
 
 TEST(MetaDataEnum, test_enumerate_default_metatypes)
 {

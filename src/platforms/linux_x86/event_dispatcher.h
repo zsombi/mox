@@ -19,12 +19,12 @@
 #ifndef EVENT_LOOP_H
 #define EVENT_LOOP_H
 
-#include <mox/meta/class/metaobject.hpp>
-#include <mox/event_handling/run_loop.hpp>
-#include <mox/event_handling/run_loop_sources.hpp>
-#include <mox/timer.hpp>
+#include <mox/core/meta/class/metaobject.hpp>
+#include <mox/core/event_handling/run_loop.hpp>
+#include <mox/core/event_handling/run_loop_sources.hpp>
+#include <mox/core/timer.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
-#include <mox/platforms/adaptation.hpp>
+#include <mox/core/platforms/adaptation.hpp>
 
 #include <glib.h>
 

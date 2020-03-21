@@ -19,7 +19,7 @@
 #ifndef METABASE_P_HPP
 #define METABASE_P_HPP
 
-#include <mox/meta/base/metabase.hpp>
+#include <mox/core/meta/base/metabase.hpp>
 #include <property_p.hpp>
 
 namespace mox

@@ -19,7 +19,7 @@
 #ifndef PROPERTY_P_HPP
 #define PROPERTY_P_HPP
 
-#include <mox/meta/property/property.hpp>
+#include <mox/core/meta/property/property.hpp>
 #include <mox/config/pimpl.hpp>
 
 #include <unordered_set>

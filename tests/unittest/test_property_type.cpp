@@ -19,7 +19,7 @@
 #include <test_framework.h>
 #include <mox/config/deftypes.hpp>
 #include <mox/utils/locks.hpp>
-#include <mox/meta/property/property_type.hpp>
+#include <mox/core/meta/property/property_type.hpp>
 
 using namespace mox;
 

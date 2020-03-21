@@ -19,7 +19,7 @@
 #ifndef MOX_MODULE_HPP
 #define MOX_MODULE_HPP
 
-#include <mox/module/module.hpp>
+#include <mox/core/module/module.hpp>
 
 namespace mox
 {
