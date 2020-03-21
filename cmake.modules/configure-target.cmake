@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2017-2018 bitWelder
+# Copyright (C) 2017-2020 bitWelder
 #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU Lesser General Public License as published by
@@ -16,30 +16,22 @@
 # <http://www.gnu.org/licenses/>
 #
 
-cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
-set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../cmake.modules" CACHE STRING "module-path")
+if ("${TARGET}" STREQUAL "")
+    message("TARGET not set.")
+else()
+    message("Configuring target " ${TARGET})
+endif()
 
-include(configure-platform)
-include(gtest)
-
-set (TEST_FRAMEWORK
-    ${CMAKE_CURRENT_LIST_DIR}/test_framework.h
-    ${CMAKE_CURRENT_LIST_DIR}/test_main.cpp)
-
-include_directories(${CMAKE_SOURCE_DIR}/tests)
-
+# MacOS stuff
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
-    set (TEST_FRAMEWORK
-        ${TEST_FRAMEWORK}
-        ${CMAKE_CURRENT_LIST_DIR}/test_core_darwin.mm
-        )
+    target_link_libraries(${TARGET} "-framework Foundation -framework CoreFoundation")
+    set_target_properties(${TARGET} PROPERTIES LINK_FLAGS "-Wl,-F/Library/Frameworks")
 endif()
 
+# Linux stuff
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
-    set (TEST_FRAMEWORK
-        ${TEST_FRAMEWORK}
-        ${CMAKE_CURRENT_LIST_DIR}/test_core_linux.cc
-        )
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(deps REQUIRED IMPORTED_TARGET glib-2.0)
+    target_link_libraries(${TARGET} PkgConfig::deps)
+    target_link_libraries(${TARGET} ${LIBGLIB_LIBRARIES})
 endif()
-
-add_subdirectory(unittest)

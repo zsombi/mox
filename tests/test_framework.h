@@ -83,6 +83,25 @@ public:
     }
 };
 
+class TestCoreApp
+{
+    static inline TestCoreApp* m_instance = nullptr;
+public:
+    explicit TestCoreApp();
+    ~TestCoreApp();
+    static TestCoreApp* instance();
+    void exit();
+    void run();
+
+    static void onExit()
+    {
+        instance()->exit();
+    }
+
+    class Private;
+    std::unique_ptr<Private> d;
+};
+
 class TestApp : public mox::Application
 {
 public:

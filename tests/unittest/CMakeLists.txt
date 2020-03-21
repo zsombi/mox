@@ -16,10 +16,10 @@
 # <http://www.gnu.org/licenses/>
 #
 
-#cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
-#set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../cmake.modules" CACHE STRING "module-path")
+cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../cmake.modules" CACHE STRING "module-path")
 
-#include(configure-platform)
+include(configure-platform)
 #include(gtest)
 
 set(SOURCES
@@ -43,8 +43,11 @@ set(SOURCES
     test_bindings.cpp
     )
 
-add_executable(unittest ${SOURCES} ${TEST_FRAMEWORK})
-target_link_libraries(unittest mox gtest_main)
+set(TARGET unittest)
+add_executable(${TARGET} ${SOURCES} ${TEST_FRAMEWORK})
+target_link_libraries(${TARGET} mox gtest_main)
+target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+include(configure-target)
 
 add_test(NAME unittest COMMAND unittest "--gtest_output=xml:unittest.xml"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")
