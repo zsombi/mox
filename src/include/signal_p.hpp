@@ -19,8 +19,8 @@
 #ifndef SIGNAL_P_H
 #define SIGNAL_P_H
 
-#include <mox/meta/signal/signal.hpp>
-#include <mox/meta/signal/signal_type.hpp>
+#include <mox/core/meta/signal/signal.hpp>
+#include <mox/core/meta/signal/signal_type.hpp>
 
 namespace mox
 {

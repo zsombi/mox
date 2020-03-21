@@ -17,7 +17,7 @@
  */
 
 #include "test_framework.h"
-#include <mox/object.hpp>
+#include <mox/core/object.hpp>
 
 using namespace mox;
 

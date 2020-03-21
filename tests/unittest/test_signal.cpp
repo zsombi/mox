@@ -17,10 +17,10 @@
  */
 
 #include "test_framework.h"
-#include <mox/metainfo/metaclass.hpp>
-#include <mox/metainfo/metaobject.hpp>
-#include <mox/metatype.core/callable.hpp>
-#include <mox/meta/signal/signal.hpp>
+#include <mox/core/meta/class/metaclass.hpp>
+#include <mox/core/meta/class/metaobject.hpp>
+#include <mox/core/meta/core/callable.hpp>
+#include <mox/core/meta/signal/signal.hpp>
 
 #include <string_view>
 

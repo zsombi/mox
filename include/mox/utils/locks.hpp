@@ -24,7 +24,7 @@
 #include <atomic>
 #endif
 
-#include <mox/utils/globals.hpp>
+#include <mox/config/platform_config.hpp>
 #include <mox/utils/ref_counted.hpp>
 
 #include <functional>

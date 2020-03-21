@@ -17,10 +17,10 @@
  */
 
 #include "test_framework.h"
-#include <mox/event_handling/event.hpp>
-#include <mox/event_handling/event_queue.hpp>
-#include <mox/event_handling/run_loop.hpp>
-#include <mox/event_handling/run_loop_sources.hpp>
+#include <mox/core/event_handling/event.hpp>
+#include <mox/core/event_handling/event_queue.hpp>
+#include <mox/core/event_handling/run_loop.hpp>
+#include <mox/core/event_handling/run_loop_sources.hpp>
 
 using namespace mox;
 

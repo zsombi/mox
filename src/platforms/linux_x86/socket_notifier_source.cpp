@@ -17,7 +17,6 @@
  */
 
 #include "event_dispatcher.h"
-#include <mox/utils/globals.hpp>
 
 namespace mox
 {

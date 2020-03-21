@@ -17,7 +17,7 @@
  */
 
 #include "test_framework.h"
-#include <mox/event_handling/event.hpp>
+#include <mox/core/event_handling/event.hpp>
 
 using namespace mox;
 

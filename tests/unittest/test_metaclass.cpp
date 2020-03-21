@@ -16,8 +16,8 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/metainfo/metaclass.hpp>
-#include <mox/metainfo/metaobject.hpp>
+#include <mox/core/meta/class/metaclass.hpp>
+#include <mox/core/meta/class/metaobject.hpp>
 #include "test_framework.h"
 
 using namespace mox;

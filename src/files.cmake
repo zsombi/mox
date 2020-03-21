@@ -22,79 +22,79 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/error.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/pimpl.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/thread.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/platforms/adaptation.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/string.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/memory.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/platforms/adaptation.hpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/globals.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers/shared_vector.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers/flat_set.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/containers/flat_map.hpp
+
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/algorithm.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/ref_counted.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/locks.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/string.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/function_traits.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/type_traits.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/type_traits/enum_operators.hpp
-
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/metatype.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/metatype_descriptor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/metatype_descriptor_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/variant_descriptor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/variant.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/variant_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/callable.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/callable_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/metadata.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metatype.core/detail/metadata_impl.hpp
-
     # Logger
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/log/logger.hpp
 
-    # Meta-programming support
+    # meta/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metatype.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metatype_descriptor.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/metatype_descriptor_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/variant_descriptor.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/variant.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/variant_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/callable.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/callable_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metadata.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/metadata_impl.hpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/metabase/metabase.hpp
+    # meta/base
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/base/metabase.hpp
 
-    # Signal handling
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/signal_type.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/signal.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/signal/detail/signal_impl.hpp
+    # meta/signal
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signal/signal_type.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signal/signal.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signal/detail/signal_impl.hpp
 
-    # Property handling
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_decl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_data.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property_type.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/meta/property/property.hpp
+    # meta/property
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/property_decl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/property_data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/property_type.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/property.hpp
 
-    # Metainfo
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/detail/metaclass_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/metaclass.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/metainfo/metaobject.hpp
+    # meta/class
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/class/detail/metaclass_impl.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/class/metaclass.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/class/metaobject.hpp
 
-    # Bindings
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding_normalizer.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/binding_group.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/property_binding.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/binding/expression_binding.hpp
+    # meta/property/binding
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/binding.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/binding_normalizer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/binding_group.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/property_binding.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/expression_binding.hpp
 
     #event handling
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_queue.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/run_loop_sources.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/run_loop.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/event_handling_declarations.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/event_handling/socket_notifier.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event_queue.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/run_loop_sources.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/run_loop.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event_handling_declarations.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/socket_notifier.hpp
 
     #modules
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/module.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/thread_data.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/thread_loop.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/module/application.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/module.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/thread_data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/thread_loop.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/application.hpp
 
     # Mox core
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/mox_module.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/timer.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/object.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/timer.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/object.hpp
 
     # Private includes
     ${CMAKE_CURRENT_SOURCE_DIR}/include/logger_p.hpp
@@ -107,53 +107,54 @@ set(HEADERS
 
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/utils.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/utils/utils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/log/logger.cpp
 
+    # meta/core
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/metadata.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/metatype.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/converters.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/variant.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/callable.cpp
 
-    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/metadata.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/metatype.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/converters.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/variant.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metatype.core/callable.cpp
+    # meta/base
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/base/metabase.cpp
+    # meta/signal
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/signal/signal.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/signal/signal_storage.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/signal/signal_connections.cpp
 
-    # Signal
-    ${CMAKE_CURRENT_SOURCE_DIR}/meta/metabase/metabase.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/meta/signal/signal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/meta/signal/signal_storage.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/meta/signal/signal_connections.cpp
+    # meta/property
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/property.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/property_storages.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/property_type.cpp
 
-    # Property handling
-    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property_storages.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/meta/property/property_type.cpp
+    # meta/class
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/class/metaclass.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/class/metaobject.cpp
 
-    # Metainfo
-    ${CMAKE_CURRENT_SOURCE_DIR}/metainfo/metaclass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/metainfo/metaobject.cpp
-
-    # Binding
-    ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/binding/binding_group.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/binding/property_binding.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/binding/expression_binding.cpp
+    # meta/proeprty/binding
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/binding/binding.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/binding/binding_group.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/binding/property_binding.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/binding/expression_binding.cpp
 
     # Event handling
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/event_queue.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/socket_notifier.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/run_loop_sources.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/event_handling/run_loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/event.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/event_queue.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/socket_notifier.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/run_loop_sources.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/run_loop.cpp
 
     # object
-    ${CMAKE_CURRENT_SOURCE_DIR}/timer.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/object.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/timer.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/object.cpp
 
     #modules
-    ${CMAKE_CURRENT_SOURCE_DIR}/module/modules.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/module/thread_data.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/module/thread_loop.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/module/application.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/module/modules.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/module/thread_data.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/module/thread_loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/module/application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mox_module.cpp
     )
 
