@@ -64,8 +64,8 @@ CFSocketNotifierSource::Socket::~Socket()
 {
     if (CFSocketIsValid(cfSocket))
     {
-        FoundationRunLoop* loop = static_cast<FoundationRunLoop*>(socketSource.getRunLoop().get());
-        CFRunLoopRemoveSource(loop->runLoop, cfSource, kCFRunLoopCommonModes);
+        auto loop = std::dynamic_pointer_cast<FoundationConcept>(socketSource.getRunLoop());
+        loop->removeSource(cfSource);
         CFSocketDisableCallBacks(cfSocket, kCFSocketReadCallBack);
         CFSocketDisableCallBacks(cfSocket, kCFSocketWriteCallBack);
     }
@@ -202,9 +202,9 @@ void CFSocketNotifierSource::enableSockets()
             socket->cfSource = CFSocketCreateRunLoopSource(kCFAllocatorDefault, socket->cfSocket, 0);
             if (socket->cfSource)
             {
-                FoundationRunLoop* loop = static_cast<FoundationRunLoop*>(m_runLoop.lock().get());
+                auto loop = std::dynamic_pointer_cast<FoundationConcept>(m_runLoop.lock());
                 FATAL(loop, "The event loop is destroyed!");
-                CFRunLoopAddSource(loop->runLoop, socket->cfSource, loop->currentMode);
+                loop->addSource(socket->cfSource);
             }
             else
             {
@@ -253,11 +253,7 @@ void CFSocketNotifierSource::removeNotifier(Notifier& notifier)
     }
 }
 
-void CFSocketNotifierSource::prepare()
-{
-}
-
-void CFSocketNotifierSource::clean()
+void CFSocketNotifierSource::detachOverride()
 {
     CTRACE(event, "Shutting down sockets");
     sockets.clear();

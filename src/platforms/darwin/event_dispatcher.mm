@@ -19,9 +19,6 @@
 #include "event_dispatcher.h"
 #include <stack>
 
-@interface RunLoopModeTracker :NSObject
-@end
-
 @implementation RunLoopModeTracker
 {
     std::stack<CFStringRef> m_runLoopModes;
@@ -97,85 +94,80 @@ static CFStringRef runLoopMode(NSDictionary *dictionary)
 namespace mox
 {
 
-FoundationRunLoop::FoundationRunLoop()
-    : runLoopActivitySource(this, &FoundationRunLoop::processRunLoopActivity, kCFRunLoopAllActivities)
-    , runLoop(mac::CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent()))
+/******************************************************************************
+ * FoundationConcept
+ */
+FoundationConcept::FoundationConcept()
+    : runLoop(mac::CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent()))
     , modeTracker([[RunLoopModeTracker alloc] init])
 {
-    runLoopActivitySource.addToMode(kCFRunLoopCommonModes);
 }
 
-FoundationRunLoop::~FoundationRunLoop()
+void FoundationConcept::addSource(CFRunLoopSourceRef source)
 {
+    CFRunLoopAddSource(runLoop, source, currentMode);
 }
 
-void FoundationRunLoop::scheduleIdleTasks()
+void FoundationConcept::addTimerSource(CFRunLoopTimerRef timer)
 {
-    wakeUp();
+    CFRunLoopAddTimer(runLoop, timer, kCFRunLoopCommonModes);
 }
 
-void FoundationRunLoop::processRunLoopActivity(CFRunLoopActivity activity)
+void FoundationConcept::removeSource(CFRunLoopSourceRef source, CFRunLoopMode mode)
 {
-    switch (activity)
-    {
-        case kCFRunLoopEntry:
-        {
-            CTRACE(event, "Entering runloop");
-            break;
-        }
-        case kCFRunLoopBeforeTimers:
-        {
-            if (!m_runOnce)
-            {
-                CTRACE(event, "Before timers...");
-                forEachSource<CFTimerSource>(&CFTimerSource::activate);
-            }
-            break;
-        }
-        case kCFRunLoopBeforeSources:
-        {
-            CTRACE(event, "Before sources...");
-            forEachSource<CFSocketNotifierSource>(&CFSocketNotifierSource::enableSockets);
-            break;
-        }
-        case kCFRunLoopBeforeWaiting:
-        {
-            CTRACE(event, "RunLoop is about to sleep, run idle tasks");
-            // Run idle tasks
-            if (runIdleTasks())
-            {
-                scheduleIdleTasks();
-            }
-            if (m_runOnce && !runningTimerCount())
-            {
-                CTRACE(event, "runOnce invoked");
-                stopExecution();
-            }
-            break;
-        }
-        case kCFRunLoopAfterWaiting:
-        {
-            CTRACE(event, "After waiting, resumed");
-            break;
-        }
-        case kCFRunLoopExit:
-        {
-            if (!m_runOnce)
-            {
-                CTRACE(event, "Exiting");
-                forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::clean);
-            }
-            break;
-        }
-        default:
-        {
-            break;
-        }
-    }
+    CFRunLoopRemoveSource(runLoop, source, mode);
 }
 
 /******************************************************************************
- *
+ * FoundationRunLoop
+ */
+void FoundationRunLoop::execute(ProcessFlags flags)
+{
+    if (isExiting() || m_isRunning)
+    {
+        return;
+    }
+    if (flags != ProcessFlags::SingleLoop)
+    {
+        ScopeValue toggleRunning(m_isRunning, true);
+        currentMode = kCFRunLoopCommonModes;
+        CFRunLoopRun();
+    }
+
+    notifyRunLoopDown();
+}
+
+void FoundationRunLoop::stopRunLoop()
+{
+    CTRACE(event, "Stop run loop");
+    CFRunLoopStop(runLoop);
+}
+
+/******************************************************************************
+ * FoundationRunLoopHook
+ */
+void FoundationRunLoopHook::onEnter()
+{
+    currentMode = kCFRunLoopCommonModes;
+    m_isRunning = true;
+}
+
+void FoundationRunLoopHook::onExit()
+{
+    if (m_isRunning)
+    {
+        quit();
+    }
+    m_isRunning = false;
+}
+
+void FoundationRunLoopHook::stopRunLoop()
+{
+    notifyRunLoopDown();
+}
+
+/******************************************************************************
+ * Adaptation
  */
 RunLoopSharedPtr Adaptation::createRunLoop(bool main)
 {
@@ -184,47 +176,9 @@ RunLoopSharedPtr Adaptation::createRunLoop(bool main)
     return make_polymorphic_shared<RunLoop, FoundationRunLoop>();
 }
 
-bool FoundationRunLoop::isRunning() const
+RunLoopHookPtr Adaptation::createRunLoopHook()
 {
-    return m_isRunning;
-}
-
-void FoundationRunLoop::execute(ProcessFlags)
-{
-    FlagScope<true> toggleRunning(m_isRunning);
-    currentMode = kCFRunLoopCommonModes;
-    FlagScope<false> lockRunOnce(m_runOnce);
-    CFRunLoopRun();
-}
-
-void FoundationRunLoop::runOnce()
-{
-    constexpr CFTimeInterval kCFTimeIntervalMinimum = 0;
-    constexpr CFTimeInterval kCFTimeIntervalDistantFuture = std::numeric_limits<CFTimeInterval>::max();
-    constexpr bool returnAfterSingleSourceHandled = false;
-    constexpr bool waitForEvents = true;
-
-    currentMode = [modeTracker currentMode];
-    CFTimeInterval duration = waitForEvents ? kCFTimeIntervalDistantFuture : kCFTimeIntervalMinimum;
-    SInt32 result = CFRunLoopRunInMode(currentMode, duration, returnAfterSingleSourceHandled);
-    CTRACE(event, "result in mode [" << currentMode << "]:" << result << ", duration:" << duration);
-    UNUSED(result);
-}
-
-void FoundationRunLoop::stopExecution()
-{
-    CTRACE(event, "Stop run loop");
-    CFRunLoopStop(runLoop);
-}
-
-void FoundationRunLoop::wakeUp()
-{
-    forEachSource<EventSource>(&EventSource::wakeUp);
-    if (runLoop)
-    {
-        CTRACE(event, "WakeUp...");
-        CFRunLoopWakeUp(runLoop);
-    }
+    return make_polymorphic_shared<RunLoopHook, FoundationRunLoopHook>();
 }
 
 }

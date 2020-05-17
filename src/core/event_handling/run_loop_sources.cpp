@@ -33,9 +33,29 @@ AbstractRunLoopSource::AbstractRunLoopSource(std::string_view name)
 {
 }
 
-void AbstractRunLoopSource::setRunLoop(RunLoop& runLoop)
+void AbstractRunLoopSource::attach(RunLoopBase& runLoop)
 {
+    FATAL(m_runLoop.expired(), "source already attached to a runloop");
     m_runLoop = runLoop.shared_from_this();
+    runLoop.addSource(shared_from_this());
+}
+
+void AbstractRunLoopSource::detach()
+{
+    detachOverride();
+
+    auto loop = m_runLoop.lock();
+    if (loop)
+    {
+        loop->removeSource(*this);
+        m_runLoop.reset();
+    }
+}
+
+bool AbstractRunLoopSource::isFunctional() const
+{
+    auto loop = m_runLoop.lock();
+    return (loop && !loop->isExiting());
 }
 
 std::string AbstractRunLoopSource::name() const
@@ -43,17 +63,9 @@ std::string AbstractRunLoopSource::name() const
     return std::string(m_name);
 }
 
-RunLoopSharedPtr AbstractRunLoopSource::getRunLoop() const
+RunLoopBasePtr AbstractRunLoopSource::getRunLoop() const
 {
     return m_runLoop.lock();
-}
-
-void AbstractRunLoopSource::prepare()
-{
-}
-
-void AbstractRunLoopSource::clean()
-{
 }
 
 /******************************************************************************
@@ -105,8 +117,14 @@ EventSource::EventSource(std::string_view name)
 {
 }
 
+void EventSource::attachQueue(EventQueue &queue)
+{
+    m_eventQueue = &queue;
+}
+
 void EventSource::dispatchQueuedEvents()
 {
+    FATAL(m_eventQueue, "No event queue attached.");
     FATAL(getRunLoop(), "Orphan event source?");
     if (!getRunLoop()->isRunning())
     {
@@ -126,13 +144,8 @@ void EventSource::dispatchQueuedEvents()
         dispatcher->dispatchEvent(event);
     };
 
-    m_eventQueue.process(dispatchEvent);
-}
-
-void EventSource::push(EventPtr event)
-{
-    m_eventQueue.push(std::move(event));
-    getRunLoop()->wakeUp();
+    CTRACE(event, "process queue with" << m_eventQueue->size() << "events");
+    m_eventQueue->process(dispatchEvent);
 }
 
 /******************************************************************************
@@ -162,13 +175,32 @@ void SocketNotifierSource::Notifier::detach()
     {
         return;
     }
-    source->removeNotifier(*this);
     m_source.reset();
+    source->removeNotifier(*this);
 }
 
 SocketNotifierSource::SocketNotifierSource(std::string_view name)
     : AbstractRunLoopSource(name)
 {
+}
+
+/******************************************************************************
+ * IdleSource
+ */
+IdleSource::IdleSource()
+    : AbstractRunLoopSource("idle")
+{
+}
+
+void IdleSource::addIdleTask(Task function)
+{
+    auto loop = getRunLoop();
+    if (!loop)
+    {
+        return;
+    }
+    addIdleTaskOverride(std::move(function));
+    loop->scheduleSources();
 }
 
 }

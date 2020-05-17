@@ -102,6 +102,7 @@ void GTimerSource::Source::destroy(Source*& src)
     g_source_destroy(static_cast<GSource*>(src));
     g_source_unref(static_cast<GSource*>(src));
     src = nullptr;
+    CTRACE(event, "timer source destroyed");
 }
 
 /******************************************************************************
@@ -114,10 +115,15 @@ GTimerSource::GTimerSource(std::string_view name)
 }
 GTimerSource::~GTimerSource()
 {
+    CTRACE(event, "timer runloop source deleted");
 }
 
 void GTimerSource::addTimer(TimerRecord& timer)
 {
+    if (!isFunctional())
+    {
+        return;
+    }
     // Make sure the timer is registered once.
     auto finder = [tmr = timer.shared_from_this()](const Source* source)
     {
@@ -131,8 +137,7 @@ void GTimerSource::addTimer(TimerRecord& timer)
         return;
     }
 
-    GlibEventDispatcher* evLoop = static_cast<GlibEventDispatcher*>(m_runLoop.lock().get());
-    g_source_attach(static_cast<GSource*>(gtimer), evLoop->context);
+    g_source_attach(static_cast<GSource*>(gtimer), context);
 }
 
 void GTimerSource::removeTimer(TimerRecord& timer)
@@ -154,8 +159,15 @@ size_t GTimerSource::timerCount() const
     return timers.size();
 }
 
-void GTimerSource::clean()
+void GTimerSource::initialize(void* data)
 {
+    CTRACE(event, "initialize Timer runloop source");
+    context = reinterpret_cast<GMainContext*>(data);
+}
+
+void GTimerSource::detachOverride()
+{
+    CTRACE(event, "detach Timer runloop source");
     // Stop running timers.
     auto cleanup = [](Source* source)
     {

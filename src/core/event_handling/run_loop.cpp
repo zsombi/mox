@@ -30,134 +30,186 @@ namespace mox
 {
 
 /******************************************************************************
- *
+ * RunLoopBase
  */
-bool RunLoop::runIdleTasks()
+void RunLoopBase::setupSources()
 {
-    decltype (m_idleTasks) newQueue;
+    AbstractRunLoopSourceSharedPtr source;
+    source = Adaptation::createPostEventSource("default_post_event");
+    source->attach(*this);
 
-    while (!m_idleTasks.empty())
+    source = Adaptation::createTimerSource("default_timer");
+    source->attach(*this);
+
+    source = Adaptation::createSocketNotifierSource("default_socket_notifier");
+    source->attach(*this);
+
+    source = Adaptation::createIdleSource();
+    source->attach(*this);
+}
+
+void RunLoopBase::addSource(AbstractRunLoopSourceSharedPtr source)
+{
+    m_runLoopSources.push_back(source);
+}
+
+void RunLoopBase::removeSource(AbstractRunLoopSource& source)
+{
+    auto finder = [&source](auto& src)
     {
-        RunLoop::IdleFunction idleFunction(std::move(m_idleTasks.front()));
-        m_idleTasks.pop();
+        return &source == src.get();
+    };
+    auto it = std::find_if(m_runLoopSources.begin(), m_runLoopSources.end(), finder);
+    if (it != m_runLoopSources.end())
+    {
+        (*it).reset();
+    }
+}
 
-        if (!idleFunction())
+void RunLoopBase::notifyRunLoopDown()
+{
+    forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::detach);
+    if (m_closedCallback)
+    {
+        m_closedCallback();
+    }
+}
+
+
+void RunLoopBase::setRunLoopDownCallback(IdleSource::Task callback)
+{
+    m_closedCallback = callback;
+}
+
+AbstractRunLoopSourceSharedPtr RunLoopBase::findSource(std::string_view name)
+{
+    for (auto source : m_runLoopSources)
+    {
+        if (source->name() == name)
         {
-            // Shall run with next idle loop aswell.
-            newQueue.push(std::move(idleFunction));
+            return source;
         }
     }
-    if (!newQueue.empty())
+
+    return nullptr;
+}
+
+AbstractRunLoopSourceSharedPtr RunLoopBase::findSource(std::string_view name) const
+{
+    for (auto source : m_runLoopSources)
     {
-        m_idleTasks.swap(newQueue);
+        if (source->name() == name)
+        {
+            return source;
+        }
     }
 
-    return !m_idleTasks.empty();
+    return nullptr;
 }
 
-RunLoop::RunLoop()
+TimerSourcePtr RunLoopBase::getDefaultTimerSource()
 {
-}
-
-RunLoop::~RunLoop()
-{
-    CTRACE(event, "RunLoop died");
-}
-
-EventSourcePtr RunLoop::getActiveEventSource()
-{
-    // Get the last event source. Only one event source is used to handle the queue.
-    auto finder = [](AbstractRunLoopSourceSharedPtr abstractSource)
-    {
-        return std::dynamic_pointer_cast<EventSource>(abstractSource) != nullptr;
-    };
-    auto it = std::find_if(m_runLoopSources.rbegin(), m_runLoopSources.rend(), finder);
-    if (it == m_runLoopSources.rend())
+    if (isExiting())
     {
         return nullptr;
     }
-    return std::static_pointer_cast<EventSource>(*it);
+    // the first source is the timer source.
+    auto source = std::static_pointer_cast<TimerSource>(m_runLoopSources[1]);
+    return source && source->isFunctional() ? source : nullptr;
+}
+
+EventSourcePtr RunLoopBase::getDefaultPostEventSource()
+{
+    if (isExiting())
+    {
+        return nullptr;
+    }
+    // the secont source is the event source.
+    auto source = std::static_pointer_cast<EventSource>(m_runLoopSources[0]);
+    return source && source->isFunctional() ? source : nullptr;
+}
+
+SocketNotifierSourcePtr RunLoopBase::getDefaultSocketNotifierSource()
+{
+    if (isExiting())
+    {
+        return nullptr;
+    }
+    // the third source is the socket notifier source.
+    auto source = std::static_pointer_cast<SocketNotifierSource>(m_runLoopSources[2]);
+    return source && source->isFunctional() ? source : nullptr;
+}
+
+IdleSourcePtr RunLoopBase::getIdleSource()
+{
+    if (isExiting())
+    {
+        return nullptr;
+    }
+    // The fourth source is the idle source.
+    auto source = std::static_pointer_cast<IdleSource>(m_runLoopSources[3]);
+    return source && source->isFunctional() ? source : nullptr;
+}
+
+void RunLoopBase::scheduleSources()
+{
+    forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::wakeUp);
+    scheduleSourcesOverride();
+}
+
+void RunLoopBase::quit()
+{
+    if (m_isExiting)
+    {
+        CTRACE(event, "The runloop is already exiting.");
+//        return;
+    }
+
+    stopRunLoop();
+
+    m_isExiting = true;
+}
+
+bool RunLoopBase::isExiting() const
+{
+    return m_isExiting;
+}
+
+bool RunLoopBase::isRunning() const
+{
+    return isRunningOverride();
+}
+
+/******************************************************************************
+ * RunLoop
+ */
+RunLoop::~RunLoop()
+{
+    CTRACE(event, "RunLoop died");
 }
 
 RunLoopSharedPtr RunLoop::create(bool main)
 {
     auto evLoop = Adaptation::createRunLoop(main);
 
-    auto timerSource = Adaptation::createTimerSource("default_timer");
-    evLoop->addSource(timerSource);
-
-    auto eventSource = Adaptation::createPostEventSource("default_post_event");
-    evLoop->addSource(eventSource);
-
-    auto socketSource = Adaptation::createSocketNotifierSource("default_socket_notifier");
-    evLoop->addSource(socketSource);
+    evLoop->setupSources();
+    evLoop->initialize();
 
     return evLoop;
 }
 
-void RunLoop::addSource(AbstractRunLoopSourceSharedPtr source)
+/******************************************************************************
+ * RunLoopHook
+ */
+
+RunLoopHookPtr RunLoopHook::create()
 {
-    for (auto evs : m_runLoopSources)
-    {
-        if (evs == source)
-        {
-            return;
-        }
-    }
+    auto evLoop = Adaptation::createRunLoopHook();
 
-    m_runLoopSources.push_back(source);
-    source->setRunLoop(*this);
-    source->prepare();
-}
+    evLoop->setupSources();
+    evLoop->initialize();
 
-AbstractRunLoopSourceSharedPtr RunLoop::findSource(std::string_view name)
-{
-    for (auto source : m_runLoopSources)
-    {
-        if (source->name() == name)
-        {
-            return source;
-        }
-    }
-
-    return nullptr;
-}
-
-AbstractRunLoopSourceSharedPtr RunLoop::findSource(std::string_view name) const
-{
-    for (auto source : m_runLoopSources)
-    {
-        if (source->name() == name)
-        {
-            return source;
-        }
-    }
-
-    return nullptr;
-}
-
-TimerSourcePtr RunLoop::getDefaultTimerSource()
-{
-    // the first source is the timer source.
-    return std::static_pointer_cast<TimerSource>(m_runLoopSources[0]);
-}
-
-EventSourcePtr RunLoop::getDefaultPostEventSource()
-{
-    // the secont source is the event source.
-    return std::static_pointer_cast<EventSource>(m_runLoopSources[1]);
-}
-
-SocketNotifierSourcePtr RunLoop::getDefaultSocketNotifierSource()
-{
-    // the third source is the socket notifier source.
-    return std::static_pointer_cast<SocketNotifierSource>(m_runLoopSources[2]);
-}
-
-void RunLoop::addIdleTask(IdleFunction function)
-{
-    m_idleTasks.push(std::move(function));
-    scheduleIdleTasks();
+    return evLoop;
 }
 
 }

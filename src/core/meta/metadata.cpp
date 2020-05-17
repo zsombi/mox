@@ -25,28 +25,22 @@
 #include <mox/core/meta/core/variant.hpp>
 #include <algorithm>
 
+#ifdef MOX_ENABLE_LOGS
+#include <mox/utils/log/logger.hpp>
+#endif
+
 namespace mox
 {
 
-static GlobalMetadataInitializer _g_init;
-
-TUuid nextUuid()
-{
-    static TUuid uuidPool = 0u;
-    return ++uuidPool;
-}
-
 MetaData::MetaData()
 {
+#ifdef MOX_ENABLE_LOGS
+    LoggerData::get();
+#endif
+
+    FATAL(!globalMetaDataPtr, "global metadata store initialized twice!");
     globalMetaDataPtr = this;
     CTRACE(metacore, "Initialize metadata");
-    registerAtomicTypes(*this);
-
-    // Register converters.
-    registerConverters();
-
-    initialized = true;
-    CTRACE(metacore, "Metadata initialized");
 }
 
 MetaData::~MetaData()
@@ -120,6 +114,14 @@ Metatype findMetatype(const std::type_info& rtti)
 
 Metatype tryRegisterMetatype(const std::type_info &rtti, bool isEnum, bool isClass, bool isPointer, std::string_view name)
 {
+    static MetaData metadata;
+    if (!metadata.initialized)
+    {
+        metadata.initialized = true;
+        metadata.registerAtomicTypes();
+        metadata.registerConverters();
+    }
+
     const MetatypeDescriptor* type = findMetatypeDescriptor(rtti);
     if (!type)
     {

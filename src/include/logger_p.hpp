@@ -36,21 +36,21 @@ class LoggerData
 
     static inline LoggerData* g_logger = nullptr;
 
-public:
     LoggerData();
     ~LoggerData();
 
+public:
     static LoggerData& get();
     static LoggerData* find();
 
     void setRules(std::string rules);
     void setRule(std::string rule);
 
-    void log(LogCategory& category, LogType type, const std::string& text);
+    void log(LogCategory& category, LogType type, std::string_view heading, const std::string& text);
 
-    void setLogger(LoggerInterfacePtr logger);
+    void setLogger(LoggerInterfacePtr&& logger);
 
-    size_t addCategory(LogCategory category);
+    size_t addCategory(LogCategory&& category);
     LogCategory* findCategory(std::string_view category);
     LogCategory& getCategory(size_t id);
 };

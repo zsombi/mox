@@ -26,8 +26,9 @@ namespace mox
  */
 static void execute(void *info)
 {
-    CFPostEventSource* source = static_cast<CFPostEventSource*>(info);
-    source->dispatchQueuedEvents();
+    auto source = static_cast<CFPostEventSource*>(info);
+    auto keepAlive = as_shared<EventSource>(source->shared_from_this());
+    keepAlive->dispatchQueuedEvents();
 }
 
 CFPostEventSource::CFPostEventSource(std::string_view name)
@@ -37,21 +38,26 @@ CFPostEventSource::CFPostEventSource(std::string_view name)
 
 CFPostEventSource::~CFPostEventSource()
 {
-    CFRunLoopSourceInvalidate(sourceRef);
-    CFRelease(sourceRef);
 }
 
-void CFPostEventSource::setRunLoop(RunLoop& runLoop)
+void CFPostEventSource::initialize(void* data)
 {
-    EventSource::setRunLoop(runLoop);
+    auto runLoop = getRunLoop();
+    FATAL(runLoop, "cannot prepare an invalid source");
 
     CFRunLoopSourceContext context = {};
     context.info = this;
     context.perform = execute;
 
     sourceRef = CFRunLoopSourceCreate(kCFAllocatorDefault, 0, &context);
-    FoundationRunLoop& loop = static_cast<FoundationRunLoop&>(runLoop);
-    CFRunLoopAddSource(loop.runLoop, sourceRef, kCFRunLoopCommonModes);
+    auto loopRef = static_cast<CFRunLoopRef>(data);
+    CFRunLoopAddSource(loopRef, sourceRef, kCFRunLoopCommonModes);
+}
+
+void CFPostEventSource::detachOverride()
+{
+    CFRunLoopSourceInvalidate(sourceRef);
+    CFRelease(sourceRef);
 }
 
 void CFPostEventSource::wakeUp()
@@ -68,7 +74,7 @@ void CFPostEventSource::wakeUp()
  */
 EventSourcePtr Adaptation::createPostEventSource(std::string_view name)
 {
-    return EventSourcePtr(new CFPostEventSource(name));
+    return make_polymorphic_shared<EventSource, CFPostEventSource>(name);
 }
 
 }

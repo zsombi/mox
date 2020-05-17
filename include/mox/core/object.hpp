@@ -22,7 +22,7 @@
 #include <mox/core/event_handling/event.hpp>
 #include <mox/core/event_handling/run_loop_sources.hpp>
 #include <mox/core/meta/class/metaobject.hpp>
-#include <mox/core/module/thread_data.hpp>
+#include <mox/core/process/thread_data.hpp>
 #include <mox/core/meta/property/property.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 #include <mox/utils/containers/flat_map.hpp>
@@ -106,6 +106,10 @@ public:
 
         /// Removes the event handler.
         void erase();
+
+        /// Returns the validity state of the event handler token.
+        /// \return If the event handler token is valid, returns \e true, otherwise \e false.
+        bool isValid() const;
     };
     using EventTokenPtr = std::shared_ptr<EventToken>;
 
@@ -132,7 +136,7 @@ public:
 
     /// Returns the pointer to the parent object.
     /// \return The pointer to the parent object, nullptr if the object has no parent set.
-    Object* parent() const;
+    Object* getParent() const;
 
     /// Add a \a child to this object as child.
     void addChild(Object& child);
@@ -227,7 +231,8 @@ private:
     mutable ThreadDataSharedPtr m_threadData;
     Object* m_parent = nullptr;
 
-    friend class ThreadLoop;
+    friend class ThreadInterface;
+    friend class Application;
 };
 
 #if defined(MOX_ENABLE_LOGS)

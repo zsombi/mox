@@ -33,14 +33,22 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
     {
         case ExceptionType::InvalidArgument:
             return "invalid argument type applied";
+        case ExceptionType::InvalidThreadData:
+            return "Invalid or null thread data.";
+        case ExceptionType::InvalidThreadStatus:
+            return "Invalid thread status.";
+        case ExceptionType::ThreadWithThreadData:
+            return "This thread already has a thread data specified!";
         case ExceptionType::InvalidThreadOwnershipChange:
             return "Changing Object's thread ownership at this time is not allowed.";
         case ExceptionType::DetachedThread:
             return "Detached thread!";
         case ExceptionType::AttempThreadJoinWithin:
             return "Joining thread within the thread scope is not possible";
+        case ExceptionType::JoiningApplet:
+            return "Cannot join applets!";
         case ExceptionType::MetatypeNotRegistered:
-            return "Tye RTTI has no metatype registered";
+            return "Type RTTI has no metatype registered";
         case ExceptionType::BadTypeConversion:
             return "No converter or faulty metatype conversion.";
         case ExceptionType::InvalidProperty:

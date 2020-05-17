@@ -80,6 +80,12 @@ auto pimplGetPtrHelper(Ptr& ptr) -> decltype(ptr.operator->())
 #define P() \
     auto const p = p_func()
 
+#define D_PTR(Class) \
+    auto const d = static_cast<Class*>(d_func())
+
+#define P_PTR(Class) \
+    auto const p = static_cast<Class*>(p_func())
+
 
 /// Movable PIMPL.
 namespace pimpl

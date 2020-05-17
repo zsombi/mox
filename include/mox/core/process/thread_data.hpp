@@ -29,9 +29,9 @@ class ThreadData;
 using ThreadDataSharedPtr = std::shared_ptr<ThreadData>;
 using ThreadDataWeakPtr = std::weak_ptr<ThreadData>;
 
-class ThreadLoop;
-using ThreadLoopSharedPtr = std::shared_ptr<ThreadLoop>;
-using ThreadLoopWeakPtr = std::weak_ptr<ThreadLoop>;
+class ThreadInterface;
+using ThreadInterfacePtr = std::shared_ptr<ThreadInterface>;
+using ThreadInterfaceWeakPtr = std::weak_ptr<ThreadInterface>;
 
 /// ThreadData contains the thread loop of a thread in Mox. You must have a thread data on each
 /// thread that handles events, or has signal-slots connected to other threads.
@@ -41,25 +41,33 @@ public:
     /// Destructor.
     virtual ~ThreadData();
 
-    /// Creates a thread data. Call this from within the thread to create the thread data.
-    static ThreadDataSharedPtr create();
-    /// Returns the thread data of this thread.
-    static ThreadDataSharedPtr thisThreadData();
-    /// Returns the main thread data.
-    static ThreadDataSharedPtr mainThread();
+    /// Creates a thread data. You should create the thread data for the runnig thread from within
+    /// the thread. Calling the method on a thread with a valid thread data throws exception.
+    /// \param thread The thread object to which the thread data is attached.
+    /// \return The thread data for the thread.
+    /// \throws ExceptionType::ThreadWithThreadData
+    static ThreadDataSharedPtr create(ThreadInterface& thread);
 
+    /// Returns the thread data of this thread.
+    /// \return The thread data for this thread, or \e nullptr if the thread has no thread data yet.
+    static ThreadDataSharedPtr getThisThreadData();
+
+    /// Returns the main thread data.
+    static ThreadDataSharedPtr getMainThreadData();
+
+    /// Checks whether the thread data is the main thread's data.
+    /// \return If the thread data belongs to the main thread, returns \e true, otherwise \e false.
     bool isMainThread() const;
 
     /// Returns the thread object owning the thread data.
-    ThreadLoopSharedPtr thread() const;
+    /// \return The thread object owning the thread data.
+    ThreadInterfacePtr thread() const;
 
 protected:
     /// Constructor.
-    explicit ThreadData();
+    explicit ThreadData(ThreadInterface& td);
 
-    mutable ThreadLoopSharedPtr m_thread;
-    friend class ThreadLoop;
-    friend class Application;
+    ThreadInterfacePtr m_thread;
 };
 
 }

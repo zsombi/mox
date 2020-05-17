@@ -26,7 +26,7 @@ TEST(ObjectTest, test_api)
 {
     ObjectSharedPtr object = Object::create();
 
-    EXPECT_NULL(object->parent());
+    EXPECT_NULL(object->getParent());
     EXPECT_EQ(0u, object->childCount());
 }
 
@@ -35,10 +35,10 @@ TEST(ObjectTest, test_add_child)
     ObjectSharedPtr parent = Object::create();
     ObjectSharedPtr child1 = Object::create(parent.get());
 
-    EXPECT_NULL(parent->parent());
+    EXPECT_NULL(parent->getParent());
     EXPECT_EQ(1u, parent->childCount());
     EXPECT_EQ(child1, parent->childAt(0));
-    EXPECT_EQ(parent.get(), child1->parent());
+    EXPECT_EQ(parent.get(), child1->getParent());
 }
 
 TEST(ObjectTest, test_remove_child)
@@ -50,7 +50,7 @@ TEST(ObjectTest, test_remove_child)
 
     EXPECT_EQ(2u, parent->childCount());
     EXPECT_EQ(1u, child1->childCount());
-    EXPECT_EQ(child1.get(), child11->parent());
+    EXPECT_EQ(child1.get(), child11->getParent());
     parent->removeChild(*child1);
     EXPECT_EQ(1u, parent->childCount());
 }

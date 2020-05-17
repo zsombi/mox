@@ -111,12 +111,12 @@ DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, Signal::Connect
 
 void DeferredSignalEvent::activate()
 {
-    TRACE("Asynchronously activate connection for target" << target());
+    CTRACE(event, "Asynchronously activate connection for target" << target());
     if (target() && m_connection && m_connection->isConnected())
     {
-        TRACE("Activate...");
+        CTRACE(event, "Activate...");
         m_connection->activate(m_arguments);
-        TRACE("Activation completed");
+        CTRACE(event, "Activation completed");
     }
 }
 

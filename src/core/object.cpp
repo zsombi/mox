@@ -18,7 +18,6 @@
 
 #include <mox/core/object.hpp>
 #include <mox/core/meta/core/callable.hpp>
-#include <mox/core/module/thread_loop.hpp>
 
 #if MOX_ENABLE_LOGGING == ON
 #include <mox/core/meta/core/metatype_descriptor.hpp>
@@ -106,11 +105,16 @@ void Object::EventToken::erase()
     m_target.reset();
 }
 
+bool Object::EventToken::isValid() const
+{
+    return !m_target.expired();
+}
+
 /******************************************************************************
  * Object
  */
 Object::Object()
-    : m_threadData(ThreadData::thisThreadData())
+    : m_threadData(ThreadData::getThisThreadData())
 {
 }
 
@@ -120,20 +124,8 @@ void Object::removeChildren()
 
     while (!m_children.empty())
     {
-        // If the child is a thread, the thread must be stopped before it gets removed from this object.
-        ThreadLoopSharedPtr thread = std::dynamic_pointer_cast<ThreadLoop>(m_children.back());
-
-        // Remove child from parent first.
-        {
-            ScopeRelock relock(*this);
-            removeChildAt(m_children.size() - 1);
-        }
-
-        if (thread)
-        {
-            CTRACE(object, "Destroying thread object's parent, exit thread and join.");
-            thread->exitAndJoin();
-        }
+        ScopeRelock relock(*this);
+        removeChildAt(m_children.size() - 1);
     }
 }
 
@@ -154,7 +146,7 @@ ObjectSharedPtr Object::create(Object* parent)
     return createObject(new Object, parent);
 }
 
-Object* Object::parent() const
+Object* Object::getParent() const
 {
     return m_parent;
 }
@@ -168,7 +160,8 @@ Object::VisitResult Object::moveToThread(ThreadDataSharedPtr threadData)
 
 Object::EventDispatcher::EventDispatcher(Object& target)
 {
-    for (auto parent = &target; parent; parent = parent->m_parent)
+    auto td = target.threadData();
+    for (auto parent = &target; parent && (td == parent->threadData()); parent = parent->m_parent)
     {
         lock_guard lock(*parent);
         objects.push_back(parent->shared_from_this());
@@ -237,6 +230,7 @@ void Object::EventDispatcher::processEventHandlers(Event& event)
             event.setHandled(true);
             {
                 ScopeRelock relock(*obj);
+                CTRACE(event, "process event" << int(event.type()) << "on" << handlerToken->getTarget());
                 handlerToken->handler()(event);
             }
             if (event.isHandled())
@@ -248,7 +242,7 @@ void Object::EventDispatcher::processEventHandlers(Event& event)
         auto idx = find_if(handler->second, processor);
         return (idx != std::nullopt);
     };
-    reverse_find_if(objects, processHandlers);
+    find_if(objects, processHandlers);
 }
 
 void Object::dispatchEvent(Event& event)
@@ -320,9 +314,9 @@ Object::EventTokenPtr Object::addEventFilter(EventType type, EventFilter filter)
 void Object::addChild(Object& child)
 {
     ObjectSharedPtr sharedChild = as_shared<Object>(&child);
-    OrderedLock lock(this, sharedChild->parent());
+    OrderedLock lock(this, sharedChild->getParent());
 
-    Object* oldParent = sharedChild->parent();
+    Object* oldParent = sharedChild->getParent();
     if (oldParent == this)
     {
         return;
@@ -375,7 +369,7 @@ size_t Object::childCount() const
 
 size_t Object::childIndex(const Object& child)
 {
-    if (child.parent() != this)
+    if (child.getParent() != this)
     {
         CTRACE(object, "Object is not a child of the object!");
         throw Exception(ExceptionType::InvalidArgument);

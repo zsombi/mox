@@ -85,24 +85,30 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event_handling_declarations.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/socket_notifier.hpp
 
-    #modules
+    # process
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/process/thread_interface.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/process/thread_data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/process/thread_loop.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/process/application.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/process/applet.hpp
+
+    # module
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/module.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/thread_data.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/thread_loop.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/application.hpp
 
     # Mox core
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/mox_module.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/timer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/object.hpp
+    )
 
-    # Private includes
+set(PRIVATE_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/logger_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/metadata_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/metabase_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/property_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/binding_p.hpp    
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/binding_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/signal_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/process_p.hpp
     )
 
 set(SOURCES
@@ -146,15 +152,19 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/run_loop_sources.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/run_loop.cpp
 
+    # process
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/process/thread_interface.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/process/thread_data.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/process/thread_loop.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/process/application.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/process/applet.cpp
+
     # object
     ${CMAKE_CURRENT_SOURCE_DIR}/core/timer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/object.cpp
 
-    #modules
+    # module
     ${CMAKE_CURRENT_SOURCE_DIR}/core/module/modules.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/module/thread_data.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/module/thread_loop.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/module/application.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/mox_module.cpp
     )
 
@@ -163,10 +173,11 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")
         ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/event_dispatcher.h
         )
     set(PLATFORM_SOURCES
-        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/event_dispatcher.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/post_event_source.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/socket_notifier_source.cpp
-        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/timer_source.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/run_loop.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/post_event_source.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/socket_notifier_source.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/timer_source.cc
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/linux_x86/idle_source.cc
         )
 endif()
 
@@ -180,5 +191,6 @@ if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
         ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/timer_source.mm
         ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/post_event_source.mm
         ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/socket_notifier.mm
+        ${CMAKE_CURRENT_SOURCE_DIR}/platforms/darwin/idle_source.mm
         )
 endif()

@@ -17,8 +17,9 @@
  */
 
 #include <mox/core/event_handling/socket_notifier.hpp>
-#include <mox/core/module/thread_data.hpp>
-#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/process/thread_data.hpp>
+#include <mox/core/event_handling/run_loop.hpp>
+#include <process_p.hpp>
 
 namespace mox
 {
@@ -56,7 +57,9 @@ void SocketNotifier::setEnabled(bool enabled)
     auto source = m_source.lock();
     if (!source && enabled)
     {
-        source = ThreadData::thisThreadData()->thread()->m_runLoop->getDefaultSocketNotifierSource();
+        auto thread = ThreadData::getThisThreadData()->thread();
+        auto d = ThreadInterfacePrivate::get(*thread);
+        source = d->runLoop->getDefaultSocketNotifierSource();
         attach(*source);
     }
     else if (source && !enabled)

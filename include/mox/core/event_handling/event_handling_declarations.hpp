@@ -36,9 +36,17 @@ class EventHandlingProvider;
 using EventHandlerSharedPtr = std::shared_ptr<EventHandlingProvider>;
 using EventHandlerWeakPtr = std::weak_ptr<EventHandlingProvider>;
 
+class RunLoopBase;
+using RunLoopBasePtr = std::shared_ptr<RunLoopBase>;
+using RunLoopBaseWeakPtr = std::weak_ptr<RunLoopBase>;
+
 class RunLoop;
 using RunLoopSharedPtr = std::shared_ptr<RunLoop>;
 using RunLoopWeakPtr = std::weak_ptr<RunLoop>;
+
+class RunLoopHook;
+using RunLoopHookPtr = std::shared_ptr<RunLoopHook>;
+using RunLoopHookWeakPtr = std::weak_ptr<RunLoopHook>;
 
 class SocketNotifier;
 using SocketNotifierSharedPtr = std::shared_ptr<SocketNotifier>;
@@ -53,14 +61,21 @@ using TimerSourceWeakPtr = std::weak_ptr<TimerSource>;
 
 class EventSource;
 using EventSourcePtr = std::shared_ptr<EventSource>;
+using EventSourceWeakPtr = std::weak_ptr<EventSource>;
 
 class SocketNotifierSource;
 using SocketNotifierSourcePtr = std::shared_ptr<SocketNotifierSource>;
 using SocketNotifierSourceWeakPtr = std::weak_ptr<SocketNotifierSource>;
 
+class IdleSource;
+using IdleSourcePtr = std::shared_ptr<IdleSource>;
+using IdleSourceWeakPtr = std::weak_ptr<IdleSource>;
+
 /// The event processing flags.
 enum class ProcessFlags
 {
+    /// Execute a single round with the runloop sources, then exit.
+    SingleLoop,
     /// Process all events.
     ProcessAll = 0xFF
 };

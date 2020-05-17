@@ -31,7 +31,7 @@
 namespace mox
 {
 
-class GlibEventDispatcher;
+class GlibRunLoop;
 
 class GPostEventSource : public EventSource
 {
@@ -39,18 +39,21 @@ public:
     explicit GPostEventSource(std::string_view name);
     ~GPostEventSource() final;
 
-    void prepare() final;
+    void initialize(void* data) final;
 
     void wakeUp() final;
 
+    void detachOverride() final;
+
     struct Source : GSource
     {
-        GPostEventSource* eventSource = nullptr;
+        std::weak_ptr<GPostEventSource> eventSource;
 
         static gboolean prepare(GSource* src, gint *timeout);
         static gboolean dispatch(GSource* source, GSourceFunc, gpointer);
+        static void finalize(GSource*);
 
-        static Source* create(GPostEventSource& eventSource);
+        static Source* create(GPostEventSource& eventSource, GMainContext* context);
         static void destroy(Source*& source);
     };
 
@@ -71,13 +74,13 @@ class GSocketNotifierSource : public SocketNotifierSource
 public:
     struct Source : GSource
     {
-        GSocketNotifierSource* self = nullptr;
+        std::weak_ptr<GSocketNotifierSource> self;
 
         static gboolean prepare(GSource* src, gint *timeout);
         static gboolean check(GSource* source);
         static gboolean dispatch(GSource* source, GSourceFunc, gpointer);
 
-        static Source* create(GSocketNotifierSource& socketSource);
+        static Source* create(GSocketNotifierSource& socketSource, GMainContext* context);
         static void destroy(Source*& source);
     };
 
@@ -103,8 +106,8 @@ public:
     explicit GSocketNotifierSource(std::string_view name);
     ~GSocketNotifierSource() final;
 
-    void prepare() final;
-    void clean() final;
+    void initialize(void* data) final;
+    void detachOverride() final;
     void addNotifier(Notifier& notifier) final;
     void removeNotifier(Notifier& notifier) final;
 };
@@ -134,7 +137,8 @@ public:
     size_t timerCount() const final;
 
     // from AbstractRunLoopSource
-    void clean() final;
+    void initialize(void* data) final;
+    void detachOverride() final;
 
     struct ZeroTimer
     {
@@ -145,31 +149,85 @@ public:
     };
 
     SharedVector<Source*, ZeroTimer> timers;
+    GMainContext* context = nullptr;
 };
 
-class GlibEventDispatcher : public RunLoop
+class GIdleSource : public IdleSource
 {
-    void initialize();
+    struct TaskRec
+    {
+        std::weak_ptr<GIdleSource> self;
+        GSource* source = nullptr;
+        Task task;
+        TaskRec(std::shared_ptr<GIdleSource> self, GSource* source, Task&& task)
+            : self(self)
+            , source(source)
+            , task(std::forward<Task>(task))
+        {
+        }
+        ~TaskRec();
+    };
+    using TaskRecPtr = std::unique_ptr<TaskRec>;
 
-    static gboolean idleFunc(gpointer userData);
+    SharedVector<TaskRecPtr> tasks;
+    GMainContext* context = nullptr;
+
+    static gboolean sourceFunc(gpointer userData);
+    static void sourceDestroy(gpointer userData);
 
 public:
-    explicit GlibEventDispatcher();
-    explicit GlibEventDispatcher(GMainContext& mainContext);
-    ~GlibEventDispatcher() override;
+    explicit GIdleSource();
+    ~GIdleSource() final;
 
-    bool isRunning() const override;
-    void execute(ProcessFlags flags) override;
-    void stopExecution() override;
-    void shutDown() override;
-    void wakeUp() override;
-    size_t runningTimerCount() const override;
+    void wakeUp() final;
+    void initialize(void* data) final;
+    void detachOverride() final;
 
-    void scheduleIdleTasks() override;
+    void removeTaskRec(TaskRec& record);
+
+protected:
+    void addIdleTaskOverride(Task&& task) override;
+};
+
+class GlibRunLoop : public RunLoop
+{
+public:
+    explicit GlibRunLoop();
+    explicit GlibRunLoop(GMainContext& mainContext);
+    ~GlibRunLoop() final;
+
+    void initialize() final;
+
+    // From RunLoopBase
+    bool isRunningOverride() const final;
+    void scheduleSourcesOverride() final;
+    void stopRunLoop() final;
+
+    // from RunLoop
+    void execute(ProcessFlags flags) final;
 
     GMainLoop* evLoop = nullptr;
     GMainContext* context = nullptr;
-    bool running = false;
+};
+
+class GlibRunLoopHook : public RunLoopHook
+{
+public:
+    explicit GlibRunLoopHook();
+    ~GlibRunLoopHook() final;
+
+protected:
+    void initialize() final;
+    bool isRunningOverride() const final
+    {
+        return running;
+    }
+    void scheduleSourcesOverride() final;
+    void stopRunLoop() final;
+
+    GMainContext* context = nullptr;
+    std::atomic_bool running = false;
+
 };
 
 }

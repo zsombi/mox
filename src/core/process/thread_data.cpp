@@ -16,54 +16,71 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <mox/core/module/thread_data.hpp>
+#include <mox/core/process/thread_data.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
-#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/process/thread_loop.hpp>
+#include <process_p.hpp>
 
 namespace mox
 {
 
+/******************************************************************************
+ * namespace td
+ */
 // One for the application.
 static ThreadData* mainThreadData = nullptr;
 // One for each thread.
 static thread_local ThreadData* ltsThreadData = nullptr;
 
+namespace td
+{
+
+void attachToThread(ThreadData& td)
+{
+    throwIf<ExceptionType::InvalidThreadData>(ltsThreadData != nullptr);
+    if (!mainThreadData)
+    {
+        mainThreadData = &td;
+    }
+    ltsThreadData = &td;
+}
+
+void detachFromThread()
+{
+    if (ltsThreadData == mainThreadData)
+    {
+        mainThreadData = nullptr;
+    }
+    ltsThreadData = nullptr;
+}
+
+}
 /******************************************************************************
  *
  */
-ThreadData::ThreadData()
+ThreadData::ThreadData(ThreadInterface& td)
+    : m_thread(as_shared<ThreadInterface>(td.shared_from_this()))
 {
-    FATAL(!ltsThreadData, "This thread already has a thread data specified!");
-    ltsThreadData = this;
-    if (!mainThreadData)
-    {
-        mainThreadData = this;
-    }
 }
 
 ThreadData::~ThreadData()
 {
-    ltsThreadData = nullptr;
-    if (mainThreadData == this)
-    {
-        mainThreadData = nullptr;
-    }
 }
 
-ThreadDataSharedPtr ThreadData::create()
+ThreadDataSharedPtr ThreadData::create(ThreadInterface& thread)
 {
-    ThreadDataSharedPtr threadData(new ThreadData);
+    ThreadDataSharedPtr threadData(new ThreadData(thread));
     return threadData;
 }
 
-ThreadDataSharedPtr ThreadData::thisThreadData()
+ThreadDataSharedPtr ThreadData::getThisThreadData()
 {
     return ltsThreadData
             ? ltsThreadData->shared_from_this()
             : nullptr;
 }
 
-ThreadDataSharedPtr ThreadData::mainThread()
+ThreadDataSharedPtr ThreadData::getMainThreadData()
 {
     return mainThreadData ? mainThreadData->shared_from_this() : nullptr;
 }
@@ -73,7 +90,7 @@ bool ThreadData::isMainThread() const
     return mainThreadData == this;
 }
 
-ThreadLoopSharedPtr ThreadData::thread() const
+ThreadInterfacePtr ThreadData::thread() const
 {
     return m_thread;
 }

@@ -20,59 +20,88 @@
 #define APPLICATION_CPP
 
 #include <mox/core/event_handling/run_loop.hpp>
-#include <mox/core/module/application.hpp>
-#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/process/application.hpp>
+#include <process_p.hpp>
 
 namespace mox
 {
 
-class ApplicationThread : public ThreadLoop
+class ApplicationThread : public ThreadInterface
 {
 public:
     explicit ApplicationThread(Application& app)
         : app(app)
     {
-        m_runLoop = RunLoop::create(true);
     }
     ~ApplicationThread()
     {
-        // Force stopped status to avoid joining.
-        m_status.store(Status::Stopped);
     }
 
-    void start() final
+    static auto create(Application& app)
     {
+        return make_thread(new ApplicationThread(app));
     }
 
-    int run() final
+    int run()
     {
-        prepare();
+        start();
+
         app.started();
-        ThreadLoop::run();
+        auto d = ThreadInterfacePrivate::get(*this);
+        d->statusProperty = Status::Running;
+
+        auto runLoop = as_shared<RunLoop>(d->runLoop);
+        runLoop->execute();
+
+        d->statusProperty = Status::Stopped;
         app.stopped();
-        return m_exitCode;
+
+        tearDown();
+        return d->exitCodeProperty;
     }
 
     Application& app;
+
+protected:
+
+    RunLoopBasePtr createRunLoopOverride() final
+    {
+        return RunLoop::create(true);
+    }
+
+    void initialize() override
+    {
+        ThreadInterface::initialize();
+
+        auto d = ThreadInterfacePrivate::get(*this);
+        ScopeValue tmp(d->statusProperty, Status::StartingUp);
+        setUp();
+    }
+
+    void startOverride() final
+    {
+    }
 };
 
 Application::Application(int argc, const char** argv)
-    : m_mainThread(ThreadData::create())
-    , m_rootObject(Object::create())
 {
-    m_mainThread->m_thread = make_polymorphic_shared<ThreadLoop, ApplicationThread>(*this);
+    auto thread = ApplicationThread::create(*this);
+    m_threadData = thread->threadData();
+    throwIf<ExceptionType::InvalidThreadData>(!m_threadData);
+
+    m_rootObject = Object::create();
     UNUSED(argc);
     UNUSED(argv);
 }
 
 Application::~Application()
 {
-    m_mainThread->m_thread.reset();
+    m_threadData.reset();
 }
 
 Application& Application::instance()
 {
-    return std::static_pointer_cast<ApplicationThread>(ThreadData::mainThread()->thread())->app;
+    return as_shared<ApplicationThread>(ThreadData::getMainThreadData()->thread())->app;
 }
 
 ObjectSharedPtr Application::getRootObject() const
@@ -83,43 +112,23 @@ ObjectSharedPtr Application::getRootObject() const
 void Application::setRootObject(Object &root)
 {
     lock_guard lock(*this);
-    if (m_mainThread->thread()->isRunning())
-    {
-        return;
-    }
     m_rootObject.reset();
     m_rootObject = as_shared<Object>(&root);
 }
 
-ThreadDataSharedPtr Application::threadData() const
-{
-    return m_mainThread;
-}
-
 int Application::run()
 {
-    auto wipeRoot = [this]()
-    {
-        m_rootObject.reset();
-    };
-    stopped.connect(wipeRoot);
-
-    return std::static_pointer_cast<ApplicationThread>(m_mainThread->thread())->run();
+    return as_shared<ApplicationThread>(m_threadData->thread())->run();
 }
 
 void Application::exit(int exitCode)
 {
-    m_mainThread->thread()->exit(exitCode);
+    m_threadData->thread()->exit(exitCode);
 }
 
 void Application::quit()
 {
-    exit(0);
-}
-
-void Application::addIdleTask(RunLoop::IdleFunction task)
-{
-    m_mainThread->thread()->addIdleTask(std::forward<decltype(task)>(task));
+    exit();
 }
 
 }

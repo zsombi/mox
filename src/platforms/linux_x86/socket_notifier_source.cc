@@ -94,16 +94,14 @@ void GPollHandler::reset()
     fd.events = fd.revents = 0;
 }
 
-GSocketNotifierSource::Source* GSocketNotifierSource::Source::create(GSocketNotifierSource& socketSource)
+GSocketNotifierSource::Source* GSocketNotifierSource::Source::create(GSocketNotifierSource& socketSource, GMainContext* context)
 {
     Source *src = reinterpret_cast<Source*>(g_source_new(&socketNotifierSourceFuncs, sizeof(*src)));
-
-    src->self = &socketSource;
+    src->self = as_shared<GSocketNotifierSource>(&socketSource);
 
     GSource* source = static_cast<GSource*>(src);
 //    g_source_set_can_recurse(source, true);
-    GlibEventDispatcher* loop = static_cast<GlibEventDispatcher*>(socketSource.getRunLoop().get());
-    g_source_attach(source, loop->context);
+    g_source_attach(source, context);
 
     return src;
 }
@@ -119,6 +117,7 @@ void GSocketNotifierSource::Source::destroy(Source*& src)
     g_source_destroy(gsource);
     g_source_unref(gsource);
     src = nullptr;
+    CTRACE(event, "socket source destroyed");
 }
 
 gboolean GSocketNotifierSource::Source::prepare(GSource*, gint* timeout)
@@ -136,6 +135,16 @@ gboolean GSocketNotifierSource::Source::prepare(GSource*, gint* timeout)
 gboolean GSocketNotifierSource::Source::check(GSource* source)
 {
     Source *src = static_cast<Source*>(source);
+    auto rlSource = src->self.lock();
+    if (!rlSource)
+    {
+        CWARN(event, "Orphan socket notifier source invoked!");
+        return false;
+    }
+    if (rlSource->getRunLoop()->isExiting())
+    {
+        return false;
+    }
 
     //check for pending and remove orphaned entries
     bool hasPendingEvents = false;
@@ -152,7 +161,7 @@ gboolean GSocketNotifierSource::Source::check(GSource* source)
             hasPendingEvents = hasPendingEvents || ((poll.fd.revents & poll.fd.events) != 0);
         }
     };
-    for_each(src->self->pollHandlers, callback);
+    for_each(rlSource->pollHandlers, callback);
 
     // if the pollfds are empty trigger dispatch so this source can be removed
     return hasPendingEvents;
@@ -162,9 +171,14 @@ gboolean GSocketNotifierSource::Source::check(GSource* source)
 gboolean GSocketNotifierSource::Source::dispatch(GSource *source, GSourceFunc, gpointer)
 {
     Source *src = static_cast<Source*>(source);
-
     if (!src)
     {
+        return G_SOURCE_REMOVE;
+    }
+    auto rlSource = src->self.lock();
+    if (!rlSource)
+    {
+        CWARN(event, "Orphan socket notifier source invoked!");
         return G_SOURCE_REMOVE;
     }
 
@@ -196,7 +210,7 @@ gboolean GSocketNotifierSource::Source::dispatch(GSource *source, GSourceFunc, g
             }
         }
     };
-    for_each(src->self->pollHandlers, callback);
+    for_each(rlSource->pollHandlers, callback);
 
     return G_SOURCE_CONTINUE;
 }
@@ -220,15 +234,18 @@ GSocketNotifierSource::~GSocketNotifierSource()
     for_each(pollHandlers, cleanup);
 
     Source::destroy(source);
+    CTRACE(event, "socket runloop source deleted");
 }
 
-void GSocketNotifierSource::prepare()
+void GSocketNotifierSource::initialize(void* data)
 {
-    source = Source::create(*this);
+    CTRACE(event, "initialize SocketNotifier runloop source");
+    source = Source::create(*this, reinterpret_cast<GMainContext*>(data));
 }
 
-void GSocketNotifierSource::clean()
+void GSocketNotifierSource::detachOverride()
 {
+    CTRACE(event, "detach SocketNotifier runloop source");
     auto close = [](const GPollHandler& handler)
     {
         if (handler.notifier)

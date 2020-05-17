@@ -28,13 +28,27 @@ namespace mox
 enum class ExceptionType
 {
     InvalidArgument,
+    /// \name Thread exceptions
+    /// \{
+    InvalidThreadData,
+    InvalidThreadStatus,
+    ThreadWithThreadData,
     InvalidThreadOwnershipChange,
     DetachedThread,
     AttempThreadJoinWithin,
+    JoiningApplet,
+    /// \}
+    /// \name Metadata
+    /// \{
     MetatypeNotRegistered,
     BadTypeConversion,
+    /// \name Properties
+    /// \{
     InvalidProperty,
     AttempWriteReadOnlyProperty,
+    /// \}
+    /// \name Bindings
+    /// \{
     BindingNotAttached,
     BindingAlreadyAttached,
     AttemptAttachingBindingToReadOnlyProperty,
@@ -42,6 +56,8 @@ enum class ExceptionType
     InvalidBinding,
     WrongBindingTarget,
     BindingNotInGroup
+    /// \}
+    /// \}
 };
 
 class MOX_API Exception : public std::exception

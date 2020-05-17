@@ -134,6 +134,12 @@ public:
     /// \return If the variant types from \a other are compatible, returns \e true, otherwise \e false.
     bool isInvocableWith(const VariantDescriptorContainer& other) const;
 
+    template <typename... Arguments>
+    bool isInvocableWithArgumentTypes() const
+    {
+        return isInvocableWith(VariantDescriptorContainer::getArgs<Arguments...>());
+    }
+
     void swap(VariantDescriptorContainer& other)
     {
         std::swap(m_container, other.m_container);

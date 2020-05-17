@@ -190,6 +190,25 @@ private:
     bool& m_flag;
 };
 
+template <typename T, typename V>
+struct ScopeValue
+{
+    explicit ScopeValue(T& arg, V value)
+        : m_arg(arg)
+        , m_prevValue(V(m_arg))
+    {
+        m_arg = value;
+    }
+    ~ScopeValue()
+    {
+        m_arg = m_prevValue;
+    }
+
+private:
+    T& m_arg;
+    V m_prevValue;
+};
+
 }
 
 #endif // LOCKS_HPP

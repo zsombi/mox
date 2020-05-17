@@ -37,22 +37,31 @@ public:
     /// Returns the name of the event source.
     std::string name() const;
     /// Returns the run loop the source is attached to.
-    RunLoopSharedPtr getRunLoop() const;
+    RunLoopBasePtr getRunLoop() const;
 
     /// Set the run loop to which this event source is attached.
-    virtual void setRunLoop(RunLoop& runLoop);
+    void attach(RunLoopBase& runLoop);
+
+    /// Detaches the run loop source from the runloop. Resets the source.
+    void detach();
 
     /// The method is called when the run loop event processing starts.
-    virtual void prepare();
+    virtual void initialize(void* data) = 0;
 
-    /// The method is called to clean up the source when the run loop is exiting.
-    virtual void clean();
+    /// Returns whether the source is functional, meaning it is attached to a runloop and this runloop
+    /// is in running state and not exiting.
+    bool isFunctional() const;
+
+    /// Notifies the runloop source to re-schedule.
+    virtual void wakeUp() {}
 
 protected:
     /// Constructor.
     explicit AbstractRunLoopSource(std::string_view name);
 
-    RunLoopWeakPtr m_runLoop;
+    virtual void detachOverride() = 0;
+
+    RunLoopBaseWeakPtr m_runLoop;
     std::string m_name;
 };
 
@@ -150,22 +159,19 @@ public:
         virtual void dispatchEvent(Event& event) = 0;
     };
 
-    /// Notifies the event source to re-schedule.
-    virtual void wakeUp() = 0;
+    /// Attaches the event \e queue to the runloop source.
+    /// \param queue The event queue to attach.
+    void attachQueue(EventQueue& queue);
 
     /// Dispatches the queued events.
     void dispatchQueuedEvents();
-
-    /// Pushes an event to process, and wakes up the run loop source.
-    /// \param event The event pushed to the source to process on the next scheduled run loop.
-    void push(EventPtr event);
 
 protected:
     /// Constructor.
     explicit EventSource(std::string_view name);
 
     /// The event queue to process.
-    EventQueue m_eventQueue;
+    EventQueue* m_eventQueue = nullptr;
 };
 
 /// This class defines the interface for the socket notifier event sources.
@@ -242,6 +248,28 @@ protected:
     virtual void removeNotifier(Notifier& notifier) = 0;
 };
 ENABLE_ENUM_OPERATORS(SocketNotifierSource::Notifier::Modes)
+
+/// IdleSource defines the idle task handling on a runloop. It is the fourth source created on a runloop.
+class MOX_API IdleSource : public AbstractRunLoopSource
+{
+public:
+    /// The idle task function which is run when the idle source is activated.
+    /// \return \e true if the task completed, \e false if not. Non-completed idle tasks are kept
+    /// in the idle queue and re-executed on next idle.
+    /// \note It is not recommended to have a function that always returns true, as that function
+    /// keeps the idle queue busy, which can cause always busy application loop.
+    using Task = std::function<bool()>;
+
+    /// Adds an idle task to the run loop.
+    /// \param function The idle task function.
+    /// \see Task
+    void addIdleTask(Task task);
+
+protected:
+    explicit IdleSource();
+
+    virtual void addIdleTaskOverride(Task&& task) = 0;
+};
 
 }
 

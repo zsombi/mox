@@ -1,27 +1,19 @@
-cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../cmake.modules" CACHE STRING "module-path")
 
-include(configure-platform)
+include(configure-target)
 
-set(TARGET mox)
+project(mox_lib VERSION 0.0.1 LANGUAGES CXX)
 
-project(${TARGET} LANGUAGES CXX)
-
-set_property(GLOBAL PROPERTY USE_FOLDERS on)
-
+# get the files
 include(files.cmake)
 
-add_definitions(-DMOX_LIBRARY)
-
-set(PROJECT_VERSION_MAJOR 0)
-set(PROJECT_VERSION_MINOR 7)
-set(PROJECT_VERSION_PATCH 1)
-
-if (BUILD_SHARED_LIBS)
-    add_library(${PROJECT_NAME} SHARED ${SOURCES} ${PLATFORM_SOURCES} ${HEADERS} ${PLATFORM_HEADERS})
-else()
-    add_library(${PROJECT_NAME} ${SOURCES} ${PLATFORM_SOURCES} ${HEADERS} ${PLATFORM_HEADERS})
-endif()
-
-target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
-include(configure-target)
+# BUILD_SHARED_LIBS drives the library type for add_Library
+add_library(mox "")
+target_sources(mox
+    PRIVATE ${SOURCES} ${PLATFORM_SOURCES} ${PLATFORM_HEADERS} ${PRIVATE_HEADERS}
+    PUBLIC ${HEADERS})
+target_include_directories(mox
+    PUBLIC ${MOX_HEADER_PATH}
+    PRIVATE ${CMAKE_SOURCE_DIR}/src/include)
+configure_target(mox)

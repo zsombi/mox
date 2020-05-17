@@ -4,14 +4,35 @@
 #include <Foundation/Foundation.h>
 #include <CoreFoundation/CoreFoundation.h>
 #include "../src/platforms/darwin/mac_util.h"
+#include "../src/platforms/darwin/event_dispatcher.h"
 
 class TestCoreApp::Private
 {
 public:
-    Private() = default;
+    Private()
+    {
+        activityWatcher.addToMode(kCFRunLoopCommonModes);
+    }
     ~Private() = default;
 
+    void processIdle(CFRunLoopActivity activity)
+    {
+        if (activity == kCFRunLoopBeforeWaiting)
+        {
+            if (idle)
+            {
+                idle();
+            }
+        }
+        else
+        {
+            TRACE("what the heck!!?");
+        }
+    }
+
     mox::mac::CFType<CFRunLoopRef> runLoop = mox::mac::CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent());
+    mox::RunLoopObserver<Private> activityWatcher{this, &Private::processIdle, kCFRunLoopBeforeWaiting};
+    mox::IdleSource::Task idle;
 };
 
 TestCoreApp::TestCoreApp()
@@ -40,3 +61,37 @@ void TestCoreApp::run()
 {
     CFRunLoopRun();
 }
+
+void TestCoreApp::runOnce()
+{
+    d->idle = [this]()
+    {
+        this->exit();
+        return true;
+    };
+    CFRunLoopRun();
+}
+
+void TestCoreApp::runOnce(mox::IdleSource::Task exiter)
+{
+    if (!exiter)
+    {
+        runOnce();
+    }
+    else
+    {
+        d->idle = exiter;
+        CFRunLoopRun();
+    }
+}
+
+void TestCoreApp::addIdleTask(mox::IdleSource::Task idle)
+{
+    if (!d)
+    {
+        return;
+    }
+    d->idle = std::move(idle);
+    CFRunLoopWakeUp(d->runLoop);
+}
+

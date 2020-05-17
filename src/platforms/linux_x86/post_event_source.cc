@@ -27,12 +27,30 @@ namespace mox
 gboolean GPostEventSource::Source::prepare(GSource* src, gint *timeout)
 {
     Source* source = reinterpret_cast<Source*>(src);
+    auto evSource = source->eventSource.lock();
+    if (!evSource)
+    {
+        CFATAL(event, false, "Orphan post event source invoked!" << src);
+        return false;
+    }
 
-    bool readyToDispatch = source->eventSource->wakeUpCalled.load() && !source->eventSource->m_eventQueue.empty();
+    if (!evSource->isFunctional())
+    {
+        CINFO(event, "the post event source of this runloop is no longer functional");
+        return false;
+    }
+    if (evSource->getRunLoop()->isExiting())
+    {
+        CINFO(event, "the runloop is exiting, do not process events any further");
+        return false;
+    }
+
+    bool readyToDispatch = evSource->wakeUpCalled.load() && !evSource->m_eventQueue->empty();
     // If there's no event posted, wait for a second to poll again.
-    *timeout = readyToDispatch ? -1 : 5000;
+    if (timeout)
+        *timeout = -1;
 
-    CTRACE(platform, "posted event source ready " << readyToDispatch);
+    CTRACE(platform, "postevent source ready " << readyToDispatch);
 
     return readyToDispatch;
 }
@@ -40,12 +58,24 @@ gboolean GPostEventSource::Source::prepare(GSource* src, gint *timeout)
 gboolean GPostEventSource::Source::dispatch(GSource* src, GSourceFunc, gpointer)
 {
     Source* source = reinterpret_cast<Source*>(src);
+    auto evSource = source->eventSource.lock();
+    if (!evSource)
+    {
+        CFATAL(event, false, "Orphan post event source invoked!" << src);
+        return false;
+    }
 
-    source->eventSource->wakeUpCalled.store(false);
+    evSource->wakeUpCalled.store(false);
     // Process the event in the loop.
-    source->eventSource->dispatchQueuedEvents();
+    evSource->dispatchQueuedEvents();
     // Keep it rolling.
     return true;
+}
+
+void GPostEventSource::Source::finalize(GSource* src)
+{
+    UNUSED(src);
+    CTRACE(event, "Finalizing postevent source" << src);
 }
 
 static GSourceFuncs postEventSourceFuncs =
@@ -53,21 +83,23 @@ static GSourceFuncs postEventSourceFuncs =
     GPostEventSource::Source::prepare,
     nullptr,
     GPostEventSource::Source::dispatch,
-    nullptr,
+    GPostEventSource::Source::finalize,
     nullptr,
     nullptr
 };
 
-GPostEventSource::Source* GPostEventSource::Source::create(GPostEventSource& eventSource)
+GPostEventSource::Source* GPostEventSource::Source::create(GPostEventSource& eventSource, GMainContext* context)
 {
     Source* source = reinterpret_cast<Source*>(g_source_new(&postEventSourceFuncs, sizeof(*source)));
-    source->eventSource = &eventSource;
-    source->eventSource->wakeUpCalled.store(false);
+    auto self = as_shared<GPostEventSource>(&eventSource);
+    source->eventSource = self;
+    self->wakeUpCalled.store(false);
 
     GSource* src = static_cast<GSource*>(source);
 //    g_source_set_can_recurse(src, true);
-    GlibEventDispatcher* loop = static_cast<GlibEventDispatcher*>(source->eventSource->getRunLoop().get());
-    g_source_attach(src, loop->context);
+    g_source_attach(src, context);
+
+    CTRACE(event, "post event source created:" << source);
 
     return source;
 }
@@ -79,8 +111,9 @@ void GPostEventSource::Source::destroy(Source*& source)
     {
         return;
     }
-    g_source_destroy(gsource);
     g_source_unref(gsource);
+    g_source_destroy(gsource);
+    CTRACE(event, "post source runloop destroyed:" << source <<"- ref_count=" << gsource->ref_count);
     source = nullptr;
 }
 
@@ -95,12 +128,13 @@ GPostEventSource::GPostEventSource(std::string_view name)
 }
 GPostEventSource::~GPostEventSource()
 {
-    Source::destroy(source);
+    CTRACE(event, "postevent runloop source deleted");
 }
 
-void GPostEventSource::prepare()
+void GPostEventSource::initialize(void* data)
 {
-    source = Source::create(*this);
+    CTRACE(event, "initialize PostEvent runloop source");
+    source = Source::create(*this, reinterpret_cast<GMainContext*>(data));
 }
 
 void GPostEventSource::wakeUp()
@@ -108,12 +142,18 @@ void GPostEventSource::wakeUp()
     wakeUpCalled.store(true);
 }
 
+void GPostEventSource::detachOverride()
+{
+    CTRACE(event, "detach SocketNotifier runloop source");
+    Source::destroy(source);
+}
+
 /******************************************************************************
  * PostEventSource factory function
  */
 EventSourcePtr Adaptation::createPostEventSource(std::string_view name)
 {
-    return EventSourcePtr(new GPostEventSource(name));
+    return make_polymorphic_shared<EventSource, GPostEventSource>(name);
 }
 
 }

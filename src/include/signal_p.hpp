@@ -25,8 +25,6 @@
 namespace mox
 {
 
-TUuid nextUuid();
-
 class Object;
 using ObjectWeakPtr = std::weak_ptr<Object>;
 /******************************************************************************

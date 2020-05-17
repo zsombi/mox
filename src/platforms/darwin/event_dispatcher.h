@@ -25,78 +25,17 @@
 #include <mox/utils/containers/shared_vector.hpp>
 #include <mox/core/platforms/adaptation.hpp>
 
+#include <stack>
 #include <CoreFoundation/CoreFoundation.h>
 #include "mac_util.h"
+
+@interface RunLoopModeTracker :NSObject
+@end
 
 namespace mox
 {
 
-class FoundationRunLoop;
-
-template <class T = FoundationRunLoop>
-class RunLoopSource
-{
-public:
-    typedef void (T::*Callback)();
-
-    enum { HighestPriority = 0 };
-
-    explicit RunLoopSource(T* delegate, Callback callback)
-        : m_delegate(delegate)
-        , m_callback(callback)
-    {
-        CFRunLoopSourceContext context = {};
-        context.info = this;
-        context.perform = RunLoopSource::process;
-
-        m_sourceRef = CFRunLoopSourceCreate(kCFAllocatorDefault, HighestPriority, &context);
-        FATAL(m_sourceRef, "CF runloop source creation failed");
-    }
-    ~RunLoopSource()
-    {
-        CFRunLoopSourceInvalidate(m_sourceRef);
-        CFRelease(m_sourceRef);
-    }
-
-    void addToMode(CFStringRef mode, CFRunLoopRef loop = nullptr)
-    {
-        if (!loop)
-        {
-            loop = CFRunLoopGetCurrent();
-        }
-        CFRunLoopAddSource(loop, m_sourceRef, mode);
-    }
-
-    void removeFromMode(CFStringRef mode, CFRunLoopRef loop = nullptr)
-    {
-        if (!loop)
-        {
-            loop = CFRunLoopGetCurrent();
-        }
-        if (!CFRunLoopContainsSource(loop, m_sourceRef, mode))
-        {
-            CFRunLoopRemoveSource(loop, m_sourceRef, mode);
-        }
-    }
-
-    void signal()
-    {
-        CFRunLoopSourceSignal(m_sourceRef);
-    }
-
-private:
-    static void process(void *info)
-    {
-        RunLoopSource* self = static_cast<RunLoopSource*>(info);
-        ((self->m_delegate)->*(self->m_callback))();
-    }
-
-    T* m_delegate = nullptr;
-    Callback m_callback = nullptr;
-    CFRunLoopSourceRef m_sourceRef;
-};
-
-template <class T = FoundationRunLoop>
+template <class T>
 class RunLoopObserver
 {
 public:
@@ -177,9 +116,9 @@ public:
 
     void addTimer(TimerRecord& timer) final;
     void removeTimer(TimerRecord& timer) final;
-    void clean() final;
+    void initialize(void*) final {}
+    void detachOverride() final;
     size_t timerCount() const final;
-
     void activate();
 
     struct NullTimer
@@ -200,7 +139,8 @@ class CFPostEventSource : public EventSource
 public:
     explicit CFPostEventSource(std::string_view name);
     ~CFPostEventSource() final;
-    void setRunLoop(RunLoop& eventDispatcher) final;
+    void initialize(void* data) final;
+    void detachOverride() final;
 
     void wakeUp() override;
 
@@ -213,8 +153,8 @@ public:
     explicit CFSocketNotifierSource(std::string_view name);
     ~CFSocketNotifierSource() final;
 
-    void prepare() final;
-    void clean() final;
+    void initialize(void*) final {}
+    void detachOverride() final;
     void addNotifier(Notifier &notifier) final;
     void removeNotifier(Notifier &notifier) final;
 
@@ -244,30 +184,169 @@ public:
     std::vector<std::unique_ptr<Socket>> sockets;
 };
 
-class FoundationRunLoop : public RunLoop
+class CFIdleSource : public IdleSource
+{
+    using TaskStack = std::stack<Task>;
+    TaskStack tasks;
+
+public:
+    explicit CFIdleSource() = default;
+    void initialize(void*) final;
+    void detachOverride() final;
+    void wakeUp() final;
+
+    /// Run the idle tasks. Returns the number of re-scheduled idle tasks in the stack.
+    size_t runTasks();
+
+protected:
+    void addIdleTaskOverride(Task&& task) override;
+};
+
+class FoundationConcept
 {
 public:
-    explicit FoundationRunLoop();
-    ~FoundationRunLoop() override;
+    explicit FoundationConcept();
+    virtual ~FoundationConcept() = default;
 
-    bool isRunning() const override;
-    void execute(ProcessFlags flags) override;
-    void stopExecution() override;
-    void shutDown() override {}
-    void wakeUp() override;
-    size_t runningTimerCount() const override;
+    void addSource(CFRunLoopSourceRef source);
+    void addTimerSource(CFRunLoopTimerRef timer);
+    void removeSource(CFRunLoopSourceRef source, CFRunLoopMode mode = kCFRunLoopCommonModes);
 
-    void scheduleIdleTasks() override;
-
-    void runOnce();
-    void processRunLoopActivity(CFRunLoopActivity activity);
-
-    RunLoopObserver<> runLoopActivitySource;
+protected:
     mac::CFType<CFRunLoopRef> runLoop;
     RunLoopModeTracker *modeTracker = nullptr;
     CFStringRef currentMode = nullptr;
-    bool m_runOnce = true;
-    bool m_isRunning = false;
+};
+
+template <class DerivedType, class LoopType>
+class FoundationBase : public LoopType, public FoundationConcept
+{
+    using ThisType = FoundationBase<DerivedType, LoopType>;
+    DerivedType* getThis()
+    {
+        return static_cast<DerivedType*>(this);
+    }
+
+    IdleSourceWeakPtr idleSource;
+
+public:
+    explicit FoundationBase()
+        : runLoopActivitySource(this, &FoundationBase::processRunLoopActivity, kCFRunLoopAllActivities)
+    {
+        runLoopActivitySource.addToMode(kCFRunLoopCommonModes);
+    }
+
+    bool isRunningOverride() const final
+    {
+        return m_isRunning;
+    }
+
+    void initialize() final
+    {
+        auto self = getThis();
+        void* data = (void*)runLoop;
+        self->template forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::initialize, data);
+        idleSource = self->getIdleSource();
+    }
+
+protected:
+    void scheduleSourcesOverride() final
+    {
+        CTRACE(event, "WakeUp...");
+        CFRunLoopWakeUp(runLoop);
+    }
+
+    void processRunLoopActivity(CFRunLoopActivity activity)
+    {
+        auto self = getThis();
+
+        switch (activity)
+        {
+            case kCFRunLoopEntry:
+            {
+                CTRACE(event, "Entering runloop");
+                self->onEnter();
+                break;
+            }
+            case kCFRunLoopBeforeTimers:
+            {
+                CTRACE(event, "Before timers...");
+                self->template forEachSource<CFTimerSource>(&CFTimerSource::activate);
+                break;
+            }
+            case kCFRunLoopBeforeSources:
+            {
+                CTRACE(event, "Before sources...");
+                self->template forEachSource<CFSocketNotifierSource>(&CFSocketNotifierSource::enableSockets);
+                break;
+            }
+            case kCFRunLoopBeforeWaiting:
+            {
+                CTRACE(event, "RunLoop is about to sleep, run idle tasks");
+                // Run idle tasks
+                if (self->isRunning() && !idleSource.expired())
+                {
+                    auto idle = std::dynamic_pointer_cast<CFIdleSource>(idleSource.lock());
+                    if (idle->runTasks() > 0u && !self->isExiting())
+                    {
+                        self->scheduleSources();
+                    }
+                }
+                break;
+            }
+            case kCFRunLoopAfterWaiting:
+            {
+                CTRACE(event, "After waiting, resumed");
+                break;
+            }
+            case kCFRunLoopExit:
+            {
+                CTRACE(event, "Exiting");
+                getThis()->onExit();
+                break;
+            }
+            default:
+            {
+                break;
+            }
+        }
+    }
+
+    RunLoopObserver<ThisType> runLoopActivitySource;
+    std::atomic_bool m_isRunning = false;
+};
+
+class FoundationRunLoop : public FoundationBase<FoundationRunLoop, RunLoop>
+{
+public:
+    explicit FoundationRunLoop() = default;
+
+    void stop()
+    {
+        stopRunLoop();
+    }
+
+    void onEnter() {}
+    void onExit() {}
+
+    void execute(ProcessFlags flags) final;
+    void stopRunLoop() final;
+};
+
+class FoundationRunLoopHook : public FoundationBase<FoundationRunLoopHook, RunLoopHook>
+{
+public:
+    explicit FoundationRunLoopHook() = default;
+
+    void stop()
+    {
+        stopRunLoop();
+    }
+
+    void onEnter();
+    void onExit();
+
+    void stopRunLoop() final;
 };
 
 }

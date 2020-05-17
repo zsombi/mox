@@ -216,10 +216,8 @@ bool MetatypeDescriptor::addConverter(Converter&& converter, Metatype target)
     FATAL(metaType == typeId, "wrong atomic type registration!"); \
 }
 
-void registerAtomicTypes(MetaData& metaData)
+void MetaData::registerAtomicTypes()
 {
-    UNUSED(metaData);
-
     ATOMIC_TYPE("void", void, Metatype::Void)
     ATOMIC_TYPE("bool", bool, Metatype::Bool)
     ATOMIC_TYPE("char", char, Metatype::Char)
@@ -234,9 +232,9 @@ void registerAtomicTypes(MetaData& metaData)
     ATOMIC_TYPE("double", double, Metatype::Double)
 
 #ifdef LONG_SYNONIM_OF_UINT64
-    metaData.synonymTypes.push_back(std::make_pair(&typeid(intptr_t), Metatype::Int64));
-    metaData.synonymTypes.push_back(std::make_pair(&typeid(long), Metatype::Int64));
-    metaData.synonymTypes.push_back(std::make_pair(&typeid(unsigned long), Metatype::UInt64));
+    synonymTypes.push_back(std::make_pair(&typeid(intptr_t), Metatype::Int64));
+    synonymTypes.push_back(std::make_pair(&typeid(long), Metatype::Int64));
+    synonymTypes.push_back(std::make_pair(&typeid(unsigned long), Metatype::UInt64));
 #endif
 
     ATOMIC_TYPE("std::string", std::string, Metatype::String)

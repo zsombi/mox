@@ -106,7 +106,7 @@ std::string literalToString(std::string_view value)
 }
 
 // Registrar function
-void registerConverters()
+void MetaData::registerConverters()
 {
     // bool
     registerAtomicConverter<bool, char>();

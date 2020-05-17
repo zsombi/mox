@@ -99,7 +99,7 @@ void MetaBase::lock()
         // Is this the same owner?
         if (m_owner == std::this_thread::get_id())
         {
-            FATAL(false, "Already locked MetaBase! LockCount is " << m_lockCount);
+            FATAL(false, "Deadlocked MetaBase! LockCount is " << m_lockCount);
         }
         m_mutex.lock();
         m_owner = std::this_thread::get_id();

@@ -16,11 +16,12 @@
 # <http://www.gnu.org/licenses/>
 #
 
-cmake_minimum_required(VERSION 3.6 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.10 FATAL_ERROR)
 set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH};${CMAKE_CURRENT_LIST_DIR}/../cmake.modules" CACHE STRING "module-path")
 
-include(configure-platform)
-#include(gtest)
+include(configure-target)
+#set(CMAKE_SKIP_RPATH ON)
+project(test VERSION 0.0.1)
 
 set(SOURCES
     test_enumerate_metatypes.cpp
@@ -38,16 +39,17 @@ set(SOURCES
     test_object.cpp
     test_event.cpp
     test_event_queue.cpp
+    test_runloophooks.cpp
     test_event_handling.cpp
     test_threads.cpp
+    test_applets.cpp
     test_bindings.cpp
     )
 
-set(TARGET unittest)
-add_executable(${TARGET} ${SOURCES} ${TEST_FRAMEWORK})
-target_link_libraries(${TARGET} mox gtest_main)
-target_include_directories(${TARGET} PRIVATE ${CMAKE_SOURCE_DIR}/tests)
-include(configure-target)
+add_executable(unittest ${SOURCES} ${TEST_FRAMEWORK})
+target_link_libraries(unittest PRIVATE gtest_main mox)
+target_include_directories(unittest PRIVATE ${CMAKE_SOURCE_DIR}/tests)
+configure_target(unittest)
 
 add_test(NAME unittest COMMAND unittest "--gtest_output=xml:unittest.xml"
     WORKING_DIRECTORY "${CMAKE_BINARY_DIR}")

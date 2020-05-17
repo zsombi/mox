@@ -2,56 +2,55 @@
 #include <gtest/gtest.h>
 
 #include <mox/mox_module.hpp>
+#include "../src/include/process_p.hpp"
 
 /******************************************************************************
  *
  */
 #if defined(MOX_ENABLE_LOGS)
-UnitTest::TestLogger* UnitTest::TestLogger::logger = nullptr;
 
-UnitTest::TestLogger::LogData::LogData(mox::LogCategory* category, mox::LogType type, std::string_view message)
+UnitTest::LogData::LogData(mox::LogCategory* category, mox::LogType type, std::string_view message)
     : category(category)
     , type(type)
     , message(message)
 {
 }
 
-bool UnitTest::TestLogger::LogData::operator==(const LogData& other)
+bool UnitTest::LogData::operator==(const LogData& other)
 {
     return (category == other.category) &&
             (type == other.type) &&
             (message == other.message);
 }
 
-UnitTest::TestLogger::TestLogger()
+UnitTest::TestLogger::TestLogger(UnitTest& fixup)
+    : fixup(fixup)
 {
-    logger = this;
 }
 UnitTest::TestLogger::~TestLogger()
 {
-    logger = nullptr;
 }
 
-bool UnitTest::TestLogger::log(mox::LogCategory& category, mox::LogType type, const std::string& text)
+bool UnitTest::TestLogger::log(mox::LogCategory& category, mox::LogType type, std::string_view heading, const std::string& text)
 {
     LogData logData(&category, type, text);
     auto find = [&logData] (auto& data)
     {
         return logData == data;
     };
-    auto it = std::find_if(expectedLogs.begin(), expectedLogs.end(), find);
-    if (it != expectedLogs.end())
+    auto it = std::find_if(fixup.expectedLogs.begin(), fixup.expectedLogs.end(), find);
+    if (it != fixup.expectedLogs.end())
     {
-        expectedLogs.erase(it);
+        fixup.expectedLogs.erase(it);
         return false;
     }
     else
     {
-        return ScreenLogger::log(category, type, text);
+        return ScreenLogger::log(category, type, heading, text);
     }
 }
 
-void UnitTest::TestLogger::testLogs()
+void UnitTest::testLogs()
 {
     EXPECT_EQ(0u, expectedLogs.size());
 }
@@ -59,11 +58,11 @@ void UnitTest::TestLogger::testLogs()
 /******************************************************************************
  *
  */
-void UnitTest::expectLog(mox::LogCategory *category, mox::LogType type, std::string_view message, size_t count)
+void UnitTest::expectLog(mox::LogCategory* category, mox::LogType type, std::string_view message, size_t count)
 {
     while (count--)
     {
-        TestLogger::get()->expectedLogs.emplace_back(TestLogger::LogData(category, type, message));
+        expectedLogs.emplace_back(LogData(category, type, message));
     }
 }
 #endif
@@ -73,16 +72,16 @@ void UnitTest::SetUp()
     ::testing::Test::SetUp();
 
 #if defined(MOX_ENABLE_LOGS)
-    mox::Logger::setLogger(std::make_unique<TestLogger>());
+    mox::Logger::setLogger(std::make_unique<TestLogger>(*this));
 #endif
     mox::registerMetaType<TestApp>();
-    mox::registerMetaType<TestThreadLoop>();
-    mox::registerMetaType<TestThreadLoop*>();
+    mox::registerMetaClass<TestThreadLoop>();
 }
 void UnitTest::TearDown()
 {
 #if defined(MOX_ENABLE_LOGS)
-    TestLogger::get()->testLogs();
+    testLogs();
+    expectedLogs.clear();
     mox::Logger::setLogger(std::make_unique<mox::ScreenLogger>());
 #endif
 
@@ -92,13 +91,9 @@ void UnitTest::TearDown()
 /******************************************************************************
  * TestThreadLoop
  */
-std::shared_ptr<TestThreadLoop> TestThreadLoop::create(Notifier&& notifier, Object* parent)
+std::shared_ptr<TestThreadLoop> TestThreadLoop::create(mox::ThreadPromise&& notifier)
 {
-    auto thread = createObject(new TestThreadLoop(std::forward<Notifier>(notifier)), parent);
-
-    thread->init();
-
-    return thread;
+    return make_thread(new TestThreadLoop(std::forward<mox::ThreadPromise>(notifier)));
 }
 
 TestThreadLoop::~TestThreadLoop()
@@ -106,13 +101,14 @@ TestThreadLoop::~TestThreadLoop()
     m_deathNotifier.set_value();
 }
 
-TestThreadLoop::TestThreadLoop(Notifier&& notifier)
+TestThreadLoop::TestThreadLoop(mox::ThreadPromise&& notifier)
+    : m_deathNotifier(std::move(notifier))
 {
-    m_deathNotifier.swap(notifier);
 }
 
-void TestThreadLoop::init()
+void TestThreadLoop::initialize()
 {
+    ThreadLoop::initialize();
     started.connect(*this, &TestThreadLoop::onStarted);
     stopped.connect(*this, &TestThreadLoop::onStopped);
 }

@@ -31,7 +31,7 @@
     #define TAG "MoxFW"
 #endif
 
-//DECLARE_LOG_CATEGORY(default)
+DECLARE_LOG_CATEGORY(default)
 
 namespace mox
 {
@@ -42,6 +42,8 @@ namespace mox
 LoggerData::LoggerData()
     : m_logger(std::make_unique<ScreenLogger>())
 {
+    std::cout << "Logger data created" << std::endl;
+    FATAL(!g_logger, "Global logger data already initialized!");
     auto env = getenv("MOX_LOG_RULES");
     if (env)
     {
@@ -61,6 +63,7 @@ LoggerData::~LoggerData()
 
 LoggerData& LoggerData::get()
 {
+    static LoggerData s_logger;
     assert(g_logger);
     return *g_logger;
 }
@@ -70,19 +73,20 @@ LoggerData* LoggerData::find()
     return g_logger;
 }
 
-void LoggerData::log(LogCategory& category, LogType type, const std::string& text)
+void LoggerData::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
 {
     lock_guard lock(m_mutex);
-    m_logger->log(category, type, text);
+    m_logger->log(category, type, heading, text);
 }
 
-void LoggerData::setLogger(LoggerInterfacePtr logger)
+void LoggerData::setLogger(LoggerInterfacePtr&& logger)
 {
     m_logger = std::move(logger);
 }
 
-size_t LoggerData::addCategory(LogCategory category)
+size_t LoggerData::addCategory(LogCategory&& category)
 {
+    FATAL(!category.getName().empty(), "Adding log category with empty name is forbidden");
     auto finder = [&category](auto& c)
     {
         return c.getName() == category.getName();
@@ -93,7 +97,8 @@ size_t LoggerData::addCategory(LogCategory category)
         return std::distance(m_categories.begin(), it);
     }
 
-    m_categories.emplace_back(std::move(category));
+    m_categories.emplace_back(std::forward<LogCategory>(category));
+    std::cout << "LOG CATEGORY ADDED: " << m_categories.back().getName() << std::endl;
     return m_categories.size() - 1u;
 }
 
@@ -185,17 +190,20 @@ void LoggerData::setRule(std::string rule)
 /******************************************************************************
  * ScreenLogger
  */
-bool ScreenLogger::log(LogCategory& category, LogType type, const std::string& text)
+bool ScreenLogger::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
 {
     UNUSED(category);
     UNUSED(type);
 #ifdef ANDROID
     __android_log_print(ANDROID_LOG_DEBUG, TAG, text.c_str());
 #else
-    clock_t rawTime = clock();
-    std::string line = "[tid<> "
-            + std::to_string(rawTime) + "] " + text;
-    std::cout << line << std::endl;
+    auto rawTime = clock();
+    std::ostringstream line;
+
+    line << "tid[" << std::this_thread::get_id() << "> "
+         << rawTime << "] " << heading << text;
+
+    std::cout << line.str() << std::endl;
 #endif
     return true;
 }
@@ -219,27 +227,27 @@ FileLogger::~FileLogger()
     stream.close();
 }
 
-bool FileLogger::log(LogCategory& category, LogType type, const std::string& text)
+bool FileLogger::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
 {
     UNUSED(category);
     UNUSED(type);
     clock_t rawTime = clock();
-    stream << "[tid<> " << std::to_string(rawTime) + "] "
-           << text << std::endl;
+    stream << "[tid<" << std::this_thread::get_id() << "> " << std::to_string(rawTime) + "] "
+           << heading << text << std::endl;
     return true;
 }
 
 /******************************************************************************
  * Logger
  */
-void Logger::log(LogCategory& category, LogType type, const std::string& text)
+void Logger::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
 {
-    LoggerData::get().log(category, type, text);
+    LoggerData::get().log(category, type, heading, text);
 }
 
 void Logger::setLogger(LoggerInterfacePtr logger)
 {
-    LoggerData::get().setLogger(std::move(logger));
+    LoggerData::get().setLogger(std::forward<LoggerInterfacePtr>(logger));
 }
 
 size_t Logger::addCategory(LogCategory category)
@@ -280,24 +288,6 @@ bool LogCategory::hasTypes(LogType types) const
 }
 
 /******************************************************************************
- * LogCategoryRegistrar
- */
-LogCategoryRegistrar::LogCategoryRegistrar(std::string_view name)
-    : _name(name)
-{
-    category();
-}
-
-LogCategory* LogCategoryRegistrar::category()
-{
-    if (!_category)
-    {
-        _category = Logger::findCategory(_name);
-    }
-    return _category;
-}
-
-/******************************************************************************
  * LogLine
  */
 namespace
@@ -330,25 +320,22 @@ std::string formatHeading(LogType type, const char *file, int line, const char *
 }
 
 LogLine::LogLine(LogType type, const char* file, unsigned line, const char* function)
-    : LogLine(LoggerData::get().findCategory("default"), type, file, line, function)
+    : LogLine("default", type, file, line, function)
 {
 }
 
-LogLine::LogLine(LogCategory* category, LogType type, const char* file, unsigned line, const char* function)
-    : m_category(category)
+LogLine::LogLine(std::string_view category, LogType type, const char* file, unsigned line, const char* function)
+    : m_heading(formatHeading(type, file, line, function))
+    , m_category(Logger::findCategory(category))
     , m_logType(type)
 {
-    if (isEnabled())
-    {
-        m_data << formatHeading(type, file, line, function);
-    }
 }
 
 LogLine::~LogLine()
 {
     if (isEnabled())
     {
-        LoggerData::get().log(*m_category, m_logType, m_data.str());
+        LoggerData::get().log(*m_category, m_logType, m_heading, m_data.str());
     }
     if (m_logType == LogType::Fatal)
     {

@@ -67,12 +67,12 @@ public:
         lock_guard lock(*this);
         while (!empty())
         {
-            EventPtr event(std::move(c.front()));
+            EventPtr ev(std::move(c.front()));
             pop();
 
             ScopeRelock relock(*this);
-            CTRACE(event, "Processing event:" << int(event->type()));
-            dispatcher(*event);
+            CTRACE(event, "Processing event:" << int(ev->type()));
+            dispatcher(*ev);
         }
     }
 };

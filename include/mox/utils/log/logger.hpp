@@ -81,7 +81,7 @@ public:
     virtual ~LoggerInterface() = default;
     /// Logs a text.
     /// \param test The text to log.
-    virtual bool log(LogCategory& category, LogType type, const std::string& text) = 0;
+    virtual bool log(LogCategory& category, LogType type, std::string_view heading, const std::string& text) = 0;
 };
 using LoggerInterfacePtr = std::unique_ptr<LoggerInterface>;
 
@@ -92,7 +92,7 @@ public:
     /// Constructor.
     explicit ScreenLogger() = default;
     /// Override of LoggerInterface::log().
-    bool log(LogCategory& category, LogType type, const std::string &text) override;
+    bool log(LogCategory& category, LogType type, std::string_view heading, const std::string &text) override;
 };
 
 /// File logger, logs a text to a file.
@@ -108,7 +108,7 @@ public:
     ~FileLogger() override;
 
     /// Override of LoggerInterface::log().
-    bool log(LogCategory& category, LogType type, const std::string& text) override;
+    bool log(LogCategory& category, LogType type, std::string_view heading, const std::string& text) override;
 
 private:
     std::ofstream stream;
@@ -118,6 +118,7 @@ private:
 class MOX_API LogLine
 {
     std::ostringstream m_data;
+    std::string m_heading;
     LogCategory* m_category = nullptr;
     LogType m_logType;
 
@@ -125,7 +126,7 @@ public:
     /// Constructs the log line.
     LogLine(LogType type, const char* file, unsigned line, const char* function);
     /// Constructs the log line for a category.
-    LogLine(LogCategory* category, LogType type, const char* file, unsigned line, const char* function);
+    LogLine(std::string_view category, LogType type, const char* file, unsigned line, const char* function);
     /// Destructs the log line and flushes the content to the current logger.
     ~LogLine();
 
@@ -159,7 +160,7 @@ public:
     /// \param category The logging category.
     /// \param type The log type.
     /// \param text The text to log.
-    static void log(LogCategory& category, LogType type, const std::string& text);
+    static void log(LogCategory& category, LogType type, std::string_view heading, const std::string& text);
 
     /// Set the current logger interface.
     /// \param logger The logger to use.
@@ -193,26 +194,32 @@ private:
     ~Logger() = default;
 };
 
-/// Template struct, registers a log category and keeps its identifier.
-struct MOX_API LogCategoryRegistrar
+struct LogCategoryRegistrar
 {
-    LogCategoryRegistrar(std::string_view name);
-    LogCategory* category();
+    LogCategoryRegistrar(const char* ctg)
+        : _category(ctg)
+    {
+    }
+    operator std::string_view() const
+    {
+        return _category;
+    }
 
 private:
-    std::string _name;
-    LogCategory* _category = nullptr;
+    const char* _category;
 };
 
 } // mox
 
 #define DECLARE_LOG_CATEGORY(category) \
-static inline mox::LogCategoryRegistrar logCategoryRegistrar_##category{#category};
+const mox::LogCategoryRegistrar logCategoryRegistrar_##category = {#category};
 
-#define CTRACE(c, s)        mox::LogLine(::logCategoryRegistrar_##c.category(), mox::LogType::Debug, __FILE__, __LINE__, __FUNCTION__) << s
-#define CWARN(c, s)         mox::LogLine(::logCategoryRegistrar_##c.category(), mox::LogType::Warning, __FILE__, __LINE__, __FUNCTION__) << s
-#define CINFO(c, s)         mox::LogLine(::logCategoryRegistrar_##c.category(), mox::LogType::Info, __FILE__, __LINE__, __FUNCTION__) << s
-#define CFATAL(c, test, s)  if (!(test)) mox::LogLine(::logCategoryRegistrar_##c.category(), mox::LogType::Fatal, __FILE__, __LINE__, __FUNCTION__) << s
+#define CATEGORY(c)         ::logCategoryRegistrar_##c
+
+#define CTRACE(c, s)        mox::LogLine(CATEGORY(c), mox::LogType::Debug, __FILE__, __LINE__, __FUNCTION__) << s
+#define CWARN(c, s)         mox::LogLine(CATEGORY(c), mox::LogType::Warning, __FILE__, __LINE__, __FUNCTION__) << s
+#define CINFO(c, s)         mox::LogLine(CATEGORY(c), mox::LogType::Info, __FILE__, __LINE__, __FUNCTION__) << s
+#define CFATAL(c, test, s)  if (!(test)) mox::LogLine(CATEGORY(c), mox::LogType::Fatal, __FILE__, __LINE__, __FUNCTION__) << s
 
 #define TRACE(s)           mox::LogLine(mox::LogType::Debug, __FILE__, __LINE__, __FUNCTION__) << s
 #define WARN(s)            mox::LogLine(mox::LogType::Warning, __FILE__, __LINE__, __FUNCTION__) << s
@@ -224,6 +231,7 @@ static inline mox::LogCategoryRegistrar logCategoryRegistrar_##category{#categor
 #include <cstdlib>
 
 #define DECLARE_LOG_CATEGORY(category)
+#define CATEGORY(category)
 #define CTRACE(category, s)
 #define CWARN(category, s)
 #define CINFO(category, s)

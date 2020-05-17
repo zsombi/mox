@@ -61,7 +61,7 @@ public:
     virtual ~PropertyDataProvider() = default;
 };
 
-/// Template class, provides the default value storage for a proeprty type.
+/// Template class, provides the default value storage for a property type.
 template <typename ValueType>
 class PropertyDefaultValue : public PropertyDataProviderInterface
 {
@@ -106,6 +106,58 @@ public:
     PropertyData(const ValueType& v = ValueType())
         : m_value(v)
     {
+    }
+
+    operator ValueType() const
+    {
+        return m_value;
+    }
+    void operator=(const ValueType& value)
+    {
+        m_value = value;
+    }
+    bool operator==(const ValueType& value)
+    {
+        return m_value == value;
+    }
+};
+
+template <typename ValueType>
+class AtomicPropertyData : public PropertyDataProvider
+{
+    std::atomic<ValueType> m_value = ValueType();
+
+    /// Constructor.
+    AtomicPropertyData() = delete;
+
+protected:
+    Variant getData() const override
+    {
+        return Variant(m_value.load());
+    }
+    void setData(const Variant &value) override
+    {
+        m_value.store(static_cast<ValueType>(value));
+    }
+
+public:
+    /// Constructs a property data from a value.
+    AtomicPropertyData(const ValueType& v = ValueType())
+        : m_value(v)
+    {
+    }
+
+    operator ValueType() const
+    {
+        return m_value.load();
+    }
+    void operator=(const ValueType& value)
+    {
+        m_value.store(value);
+    }
+    bool operator==(const ValueType& value)
+    {
+        return m_value.load() == value;
     }
 };
 

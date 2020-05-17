@@ -64,6 +64,7 @@ public:
 
 struct DispatcherWrapper
 {
+    EventQueue queue;
     RunLoopSharedPtr runLoop;
     TimerSourcePtr timerSource;
     EventSourcePtr postSource;
@@ -76,35 +77,41 @@ struct DispatcherWrapper
         , postSource(runLoop->getDefaultPostEventSource())
         , socketSource(runLoop->getDefaultSocketNotifierSource())
     {
+        postSource->attachQueue(queue);
     }
     ~DispatcherWrapper()
     {
-        runLoop->shutDown();
+    }
+
+    void post(EventPtr event)
+    {
+        queue.push(std::move(event));
+        runLoop->scheduleSources();
     }
 
     void runOnce()
     {
         auto leave = [this]()
         {
-            runLoop->stopExecution();
+            runLoop->quit();
             return true;
         };
-        runLoop->addIdleTask(leave);
+        runLoop->getIdleSource()->addIdleTask(leave);
         runLoop->execute();
     }
 };
 
-TEST(TestEventDispatcher, test_basics)
+TEST(TestEventDispatcher, test_stop_from_idle_task)
 {
     auto wrapper = DispatcherWrapper();
 
     auto idleFunc = [&wrapper]()
     {
-        wrapper.runLoop->stopExecution();
+        wrapper.runLoop->quit();
         wrapper.exitCode = 100;
         return true;
     };
-    wrapper.runLoop->addIdleTask(idleFunc);
+    wrapper.runLoop->getIdleSource()->addIdleTask(idleFunc);
     wrapper.runLoop->execute();
     EXPECT_EQ(100, wrapper.exitCode);
 }
@@ -118,13 +125,13 @@ TEST(TestEventDispatcher, test_exit_after_several_idle_calls)
     {
         if (--count <= 0)
         {
-            wrapper.runLoop->stopExecution();
+            wrapper.runLoop->quit();
             wrapper.exitCode = 100;
             return true;
         }
         return false;
     };
-    wrapper.runLoop->addIdleTask(idleFunc);
+    wrapper.runLoop->getIdleSource()->addIdleTask(idleFunc);
     wrapper.runLoop->execute();
     EXPECT_EQ(100, wrapper.exitCode);
 }
@@ -136,16 +143,13 @@ TEST(TestEventDispatcher, test_single_shot_timer_quits_loop)
 
     auto handler = [&wrapper]()
     {
-        TRACE("Call exit with 1");
         wrapper.exitCode = 1;
-        wrapper.runLoop->stopExecution();
+        wrapper.runLoop->quit();
     };
     timer->expired.connect(handler);
     timer->start(*wrapper.timerSource);
     wrapper.runLoop->execute();
-    wrapper.runLoop->shutDown();
     EXPECT_EQ(1, wrapper.exitCode);
-    EXPECT_EQ(0u, wrapper.runLoop->runningTimerCount());
 }
 
 TEST(TestEventDispatcher, test_repeating_timer_quits_loop)
@@ -159,15 +163,13 @@ TEST(TestEventDispatcher, test_repeating_timer_quits_loop)
         if (--repeatCount <= 0)
         {
             wrapper.exitCode = 1;
-            wrapper.runLoop->stopExecution();
+            wrapper.runLoop->quit();
         }
     };
     timer->expired.connect(handler);
     timer->start(*wrapper.timerSource);
     wrapper.runLoop->execute();
-    wrapper.runLoop->shutDown();
     EXPECT_EQ(1, wrapper.exitCode);
-    EXPECT_EQ(0u, wrapper.runLoop->runningTimerCount());
 }
 
 TEST(TestEventDispatcher, test_ping_timer_idle_task)
@@ -176,20 +178,18 @@ TEST(TestEventDispatcher, test_ping_timer_idle_task)
     auto ping = make_polymorphic_shared<TimerSource::TimerRecord, TestTimer>(std::chrono::milliseconds(100), false);
 
     int countDown = 3;
-    auto pingHandler = [&countDown, wrapper]()
+    auto pingHandler = [&countDown, &wrapper]()
     {
         if (--countDown <= 0)
         {
-            wrapper.runLoop->stopExecution();
+            wrapper.runLoop->quit();
             return;
         }
-        wrapper.runLoop->wakeUp();
+        wrapper.runLoop->scheduleSources();
     };
     ping->expired.connect(pingHandler);
     ping->start(*wrapper.timerSource);
     wrapper.runLoop->execute();
-    wrapper.runLoop->shutDown();
-    EXPECT_EQ(0u, wrapper.runLoop->runningTimerCount());
     EXPECT_EQ(0, countDown);
 }
 
@@ -234,7 +234,22 @@ public:
     bool eventReached = false;
 };
 
+TEST(TestEventDispatcher, test_stop_from_event_handler)
+{
+    auto wrapper = DispatcherWrapper();
+    auto host = Object::create();
+    auto quitHandler = [&wrapper](Event& event)
+    {
+        wrapper.exitCode = static_cast<QuitEvent&>(event).getExitCode();
+        wrapper.runLoop->quit();
+    };
 
+    host->addEventHandler(EventType::Quit, quitHandler);
+
+    wrapper.post(make_event<QuitEvent>(host, 111));
+    wrapper.runLoop->execute();
+    EXPECT_EQ(111, wrapper.exitCode);
+}
 
 TEST(TestEventDispatcher, test_post_event)
 {
@@ -245,14 +260,14 @@ TEST(TestEventDispatcher, test_post_event)
         if (event.type() == EventType::Quit)
         {
             wrapper.exitCode = static_cast<QuitEvent&>(event).getExitCode();
-            wrapper.runLoop->stopExecution();
+            wrapper.runLoop->quit();
         }
     };
 
     host->addEventHandler(EventType::Quit, quitHandler);
 
-    wrapper.postSource->push(make_event<Event>(host, EventType::Base));
-    wrapper.runLoop->addIdleTask([host, &wrapper]() { wrapper.postSource->push(make_event<QuitEvent>(host, 111)); return true; });
+    wrapper.post(make_event<Event>(host, EventType::Base));
+    wrapper.runLoop->getIdleSource()->addIdleTask([host, &wrapper]() { wrapper.post(make_event<QuitEvent>(host, 111)); return true; });
     wrapper.runLoop->execute();
     EXPECT_EQ(111, wrapper.exitCode);
 }
@@ -272,7 +287,7 @@ TEST(TestEventDispatcher, test_filter_events)
         wrapper.exitCode = 101;
     };
     host->addEventHandler(Filter::type, handler);
-    wrapper.postSource->push(make_event<Event>(host, Filter::type));
+    wrapper.post(make_event<Event>(host, Filter::type));
     wrapper.runOnce();
     EXPECT_NE(101, wrapper.exitCode);
 }
@@ -292,7 +307,7 @@ TEST(TestEventDispatcher, test_pass_event_filter)
         wrapper.exitCode = 101;
     };
     host->addEventHandler(EventType::Base, handler);
-    wrapper.postSource->push(make_event<Event>(host, EventType::Base));
+    wrapper.post(make_event<Event>(host, EventType::Base));
     wrapper.runOnce();
     EXPECT_EQ(101, wrapper.exitCode);
 }
@@ -305,7 +320,7 @@ TEST(TestEventDispatcher, test_filter_events_from_filter)
     std::shared_ptr<Filter> filter2 = Filter::create(filter1.get());
     std::shared_ptr<EventTarget> handler = EventTarget::create(filter2.get());
 
-    wrapper.postSource->push(make_event<Event>(handler, Filter::type));
+    wrapper.post(make_event<Event>(handler, Filter::type));
 
     wrapper.runOnce();
     EXPECT_TRUE(filter1->eventFiltered);
@@ -322,7 +337,7 @@ TEST(TestEventDispatcher, test_stdout_write_watch)
     auto onWrite = [&notified, &wrapper]()
     {
         notified = true;
-        wrapper.runLoop->stopExecution();
+        wrapper.runLoop->quit();
     };
     notifier->modeChanged.connect(onWrite);
     notifier->attach(*wrapper.socketSource);
@@ -333,7 +348,7 @@ TEST(TestEventDispatcher, test_stdout_write_watch)
         std::cout << "Feed chars to stdout" << std::endl;
         return true;
     };
-    wrapper.runLoop->addIdleTask(idle);
+    wrapper.runLoop->getIdleSource()->addIdleTask(idle);
     wrapper.runLoop->execute();
     EXPECT_TRUE(notified);
 }
@@ -363,19 +378,16 @@ TEST(TestEventDispatcher, test_remove_handler_token_in_event_handling)
     EXPECT_EQ(object, std::static_pointer_cast<Object>(token->getTarget()));
 
     // add two more.
-    object->addEventHandler(EventType::UserType, handler);
-    object->addEventHandler(EventType::UserType, handler);
+    auto token2 = object->addEventHandler(EventType::UserType, handler);
+    auto token3 = object->addEventHandler(EventType::UserType, handler);
 
-    wrapper.postSource->push(make_event<Event>(object, EventType::UserType));
+    wrapper.post(make_event<Event>(object, EventType::UserType));
     wrapper.runOnce();
 
     EXPECT_EQ(4, count);
-    EXPECT_EQ(nullptr, token->getTarget());
-
-    count = 0;
-    wrapper.postSource->push(make_event<Event>(object, EventType::UserType));
-    wrapper.runOnce();
-    EXPECT_EQ(3, count);
+    EXPECT_FALSE(token->isValid());
+    EXPECT_TRUE(token2->isValid());
+    EXPECT_TRUE(token3->isValid());
 }
 
 TEST(TestEventDispatcher, test_remove_filter_token_in_event_handling)
@@ -404,17 +416,14 @@ TEST(TestEventDispatcher, test_remove_filter_token_in_event_handling)
     EXPECT_EQ(object, std::static_pointer_cast<Object>(token->getTarget()));
 
     // add two more.
-    object->addEventFilter(EventType::UserType, filter);
-    object->addEventFilter(EventType::UserType, filter);
+    auto token2 = object->addEventFilter(EventType::UserType, filter);
+    auto token3 = object->addEventFilter(EventType::UserType, filter);
 
-    wrapper.postSource->push(make_event<Event>(object, EventType::UserType));
+    wrapper.post(make_event<Event>(object, EventType::UserType));
     wrapper.runOnce();
 
     EXPECT_EQ(4, count);
-    EXPECT_EQ(nullptr, token->getTarget());
-
-    count = 0;
-    wrapper.postSource->push(make_event<Event>(object, EventType::UserType));
-    wrapper.runOnce();
-    EXPECT_EQ(3, count);
+    EXPECT_FALSE(token->isValid());
+    EXPECT_TRUE(token2->isValid());
+    EXPECT_TRUE(token3->isValid());
 }

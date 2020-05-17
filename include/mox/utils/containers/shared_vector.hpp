@@ -71,7 +71,7 @@ struct ZeroSet
 template <typename Type,
           typename ValidityChecker = ZeroCheck<Type>,
           typename Invalidator = ZeroSet<Type>>
-class SharedVector
+class MOX_API SharedVector
 {
     using Self = SharedVector<Type, ValidityChecker, Invalidator>;
     using Container = std::vector<Type>;

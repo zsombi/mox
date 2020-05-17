@@ -22,7 +22,7 @@
 #include <metadata_p.hpp>
 #include <mox/core/object.hpp>
 
-#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/process/thread_loop.hpp>
 
 namespace mox
 {

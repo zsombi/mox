@@ -22,8 +22,9 @@
 #include <mox/core/event_handling/socket_notifier.hpp>
 #include <mox/core/object.hpp>
 #include <mox/core/timer.hpp>
-#include <mox/core/module/application.hpp>
-#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/process/application.hpp>
+#include <mox/core/process/thread_loop.hpp>
+#include <mox/core/process/applet.hpp>
 
 #include <vector>
 
@@ -39,8 +40,10 @@ void MoxModule::registerModule()
     registerMetaClass<Timer>();
     registerMetaClass<MetaObject>();
     registerMetaClass<Object>();
+    registerMetaClass<ThreadInterface>();
     registerMetaClass<ThreadLoop>();
     registerMetaClass<Application>();
+    registerMetaClass<Applet>();
 }
 
 }

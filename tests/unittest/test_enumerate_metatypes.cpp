@@ -123,9 +123,13 @@ TEST(MetaDataEnum, test_enumerate_metaclasses)
     test.clear();
 
     test.metaClass = "mox::ThreadLoop";
+    test.properties.push_back("status"s);
+    test.properties.push_back("exitCode"s);
     test.properties.push_back("objectName"s);
     test.signals.push_back("started");
     test.signals.push_back("stopped");
+    test.signals.push_back("statusChanged");
+    test.signals.push_back("exitCodeChanged");
     test.signals.push_back("objectNameChanged");
 
     EXPECT_NOT_NULL(mox::metainfo::find(std::bind(&MetaTest::verifyMetaClass, &test, std::placeholders::_1)));

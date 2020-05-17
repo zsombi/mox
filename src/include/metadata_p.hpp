@@ -71,21 +71,16 @@ struct MetaData
     bool initialized = false;
 
     static inline MetaData* globalMetaDataPtr = nullptr;
-};
 
-void registerAtomicTypes(MetaData& metaData);
-void registerConverters();
+    void registerAtomicTypes();
+    void registerConverters();
 
-TUuid nextUuid();
-
-struct GlobalMetadataInitializer
-{
-#if defined(MOX_ENABLE_LOGS)
-    LoggerData logger;
-#endif
-    MetaData globalMetaData;
-
-    GlobalMetadataInitializer() = default;
+//    template <typename T, typename N>
+//    auto registerAtomicType(N name)
+//    {
+//        const auto& rtti = getNakedTypeInfo<T>();
+//        auto newType = metadata::tryRegisterMetatype(rtti, std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
+//    }
 };
 
 } // namespace mox

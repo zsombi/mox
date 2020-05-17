@@ -24,45 +24,64 @@
 #include <mox/core/event_handling/run_loop.hpp>
 #include <mox/core/meta/core/metadata.hpp>
 #include <mox/core/meta/core/metatype_descriptor.hpp>
-#include <mox/core/module/application.hpp>
-#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/process/application.hpp>
+#include <mox/core/process/thread_loop.hpp>
 #include <mox/config/error.hpp>
 #include <mox/utils/log/logger.hpp>
 
 class UnitTest : public ::testing::Test
 {
 #if defined(MOX_ENABLE_LOGS)
+    struct LogData
+    {
+        mox::LogCategory* category;
+        mox::LogType type;
+        std::string message;
+        LogData(mox::LogCategory* category, mox::LogType type, std::string_view message);
+
+        bool operator==(const LogData& other);
+    };
+    using LogContainer = std::vector<LogData>;
+
+    LogContainer expectedLogs;
+
     class TestLogger : public mox::ScreenLogger
     {
-        static TestLogger* logger;
+        UnitTest& fixup;
     public:
-        TestLogger();
+        TestLogger(UnitTest& fixup);
         ~TestLogger() override;
-        bool log(mox::LogCategory& category, mox::LogType type, const std::string &text) override;
-
-        static TestLogger* get()
-        {
-            return logger;
-        }
-        void testLogs();
-
-        struct LogData
-        {
-            mox::LogCategory* category;
-            mox::LogType type;
-            std::string message;
-            LogData(mox::LogCategory* category, mox::LogType type, std::string_view message);
-
-            bool operator==(const LogData& other);
-        };
-        using LogContainer = std::vector<LogData>;
-
-        LogContainer expectedLogs;
+        bool log(mox::LogCategory& category, mox::LogType type, std::string_view heading, const std::string &text) override;
     };
+
+    void testLogs();
 #endif
 
 protected:
 #if defined(MOX_ENABLE_LOGS)
+    template <mox::LogType types>
+    struct ScopeLogType
+    {
+        ScopeLogType(std::string_view category)
+        {
+            _cat = mox::Logger::findCategory(category);
+            if (!_cat)
+            {
+                auto id = mox::Logger::addCategory(mox::LogCategory(category));
+                _cat = &mox::Logger::getCategory(id);
+            }
+            _bak = _cat->getTypes();
+            _cat->setTypes(types);
+        }
+        ~ScopeLogType()
+        {
+            _cat->setTypes(_bak);
+        }
+    private:
+        mox::LogCategory* _cat = nullptr;
+        mox::LogType _bak;
+    };
+
     void expectLog(mox::LogCategory* category, mox::LogType type, std::string_view message, size_t count = 1);
 #endif
     void SetUp() override;
@@ -92,6 +111,9 @@ public:
     static TestCoreApp* instance();
     void exit();
     void run();
+    void runOnce();
+    void runOnce(mox::IdleSource::Task exitTask);
+    void addIdleTask(mox::IdleSource::Task idle);
 
     static void onExit()
     {
@@ -117,28 +139,30 @@ public:
             Application::instance().quit();
             return true;
         };
-        addIdleTask(std::move(idleTask));
+        threadData()->thread()->addIdleTask(std::move(idleTask));
         return run();
     }
 };
 
-using Notifier = std::promise<void>;
-using Watcher = std::future<void>;
-
 class TestThreadLoop : public mox::ThreadLoop
 {
-    Notifier m_deathNotifier;
+    mox::ThreadPromise m_deathNotifier;
+
 public:
     static inline std::atomic_int threadCount = 0;
 
-    static std::shared_ptr<TestThreadLoop> create(Notifier&& notifier, Object* parent = nullptr);
+    static std::shared_ptr<TestThreadLoop> create(mox::ThreadPromise&& notifier);
 
     ~TestThreadLoop() override;
 
-protected:
-    explicit TestThreadLoop(Notifier&& notifier);
+    MetaInfo(TestThreadLoop, mox::ThreadLoop)
+    {
+    };
 
-    void init();
+protected:
+    explicit TestThreadLoop(mox::ThreadPromise&& notifier);
+
+    void initialize() override;
 
     void onStarted();
     void onStopped();
@@ -151,9 +175,9 @@ protected:
 
 #if defined(MOX_ENABLE_LOGS)
 
-#define EXPECT_TRACE(c, message)    expectLog(logCategoryRegistrar_##c.category(), mox::LogType::Debug, message, 1)
-#define EXPECT_WARNING(c, message)  expectLog(logCategoryRegistrar_##c.category(), mox::LogType::Warning, message, 1)
-#define EXPECT_INFO(c, message)     expectLog(logCategoryRegistrar_##c.category(), mox::LogType::Info, message, 1)
+#define EXPECT_TRACE(c, message)    expectLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Debug, message, 1)
+#define EXPECT_WARNING(c, message)  expectLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Warning, message, 1)
+#define EXPECT_INFO(c, message)     expectLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Info, message, 1)
 
 #else
 

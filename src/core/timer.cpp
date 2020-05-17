@@ -17,8 +17,8 @@
  */
 
 #include <mox/core/timer.hpp>
-#include <mox/core/module/thread_data.hpp>
-#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/process/thread_data.hpp>
+#include <process_p.hpp>
 
 namespace mox
 {
@@ -43,7 +43,9 @@ TimerPtr Timer::createRepeating(std::chrono::milliseconds interval)
 void Timer::start()
 {
     stop();
-    auto source = ThreadData::thisThreadData()->thread()->m_runLoop->getDefaultTimerSource();
+    auto thread = ThreadData::getThisThreadData()->thread();
+    auto d = ThreadInterfacePrivate::get(*thread);
+    auto source = d->runLoop->getDefaultTimerSource();
     TimerSource::TimerRecord::start(*source);
 }
 

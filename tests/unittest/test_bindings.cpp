@@ -66,18 +66,25 @@ public:
 
 class BindingThread : public TestThreadLoop, public WritablePropertyHolder<BindingThread>
 {
-    static inline Notifier dummyDeath;
-    static inline Watcher dummyWatch;
+    static inline ThreadPromise dummyDeath;
+    static inline mox::ThreadFuture dummyWatch;
 protected:
-    explicit BindingThread(Notifier&& notifier)
-        : TestThreadLoop(std::forward<Notifier>(notifier))
+    explicit BindingThread(ThreadPromise&& notifier)
+        : TestThreadLoop(std::forward<ThreadPromise>(notifier))
         , WritablePropertyHolder<BindingThread>(static_cast<BindingThread&>(*this))
     {
         writable = 20;
     }
 
+    void initialize() override
+    {
+        TestThreadLoop::initialize();
+        addEventHandler(evUpdate, std::bind(&BindingThread::onUpdateEvent, this, std::placeholders::_1));
+    }
+
     void onUpdateEvent(Event&)
     {
+        CTRACE(event, "trigger binding");
         int v = writable;
         writable = ++v;
     }
@@ -87,13 +94,10 @@ public:
 
     static std::shared_ptr<BindingThread> create()
     {
-        dummyDeath = Notifier();
+        dummyDeath = ThreadPromise();
         dummyWatch = dummyDeath.get_future();
 
-        auto thread = createObject(new BindingThread(std::move(dummyDeath)), nullptr);
-        thread->addEventHandler(evUpdate, std::bind(&BindingThread::onUpdateEvent, thread.get(), std::placeholders::_1));
-        thread->init();
-        return thread;
+        return make_thread(new BindingThread(std::move(dummyDeath)));
     }
 };
 
@@ -1136,8 +1140,10 @@ TEST_F(Bindings, test_property_binding_between_threads)
     std::function<void()> kickThreadUpdate;
     std::function<void()> killThread;
 
+    auto weakThread = std::weak_ptr<ThreadLoop>();
     {
         auto thread = BindingThread::create();
+        weakThread = thread;
         EXPECT_EQ(20, int(thread->writable));
 
         binding = PropertyBinding::bindPermanent(o1.writable, thread->writable);
@@ -1147,13 +1153,23 @@ TEST_F(Bindings, test_property_binding_between_threads)
         // start the thread
         thread->start();
 
-        kickThreadUpdate = [threadObject = thread.get()]() { ThreadLoop::postEvent<Event>(as_shared<BindingThread>(threadObject), BindingThread::evUpdate); };
-        killThread = [threadObject = thread.get()]() { threadObject->exitAndJoin(0); };
+        kickThreadUpdate = [wthread = std::weak_ptr<BindingThread>(thread)]()
+        {
+            auto thread = wthread.lock();
+            EXPECT_NOT_NULL(thread);
+            EXPECT_TRUE(postEvent<Event>(thread, BindingThread::evUpdate));
+        };
+        killThread = [wthread = std::weak_ptr<BindingThread>(thread)]()
+        {
+            auto thread = wthread.lock();
+            EXPECT_NOT_NULL(thread);
+            thread->exitAndJoin(0);
+        };
     }
 
     // Wait for an update from the o1 property change.
-    Notifier updated;
-    Watcher updateWatch = updated.get_future();
+    ThreadPromise updated;
+    mox::ThreadFuture updateWatch = updated.get_future();
     auto onWritableChanged = [&updated]()
     {
         updated.set_value();
@@ -1167,9 +1183,11 @@ TEST_F(Bindings, test_property_binding_between_threads)
     // Stop the thread.
     killThread();
 
-    // Despite stopped, the thread object is still alive. This is reflected in the binding being valid. And attached.
-    EXPECT_TRUE(binding->isAttached());
-    EXPECT_TRUE(binding->isValid());
+    // As there are no shared pointers holding the thread, and because the thread is stopped with exitAndJoin(),
+    // the thread is destroyed, detaching all bindings to its properties.
+    EXPECT_TRUE(weakThread.expired());
+    EXPECT_FALSE(binding->isAttached());
+    EXPECT_FALSE(binding->isValid());
     // Run once the app. This will stop wrap up the root object, to which all orphan threads are parented.
     app.runOnce();
     // The binding is no longer valid, nor attached.
@@ -1187,8 +1205,10 @@ TEST_F(Bindings, test_expression_binding_between_threads)
     std::function<void()> kickThreadUpdate;
     std::function<void()> killThread;
 
+    auto weakThread = std::weak_ptr<ThreadLoop>();
     {
         auto thread = BindingThread::create();
+        weakThread = thread;
         EXPECT_EQ(20, int(thread->writable));
         // Note:!! Beware of the capture of the expression lambda!! Do not copy the thread handler as the lambda will hold the pointer reference!
         binding = ExpressionBinding::bindPermanent(o1.writable, [thrd = thread.get()]() { return thrd->writable.get(); });
@@ -1198,13 +1218,23 @@ TEST_F(Bindings, test_expression_binding_between_threads)
         // start the thread
         thread->start();
 
-        kickThreadUpdate = [threadObject = thread.get()]() { ThreadLoop::postEvent<Event>(as_shared<BindingThread>(threadObject), BindingThread::evUpdate); };
-        killThread = [threadObject = thread.get()]() { threadObject->exitAndJoin(0); };
+        kickThreadUpdate = [wthread = std::weak_ptr<BindingThread>(thread)]()
+        {
+            auto thread = wthread.lock();
+            EXPECT_NOT_NULL(thread);
+            postEvent<Event>(thread, BindingThread::evUpdate);
+        };
+        killThread = [wthread = std::weak_ptr<BindingThread>(thread)]()
+        {
+            auto thread = wthread.lock();
+            EXPECT_NOT_NULL(thread);
+            thread->exitAndJoin(0);
+        };
     }
 
     // Wait for an update from the o1 property change.
-    Notifier updated;
-    Watcher updateWatch = updated.get_future();
+    ThreadPromise updated;
+    mox::ThreadFuture updateWatch = updated.get_future();
     auto onWritableChanged = [&updated]()
     {
         updated.set_value();
@@ -1218,9 +1248,11 @@ TEST_F(Bindings, test_expression_binding_between_threads)
     // Stop the thread.
     killThread();
 
-    // Despite stopped, the thread object is still alive. This is reflected in the binding being valid. And attached.
-    EXPECT_TRUE(binding->isAttached());
-    EXPECT_TRUE(binding->isValid());
+    // As there are no shared pointers holding the thread, and because the thread is stopped with exitAndJoin(),
+    // the thread is destroyed, detaching all bindings to its properties.
+    EXPECT_TRUE(weakThread.expired());
+    EXPECT_FALSE(binding->isAttached());
+    EXPECT_FALSE(binding->isValid());
     // Run once the app. This will stop wrap up the root object, to which all orphan threads are parented.
     app.runOnce();
     // The binding is no longer valid, nor attached.

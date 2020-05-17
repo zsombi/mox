@@ -69,24 +69,10 @@ void CFTimerSource::CFTimerRecord::create(CFTimerSource& source)
         CTRACE(event, "Timer signaled:" << self->timerRef << "of self[" << self << ']' << source.timers.lockCount());
     };
     timerRef = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, timeToFire, interval, 0, 0, proc);
-    FoundationRunLoop* foundationLoop = static_cast<FoundationRunLoop*>(source.getRunLoop().get());
-    CFRunLoopAddTimer(foundationLoop->runLoop, timerRef, kCFRunLoopCommonModes);
+    auto foundationLoop = std::dynamic_pointer_cast<FoundationConcept>(source.getRunLoop());
+    foundationLoop->addTimerSource(timerRef);
     FATAL(CFRunLoopTimerIsValid(timerRef), "Invalid timer created!");
     CTRACE(event, "Timer created with interval:" << interval << ", timeout" << timeout << ", ref:" << timerRef);
-}
-
-/******************************************************************************
- * FoundationRunLoop
- */
-size_t FoundationRunLoop::runningTimerCount() const
-{
-    size_t count = 0;
-    auto counter = [&count](TimerSourcePtr source)
-    {
-        count += source->timerCount();
-    };
-    forEachSource<TimerSource>(counter);
-    return count;
 }
 
 /******************************************************************************
@@ -118,7 +104,7 @@ void CFTimerSource::removeTimer(TimerRecord& timer)
     erase_if(timers, eraser);
 }
 
-void CFTimerSource::clean()
+void CFTimerSource::detachOverride()
 {
     auto looper = [](CFTimerRecordPtr& timer)
     {
@@ -162,9 +148,12 @@ void CFTimerSource::activate()
     for_each(timers, loop);
 }
 
+/******************************************************************************
+ * Adaptation factory
+ */
 TimerSourcePtr Adaptation::createTimerSource(std::string_view name)
 {
-    return TimerSourcePtr(new CFTimerSource(name));
+    return make_polymorphic_shared<TimerSource, CFTimerSource>(name);
 }
 
 }

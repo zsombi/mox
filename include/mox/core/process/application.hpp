@@ -29,7 +29,7 @@ namespace mox
 
 /// The Application class provides support for a main loop in your application. You can have only
 /// one instance of this class in your application.
-class MOX_API Application : public MetaObject, public MoxModule
+class MOX_API Application : public Object
 {
 public:
     /// The static metaclass of the Application class.
@@ -53,10 +53,8 @@ public:
     ObjectSharedPtr getRootObject() const;
 
     /// Sets the root object of the application. The application must have a root object.
-    /// You must set the root object of an application before you run the application's event loop.
     /// The previous root object is deleted together with its child objects. To avoid this, you
     /// must move all child objects to the new root before replacing the root object.
-    /// Once you start the application, the root object is locked.
     /// \param root The root object of the application.
     void setRootObject(Object& root);
 
@@ -66,9 +64,6 @@ public:
     {
         return std::dynamic_pointer_cast<TargetType>(getRootObject());
     }
-
-    /// Returns the thread data of the application.
-    ThreadDataSharedPtr threadData() const;
 
     /// Executes the application's main event loop.
     /// \return The exit code.
@@ -81,17 +76,14 @@ public:
     /// Quits the application.
     void quit();
 
-    /// Adds an idle task to the application's run loop.
-    void addIdleTask(RunLoop::IdleFunction task);
-
     MetaInfo(Application, MetaObject)
     {
         static inline MetaSignal<Application> StartedSignalType{"started"};
         static inline MetaSignal<Application> StoppedSignalType{"stopped"};
         static inline MetaMethod<Application> QuitMethod{&Application::quit, "quit"};
     };
+
 private:
-    ThreadDataSharedPtr m_mainThread;
     ObjectSharedPtr m_rootObject;
 };
 

@@ -34,9 +34,11 @@ class MOX_API Adaptation
     explicit Adaptation() = default;
 public:
     static RunLoopSharedPtr createRunLoop(bool main);
+    static RunLoopHookPtr createRunLoopHook();
     static TimerSourcePtr createTimerSource(std::string_view name);
     static EventSourcePtr createPostEventSource(std::string_view name);
     static SocketNotifierSourcePtr createSocketNotifierSource(std::string_view name);
+    static IdleSourcePtr createIdleSource();
 };
 
 } // namespace mox

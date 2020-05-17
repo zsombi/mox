@@ -21,7 +21,7 @@
 #include <metadata_p.hpp>
 #include <mox/core/object.hpp>
 
-#include <mox/core/module/thread_loop.hpp>
+#include <mox/core/process/thread_loop.hpp>
 #include <stack>
 
 namespace mox
@@ -145,10 +145,10 @@ void ObjectMethodConnection::activate(const Callable::ArgumentPack& args)
     {
         return;
     }
-    if (receiver->threadData() != ThreadData::thisThreadData())
+    if (receiver->threadData() != ThreadData::getThisThreadData())
     {
         // Async!!
-        ThreadLoop::postEvent<DeferredSignalEvent>(receiver, *this, args);
+        postEvent<DeferredSignalEvent>(receiver, *this, args);
         return;
     }
 
@@ -225,10 +225,10 @@ void ObjectMetaMethodConnection::activate(const Callable::ArgumentPack& args)
         invalidate();
         return;
     }
-    if (receiver->threadData() != ThreadData::thisThreadData())
+    if (receiver->threadData() != ThreadData::getThisThreadData())
     {
         // Async!!
-        ThreadLoop::postEvent<DeferredSignalEvent>(receiver, *this, args);
+        postEvent<DeferredSignalEvent>(receiver, *this, args);
         return;
     }
 
