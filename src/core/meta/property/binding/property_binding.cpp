@@ -19,7 +19,7 @@
 #include <mox/core/meta/property/property.hpp>
 #include <mox/config/error.hpp>
 
-#include <binding_p.hpp>
+#include <private/binding_p.hpp>
 
 namespace mox
 {

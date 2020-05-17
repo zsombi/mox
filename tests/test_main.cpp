@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 
 #include <mox/mox_module.hpp>
-#include "../src/include/process_p.hpp"
+#include "../src/include/private/process_p.hpp"
 
 /******************************************************************************
  *

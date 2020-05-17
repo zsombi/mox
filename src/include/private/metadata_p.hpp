@@ -26,7 +26,7 @@
 #include <mox/utils/containers/flat_map.hpp>
 #include <mox/core/meta/core/variant.hpp>
 #include <mox/core/meta/class/metaobject.hpp>
-#include <logger_p.hpp>
+#include <private/logger_p.hpp>
 
 namespace mox
 {

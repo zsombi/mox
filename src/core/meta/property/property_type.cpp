@@ -19,7 +19,7 @@
 #include <mox/core/meta/property/property.hpp>
 #include <mox/core/meta/property/property_type.hpp>
 
-#include <property_p.hpp>
+#include <private/property_p.hpp>
 
 namespace mox
 {

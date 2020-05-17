@@ -16,14 +16,14 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <signal_p.hpp>
-#include <property_p.hpp>
+#include <private/signal_p.hpp>
+#include <private/property_p.hpp>
 #include <mox/core/meta/property/property.hpp>
 #include <mox/config/error.hpp>
 #include <mox/core/meta/property/binding/binding.hpp>
 
-#include <binding_p.hpp>
-#include <metabase_p.hpp>
+#include <private/binding_p.hpp>
+#include <private/metabase_p.hpp>
 
 namespace mox
 {

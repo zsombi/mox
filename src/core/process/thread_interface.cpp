@@ -16,7 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <process_p.hpp>
+#include <private/process_p.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
 #include <mox/utils/log/logger.hpp>
 

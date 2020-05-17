@@ -18,7 +18,7 @@
 
 #include <mox/core/timer.hpp>
 #include <mox/core/process/thread_data.hpp>
-#include <process_p.hpp>
+#include <private/process_p.hpp>
 
 namespace mox
 {

@@ -21,7 +21,7 @@
 
 #include <mox/core/event_handling/run_loop.hpp>
 #include <mox/core/process/application.hpp>
-#include <process_p.hpp>
+#include <private/process_p.hpp>
 
 namespace mox
 {

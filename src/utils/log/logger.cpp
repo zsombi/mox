@@ -16,9 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#if defined(MOX_ENABLE_LOGS)
-
-#include <logger_p.hpp>
+#include <private/logger_p.hpp>
 #include <mox/utils/locks.hpp>
 #include <cassert>
 #include <iostream>
@@ -39,11 +37,11 @@ namespace mox
 /******************************************************************************
  * LoggerData
  */
-LoggerData::LoggerData()
-    : m_logger(std::make_unique<ScreenLogger>())
+
+#if defined(MOX_ENABLE_LOGS)
+
+void LoggerData::initialize()
 {
-    std::cout << "Logger data created" << std::endl;
-    FATAL(!g_logger, "Global logger data already initialized!");
     auto env = getenv("MOX_LOG_RULES");
     if (env)
     {
@@ -53,6 +51,33 @@ LoggerData::LoggerData()
     {
         setRules("default.*=true");
     }
+}
+
+void LoggerData::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
+{
+    lock_guard lock(m_mutex);
+    m_logger->log(category, type, heading, text);
+}
+
+#else
+
+void LoggerData::initialize()
+{
+}
+
+void LoggerData::log(LogCategory&, LogType, std::string_view, const std::string&)
+{
+}
+
+#endif
+
+//-------------------------------------------------
+// Common code
+LoggerData::LoggerData()
+    : m_logger(std::make_unique<ScreenLogger>())
+{
+    FATAL(!g_logger, "Global logger data already initialized!");
+    initialize();
     g_logger = this;
 }
 
@@ -71,12 +96,6 @@ LoggerData& LoggerData::get()
 LoggerData* LoggerData::find()
 {
     return g_logger;
-}
-
-void LoggerData::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
-{
-    lock_guard lock(m_mutex);
-    m_logger->log(category, type, heading, text);
 }
 
 void LoggerData::setLogger(LoggerInterfacePtr&& logger)
@@ -98,7 +117,6 @@ size_t LoggerData::addCategory(LogCategory&& category)
     }
 
     m_categories.emplace_back(std::forward<LogCategory>(category));
-    std::cout << "LOG CATEGORY ADDED: " << m_categories.back().getName() << std::endl;
     return m_categories.size() - 1u;
 }
 
@@ -443,6 +461,3 @@ LogLine& LogLine::operator<<(double v)
 }
 
 }
-
-#endif
-

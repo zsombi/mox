@@ -21,7 +21,6 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/deftypes.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/error.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/pimpl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/thread.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/string.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/config/memory.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/platforms/adaptation.hpp
@@ -102,18 +101,17 @@ set(HEADERS
     )
 
 set(PRIVATE_HEADERS
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/logger_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/metadata_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/metabase_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/property_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/binding_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/signal_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/process_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/logger_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/metadata_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/metabase_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/property_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/binding_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/signal_p.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/process_p.hpp
     )
 
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/utils/utils.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/log/logger.cpp
 
     # meta/core

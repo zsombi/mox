@@ -16,10 +16,10 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <signal_p.hpp>
-#include <metabase_p.hpp>
+#include <private/signal_p.hpp>
+#include <private/metabase_p.hpp>
 #include <mox/utils/locks.hpp>
-#include <metadata_p.hpp>
+#include <private/metadata_p.hpp>
 #include <mox/core/object.hpp>
 
 #include <mox/core/process/thread_loop.hpp>

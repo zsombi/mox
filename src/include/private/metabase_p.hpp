@@ -20,7 +20,7 @@
 #define METABASE_P_HPP
 
 #include <mox/core/meta/base/metabase.hpp>
-#include <property_p.hpp>
+#include <private/property_p.hpp>
 
 namespace mox
 {

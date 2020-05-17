@@ -19,7 +19,7 @@
 #include <mox/core/event_handling/socket_notifier.hpp>
 #include <mox/core/process/thread_data.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
-#include <process_p.hpp>
+#include <private/process_p.hpp>
 
 namespace mox
 {

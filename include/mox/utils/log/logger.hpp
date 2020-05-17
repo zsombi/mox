@@ -19,8 +19,6 @@
 #ifndef LOGGER_HPP
 #define LOGGER_HPP
 
-#if defined(MOX_ENABLE_LOGS)
-
 #include <mox/config/platform_config.hpp>
 #include <mox/config/deftypes.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
@@ -211,6 +209,7 @@ private:
 
 } // mox
 
+#if defined(MOX_ENABLE_LOGS)
 #define DECLARE_LOG_CATEGORY(category) \
 const mox::LogCategoryRegistrar logCategoryRegistrar_##category = {#category};
 
@@ -235,7 +234,7 @@ const mox::LogCategoryRegistrar logCategoryRegistrar_##category = {#category};
 #define CTRACE(category, s)
 #define CWARN(category, s)
 #define CINFO(category, s)
-#define CFATAL(category, test, s) if (!(test)) std::exit(EXIT_FAILURE)
+#define CFATAL(category, test, s)   if (!(test)) std::exit(EXIT_FAILURE)
 
 #define TRACE(s)
 #define WARN(s)

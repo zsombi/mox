@@ -17,8 +17,8 @@
  */
 
 #include <mox/core/meta/class/metaclass.hpp>
-#include <metadata_p.hpp>
-#include <signal_p.hpp>
+#include <private/metadata_p.hpp>
+#include <private/signal_p.hpp>
 #include <mox/core/object.hpp>
 
 namespace mox

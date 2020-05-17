@@ -16,7 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <metadata_p.hpp>
+#include <private/metadata_p.hpp>
 
 #include <mox/core/meta/core/variant.hpp>
 #include <mox/core/meta/signal/signal.hpp>

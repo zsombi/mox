@@ -18,7 +18,7 @@
 
 #include <mox/core/process/applet.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
-#include <process_p.hpp>
+#include <private/process_p.hpp>
 
 namespace mox
 {

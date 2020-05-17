@@ -19,8 +19,6 @@
 #ifndef LOGGER_P_HPP
 #define LOGGER_P_HPP
 
-#if defined(MOX_ENABLE_LOGS)
-
 #include <mox/utils/log/logger.hpp>
 
 namespace mox
@@ -38,6 +36,8 @@ class LoggerData
 
     LoggerData();
     ~LoggerData();
+
+    void initialize();
 
 public:
     static LoggerData& get();
@@ -57,5 +57,4 @@ public:
 
 }
 
-#endif
 #endif // LOGGER_P_HPP

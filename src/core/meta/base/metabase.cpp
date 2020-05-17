@@ -16,8 +16,8 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <metabase_p.hpp>
-#include <signal_p.hpp>
+#include <private/metabase_p.hpp>
+#include <private/signal_p.hpp>
 #include <mox/core/meta/property/property.hpp>
 
 namespace mox

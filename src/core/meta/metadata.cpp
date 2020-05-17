@@ -16,7 +16,7 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <metadata_p.hpp>
+#include <private/metadata_p.hpp>
 #include <mox/core/meta/core/metadata.hpp>
 #include <mox/core/meta/core/metatype_descriptor.hpp>
 #include <mox/core/meta/class/metaclass.hpp>

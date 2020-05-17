@@ -22,8 +22,6 @@
 #include <algorithm>
 #include <vector>
 
-#include <iostream>
-
 namespace mox
 {
 

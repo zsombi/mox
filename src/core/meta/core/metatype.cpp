@@ -20,7 +20,7 @@
 #include <mox/core/meta/core/metatype.hpp>
 #include <mox/core/meta/core/metatype_descriptor.hpp>
 #include <string.h>
-#include <metadata_p.hpp>
+#include <private/metadata_p.hpp>
 #include <cxxabi.h>
 
 #include <mox/utils/function_traits.hpp>

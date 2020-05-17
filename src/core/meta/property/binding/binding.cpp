@@ -16,8 +16,8 @@
  * <http://www.gnu.org/licenses/>
  */
 
-#include <binding_p.hpp>
-#include <property_p.hpp>
+#include <private/binding_p.hpp>
+#include <private/property_p.hpp>
 #include <mox/core/meta/property/binding/binding_group.hpp>
 
 namespace mox
