@@ -209,7 +209,6 @@ private:
 
 } // mox
 
-#if defined(MOX_ENABLE_LOGS)
 #define DECLARE_LOG_CATEGORY(category) \
 const mox::LogCategoryRegistrar logCategoryRegistrar_##category = {#category};
 
@@ -224,23 +223,5 @@ const mox::LogCategoryRegistrar logCategoryRegistrar_##category = {#category};
 #define WARN(s)            mox::LogLine(mox::LogType::Warning, __FILE__, __LINE__, __FUNCTION__) << s
 #define INFO(s)            mox::LogLine(mox::LogType::Info, __FILE__, __LINE__, __FUNCTION__) << s
 #define FATAL(test, s)     if (!(test)) mox::LogLine(mox::LogType::Fatal, __FILE__, __LINE__, __FUNCTION__) << s
-
-#else
-
-#include <cstdlib>
-
-#define DECLARE_LOG_CATEGORY(category)
-#define CATEGORY(category)
-#define CTRACE(category, s)
-#define CWARN(category, s)
-#define CINFO(category, s)
-#define CFATAL(category, test, s)   if (!(test)) std::exit(EXIT_FAILURE)
-
-#define TRACE(s)
-#define WARN(s)
-#define INFO(s)
-#define FATAL(test, s)              if (!(test)) std::exit(EXIT_FAILURE)
-
-#endif
 
 #endif // LOGGER_HPP

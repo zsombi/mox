@@ -28,6 +28,7 @@ namespace mox
 enum class ExceptionType
 {
     InvalidArgument,
+    Disconnected,
     /// \name Thread exceptions
     /// \{
     InvalidThreadData,

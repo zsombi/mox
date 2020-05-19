@@ -31,19 +31,20 @@
 
 class UnitTest : public ::testing::Test
 {
-#if defined(MOX_ENABLE_LOGS)
     struct LogData
     {
         mox::LogCategory* category;
         mox::LogType type;
         std::string message;
-        LogData(mox::LogCategory* category, mox::LogType type, std::string_view message);
+        const int expectedCount = 0;
+        int occurence = 0;
+        LogData(mox::LogCategory* category, mox::LogType type, std::string message, int expectedCount);
 
         bool operator==(const LogData& other);
     };
     using LogContainer = std::vector<LogData>;
 
-    LogContainer expectedLogs;
+    LogContainer trackedLogs;
 
     class TestLogger : public mox::ScreenLogger
     {
@@ -55,10 +56,8 @@ class UnitTest : public ::testing::Test
     };
 
     void testLogs();
-#endif
 
 protected:
-#if defined(MOX_ENABLE_LOGS)
     template <mox::LogType types>
     struct ScopeLogType
     {
@@ -83,7 +82,8 @@ protected:
     };
 
     void expectLog(mox::LogCategory* category, mox::LogType type, std::string_view message, size_t count = 1);
-#endif
+    void expectNoLog(mox::LogCategory* category, mox::LogType type, std::string_view message, size_t count = 1);
+
     void SetUp() override;
     void TearDown() override;
 };
@@ -173,18 +173,12 @@ protected:
 #define EXPECT_NOT_NULL(ptr)    EXPECT_NE(nullptr, ptr)
 #define EXPECT_NOT_EQ(A, B)     EXPECT_NE(A, B)
 
-#if defined(MOX_ENABLE_LOGS)
-
 #define EXPECT_TRACE(c, message)    expectLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Debug, message, 1)
 #define EXPECT_WARNING(c, message)  expectLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Warning, message, 1)
 #define EXPECT_INFO(c, message)     expectLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Info, message, 1)
 
-#else
-
-#define EXPECT_TRACE(c, message)
-#define EXPECT_WARNING(c, message)
-#define EXPECT_INFO(c, message)
-
-#endif
+#define EXPECT_NO_TRACE(c, message)    expectNoLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Debug, message, 1)
+#define EXPECT_NO_WARNING(c, message)  expectNoLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Warning, message, 1)
+#define EXPECT_NO_INFO(c, message)     expectNoLog(mox::Logger::findCategory(CATEGORY(c)), mox::LogType::Info, message, 1)
 
 #endif // TEST_FRAMEWORK_H

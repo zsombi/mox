@@ -7,12 +7,11 @@
 /******************************************************************************
  *
  */
-#if defined(MOX_ENABLE_LOGS)
-
-UnitTest::LogData::LogData(mox::LogCategory* category, mox::LogType type, std::string_view message)
+UnitTest::LogData::LogData(mox::LogCategory* category, mox::LogType type, std::string message, int expectedCount)
     : category(category)
     , type(type)
     , message(message)
+    , expectedCount(expectedCount)
 {
 }
 
@@ -33,26 +32,34 @@ UnitTest::TestLogger::~TestLogger()
 
 bool UnitTest::TestLogger::log(mox::LogCategory& category, mox::LogType type, std::string_view heading, const std::string& text)
 {
-    LogData logData(&category, type, text);
+    LogData logData(&category, type, text, true);
     auto find = [&logData] (auto& data)
     {
         return logData == data;
     };
-    auto it = std::find_if(fixup.expectedLogs.begin(), fixup.expectedLogs.end(), find);
-    if (it != fixup.expectedLogs.end())
+    auto it = mox::find_if(fixup.trackedLogs, find);
+    if (it != fixup.trackedLogs.end())
     {
-        fixup.expectedLogs.erase(it);
+        if (it->expectedCount > 0)
+        {
+            it->occurence++;
+        }
+        else
+        {
+            it->occurence--;
+        }
         return false;
     }
-    else
-    {
-        return ScreenLogger::log(category, type, heading, text);
-    }
+
+    return ScreenLogger::log(category, type, heading, text);
 }
 
 void UnitTest::testLogs()
 {
-    EXPECT_EQ(0u, expectedLogs.size());
+    for (auto& log : trackedLogs)
+    {
+        EXPECT_EQ(log.expectedCount, log.occurence);
+    }
 }
 
 /******************************************************************************
@@ -60,30 +67,27 @@ void UnitTest::testLogs()
  */
 void UnitTest::expectLog(mox::LogCategory* category, mox::LogType type, std::string_view message, size_t count)
 {
-    while (count--)
-    {
-        expectedLogs.emplace_back(LogData(category, type, message));
-    }
+    trackedLogs.emplace_back(LogData(category, type, ' ' + std::string(message), count));
 }
-#endif
+
+void UnitTest::expectNoLog(mox::LogCategory* category, mox::LogType type, std::string_view message, size_t count)
+{
+    trackedLogs.emplace_back(LogData(category, type, ' ' + std::string(message), -count));
+}
 
 void UnitTest::SetUp()
 {
     ::testing::Test::SetUp();
 
-#if defined(MOX_ENABLE_LOGS)
     mox::Logger::setLogger(std::make_unique<TestLogger>(*this));
-#endif
     mox::registerMetaType<TestApp>();
     mox::registerMetaClass<TestThreadLoop>();
 }
 void UnitTest::TearDown()
 {
-#if defined(MOX_ENABLE_LOGS)
     testLogs();
-    expectedLogs.clear();
+    trackedLogs.clear();
     mox::Logger::setLogger(std::make_unique<mox::ScreenLogger>());
-#endif
 
     ::testing::Test::TearDown();
 }

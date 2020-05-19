@@ -33,6 +33,8 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
     {
         case ExceptionType::InvalidArgument:
             return "invalid argument type applied";
+        case ExceptionType::Disconnected:
+            return "Signal is already disconneced";
         case ExceptionType::InvalidThreadData:
             return "Invalid or null thread data.";
         case ExceptionType::InvalidThreadStatus:

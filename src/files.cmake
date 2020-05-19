@@ -38,6 +38,12 @@ set(HEADERS
     # Logger
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/log/logger.hpp
 
+    # core/metakernel
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/argument_data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/lockable.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/signal_connection.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/signals.hpp
+
     # meta/core
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metatype.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metatype_descriptor.hpp
@@ -113,6 +119,10 @@ set(PRIVATE_HEADERS
 set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/log/logger.cpp
+
+    # core/metakernel
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/lockable.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/signals.cpp
 
     # meta/core
     ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/metadata.cpp

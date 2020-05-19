@@ -68,6 +68,12 @@ struct function_traits<TRet(TObject::*)(Args...)>
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
     };
 
+    template <typename... TestArgs>
+    struct test_arguments
+    {
+        static constexpr bool value = std::is_same_v<std::tuple<Args...>, std::tuple<TestArgs...>>;
+    };
+
     static VariantDescriptorContainer argument_descriptors()
     {
         return VariantDescriptorContainer::getArgs<Args...>();
@@ -93,6 +99,12 @@ struct function_traits<TRet(TObject::*)(Args...) const>
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
     };
 
+    template <typename... TestArgs>
+    struct test_arguments
+    {
+        static constexpr bool value = std::is_same_v<std::tuple<Args...>, std::tuple<TestArgs...>>;
+    };
+
     static VariantDescriptorContainer argument_descriptors()
     {
         return VariantDescriptorContainer::getArgs<Args...>();
@@ -115,6 +127,12 @@ struct function_traits<TRet(*)(Args...)>
     {
         static_assert(N < arity, "error: invalid parameter index.");
         using type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+    };
+
+    template <typename... TestArgs>
+    struct test_arguments
+    {
+        static constexpr bool value = std::is_same_v<std::tuple<Args...>, std::tuple<TestArgs...>>;
     };
 
     static VariantDescriptorContainer argument_descriptors()

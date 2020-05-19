@@ -42,6 +42,7 @@ namespace mox
 
 void LoggerData::initialize()
 {
+    m_logger = std::make_unique<ScreenLogger>();
     auto env = getenv("MOX_LOG_RULES");
     if (env)
     {
@@ -53,20 +54,20 @@ void LoggerData::initialize()
     }
 }
 
-void LoggerData::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
-{
-    lock_guard lock(m_mutex);
-    m_logger->log(category, type, heading, text);
-}
-
 #else
 
 void LoggerData::initialize()
 {
 }
 
-void LoggerData::log(LogCategory&, LogType, std::string_view, const std::string&)
+void LoggerData::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
 {
+    if (!m_logger)
+    {
+        return;
+    }
+    lock_guard lock(m_mutex);
+    m_logger->log(category, type, heading, text);
 }
 
 #endif
@@ -74,7 +75,6 @@ void LoggerData::log(LogCategory&, LogType, std::string_view, const std::string&
 //-------------------------------------------------
 // Common code
 LoggerData::LoggerData()
-    : m_logger(std::make_unique<ScreenLogger>())
 {
     FATAL(!g_logger, "Global logger data already initialized!");
     initialize();

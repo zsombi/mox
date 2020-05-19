@@ -43,8 +43,7 @@ template <typename RefLockable>
 class MOX_API SharedLock : public RefCounter<RefLockable&>
 {
     using BaseClass = RefCounter<RefLockable&>;
-    DISABLE_MOVE(SharedLock)
-    DISABLE_COPY(SharedLock)
+    DISABLE_COPY_OR_MOVE(SharedLock)
 
 public:
     /// Construct the shared lock with the given \a sharedLock. Does not retain the lock, but

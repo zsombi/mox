@@ -44,6 +44,7 @@ set(SOURCES
     test_threads.cpp
     test_applets.cpp
     test_bindings.cpp
+    test_metakernel_signals.cpp
     )
 
 add_executable(unittest ${SOURCES} ${TEST_FRAMEWORK})

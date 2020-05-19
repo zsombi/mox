@@ -235,9 +235,7 @@ private:
     friend class Application;
 };
 
-#if defined(MOX_ENABLE_LOGS)
 LogLine& operator<<(LogLine& log, ObjectSharedPtr ptr);
-#endif
 
 } // mox
 

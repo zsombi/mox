@@ -459,7 +459,6 @@ ThreadDataSharedPtr Object::threadData() const
     return m_threadData;
 }
 
-#if defined(MOX_ENABLE_LOGS)
 LogLine& operator<<(LogLine& log, ObjectSharedPtr ptr)
 {
     if (log.isEnabled())
@@ -478,5 +477,5 @@ LogLine& operator<<(LogLine& log, ObjectSharedPtr ptr)
     }
     return log;
 }
-#endif
+
 }
