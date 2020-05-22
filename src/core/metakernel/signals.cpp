@@ -28,7 +28,6 @@ bool Connection::isConnected() const
 
 void Connection::disconnect()
 {
-    // TODO: lock sender!
     m_sender->disconnect(shared_from_this());
     invalidate();
 }
@@ -162,7 +161,7 @@ void SignalCore::disconnect(ConnectionPtr connection)
     throwIf<ExceptionType::Disconnected>(!connection->isConnected());
 
     lock_guard lock(*this);
-    mox::erase(m_connections, connection);
+    erase(m_connections, connection);
     connection->invalidate();
 }
 
@@ -172,6 +171,15 @@ void SignalCore::addConnection(ConnectionPtr connection)
 
     lock_guard lock(*this);
     m_connections.push_back(connection);
+}
+
+bool SignalCore::isBlocked() const
+{
+    return m_isBlocked;
+}
+void SignalCore::setBlocked(bool block)
+{
+    m_isBlocked = block;
 }
 
 }} // mox::metakernel

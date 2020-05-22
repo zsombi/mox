@@ -19,7 +19,7 @@ struct MOX_API ArgumentData
     /// Creates an argument data with a value.
     /// \tparam T The type of the value passed as argument.
     /// \param value The value to store.
-    template <typename T>
+    template <class T>
     ArgumentData(T value)
         : m_data(value)
     {
@@ -28,7 +28,7 @@ struct MOX_API ArgumentData
     /// Assignment operator, replaces the data stored.
     /// \tparam T The type of the value passed as argument.
     /// \param value The value to store.
-    template <typename T>
+    template <class T>
     void operator=(T value)
     {
         m_data = value;
@@ -38,7 +38,7 @@ struct MOX_API ArgumentData
     /// \tparam T The type of the casted value.
     /// \return The value stored.
     /// \throws Throws std::bad_any_cast if the type to cast to is not the type the data is stored.
-    template <typename T>
+    template <class T>
     operator T() const
     {
         return std::any_cast<T>(m_data);
@@ -49,13 +49,19 @@ private:
 };
 
 /// The PackedArguments class packs values passed as arguments to a signal or a slot invocation.
-struct PackedArguments : protected std::vector<ArgumentData>
+struct MOX_API PackedArguments : protected std::vector<ArgumentData>
 {
     /// Creates an argument pack with the \a arguments.
     /// \tparam Arguments Variadic number of arguments to pack.
     /// \param arguments The variadic argument values to pack.
     template <typename... Arguments>
     PackedArguments(Arguments&&... arguments);
+
+    PackedArguments& operator+=(const ArgumentData& data)
+    {
+        push_back(data);
+        return *this;
+    }
 
     /// Gets the value of an argument at a given \a index.
     /// \tparam T The argument type to get. The argument type must be identical to the type the

@@ -43,6 +43,8 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/lockable.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/signal_connection.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/signals.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/property_core.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/properties.hpp
 
     # meta/core
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metatype.hpp
@@ -123,6 +125,7 @@ set(SOURCES
     # core/metakernel
     ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/lockable.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/signals.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/properties.cpp
 
     # meta/core
     ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/metadata.cpp

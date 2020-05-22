@@ -50,8 +50,8 @@ enum class ExceptionType
     /// \}
     /// \name Bindings
     /// \{
-    BindingNotAttached,
-    BindingAlreadyAttached,
+    BindingAttached,
+    BindingDetached,
     AttemptAttachingBindingToReadOnlyProperty,
     BindingLoop,
     InvalidBinding,

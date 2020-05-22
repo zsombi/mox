@@ -57,10 +57,10 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "Accessing invalid property.";
         case ExceptionType::AttempWriteReadOnlyProperty:
             return "Attempt writing a read-only property";
-        case ExceptionType::BindingNotAttached:
-            return "The property value provider is not attached.";
-        case ExceptionType::BindingAlreadyAttached:
-            return "The property value provider is already attached.";
+        case ExceptionType::BindingAttached:
+            return "The binding is attached.";
+        case ExceptionType::BindingDetached:
+            return "The binding is detached.";
         case ExceptionType::AttemptAttachingBindingToReadOnlyProperty:
             return "Attempt attaching a binding to a read-only property.";
         case ExceptionType::BindingLoop:

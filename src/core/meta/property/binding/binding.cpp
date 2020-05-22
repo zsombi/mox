@@ -150,7 +150,7 @@ void Binding::attach(Property& target)
     {
         return;
     }
-    throwIf<ExceptionType::BindingAlreadyAttached>(isAttached());
+    throwIf<ExceptionType::BindingAttached>(isAttached());
 
     auto dTarget = PropertyStorage::get(target);
     dTarget->addBinding(shared_from_this());

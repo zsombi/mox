@@ -89,7 +89,7 @@ public:
 
     /// Attaches the binding to a \a target property.
     /// \param target The target property.
-    /// \throws ExceptionType::InvalidBinding, ExceptionType::InvalidArgument, ExceptionType::BindingAlreadyAttached,
+    /// \throws ExceptionType::InvalidBinding, ExceptionType::InvalidArgument, ExceptionType::BindingDetached,
     /// ExceptionType::AttemptAttachingBindingToReadOnlyProperty
     void attach(Property& target);
 

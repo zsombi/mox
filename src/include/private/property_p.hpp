@@ -22,6 +22,8 @@
 #include <mox/core/meta/property/property.hpp>
 #include <mox/config/pimpl.hpp>
 
+#include <mox/core/metakernel/properties.hpp>
+
 #include <unordered_set>
 
 namespace mox
@@ -96,6 +98,27 @@ protected:
     /// Notifies the subscribers about the property value change.
     void notifyChanges();
 };
+
+//namespace metakernel
+//{
+
+//class PropertyCorePrivate
+//{
+//public:
+//    DECLARE_PUBLIC_PTR(PropertyCore)
+//    PropertyCorePrivate(PropertyCore* pp, PropertyCore::Data& data, SignalCore& changedSignal)
+//        : p_ptr(pp)
+//        , data(data)
+//        , changedSignal(changedSignal)
+//    {
+//    }
+
+//    std::vector<BindingPtr> bindings;
+//    PropertyCore::Data& data;
+//    SignalCore& changedSignal;
+//};
+
+//}
 
 }
 

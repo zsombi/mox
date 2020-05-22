@@ -103,10 +103,17 @@ protected:
 /******************************************************************************
  * Implementation
  */
+//template <class... Arguments>
+//int Signal<Arguments...>::operator()(Arguments&&... arguments)
+//{
+//    auto pack = PackedArguments(std::forward<Arguments>(arguments)...);
+//    return activate(pack);
+//}
+
 template <class... Arguments>
-int Signal<Arguments...>::operator()(Arguments&&... arguments)
+int Signal<Arguments...>::operator()(Arguments... arguments)
 {
-    auto pack = PackedArguments(std::forward<Arguments>(arguments)...);
+    auto pack = PackedArguments(std::move(arguments)...);
     return activate(pack);
 }
 

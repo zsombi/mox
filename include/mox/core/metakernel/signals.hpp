@@ -51,10 +51,19 @@ public:
     /// \param connection The connection to add.
     void addConnection(ConnectionPtr connection);
 
-protected:
-    SignalCore(size_t argCount);
+    /// Returns the blocked state of a signal.
+    /// \return If the signal is blocked, returns \e true, otherwise \e false.
+    bool isBlocked() const;
+    /// Sets the blocked state of a signal.
+    /// \param block The new blocked state of the signal.
+    void setBlocked(bool block);
 
-    std::vector<ConnectionPtr> m_connections;
+protected:
+    explicit SignalCore(size_t argCount);
+
+    using ConnectionContainer = std::vector<ConnectionPtr>;
+
+    ConnectionContainer m_connections;
     const size_t m_argumentCount;
     std::atomic_bool m_isActivated {false};
     std::atomic_bool m_isBlocked {false};
@@ -159,7 +168,8 @@ public:
     /// Signal emitter. Packs the \a arguments into a PackedArguments and activates the signal.
     /// \param arguments... The variadic arguments passed.
     /// \return The number of connections invoked.
-    int operator()(Arguments&&... arguments);
+//    int operator()(Arguments&&... arguments);
+    int operator()(Arguments... arguments);
 
     /// Connects a \a method of a \a receiver to this signal.
     /// \param receiver The receiver of the connection.
@@ -183,7 +193,25 @@ public:
     ConnectionPtr connect(Signal<SignalArguments...>& signal);
 };
 
-}}
+struct ScopeSignalBlocker
+{
+    explicit ScopeSignalBlocker(SignalCore& signal)
+        : m_signal(signal)
+        , m_oldBlockedState(m_signal.isBlocked())
+    {
+        m_signal.setBlocked(true);
+    }
+    ~ScopeSignalBlocker()
+    {
+        m_signal.setBlocked(m_oldBlockedState);
+    }
+
+private:
+    SignalCore& m_signal;
+    bool m_oldBlockedState;
+};
+
+}} // mox::metakernel
 
 /******************************************************************************
  * Implementation

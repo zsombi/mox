@@ -174,6 +174,9 @@ private:
     template <typename T, typename C, typename I, typename F>
     friend void for_each(SharedVector<T, C, I>&, F);
 
+    template <typename T, typename C, typename I, typename VT>
+    friend std::optional<T> find(SharedVector<T, C, I>&, VT);
+
     template <typename T, typename C, typename I, typename F>
     friend std::optional<T> find_if(SharedVector<T, C, I>&, F);
 
@@ -193,6 +196,19 @@ void for_each(SharedVector<Type, Compact, Invalidate>& shv, Function function)
     lock_guard ref(shv);
     auto end = shv.m_container.end();
     std::for_each(shv.m_container.begin(), end, function);
+}
+
+template <typename Type, typename Compact, typename Invalidate, typename VType>
+std::optional<Type> find(SharedVector<Type, Compact, Invalidate>& shv, VType value)
+{
+    lock_guard lock(shv);
+    auto end = shv.m_container.end();
+    auto it = std::find(shv.m_container.begin(), end, value);
+    if (it != shv.m_container.end())
+    {
+        return std::make_optional(*it);
+    }
+    return std::nullopt;
 }
 
 template <typename Type, typename Compact, typename Invalidate, typename Function>
