@@ -7,7 +7,7 @@
 
 namespace mox { namespace metakernel {
 
-static thread_local std::stack<ConnectionPtr> s_threadConnectionStack;
+static ConnectionPtr s_currentConnection;
 
 /******************************************************************************
  * Connection
@@ -42,22 +42,24 @@ void Connection::invoke(const PackedArguments& arguments)
 {
     struct ConnectionScope
     {
+        ConnectionPtr prev;
         ConnectionScope(Connection& connection)
+            : prev(s_currentConnection)
         {
-            s_threadConnectionStack.push(connection.shared_from_this());
+            s_currentConnection = connection.shared_from_this();
         }
         ~ConnectionScope()
         {
-            s_threadConnectionStack.pop();
+            s_currentConnection = prev;
         }
-
     } scope(*this);
+
     invokeOverride(arguments);
 }
 
 ConnectionPtr Connection::getActiveConnection()
 {
-    return s_threadConnectionStack.top();
+    return s_currentConnection;
 }
 
 SignalCore* Connection::getSignal() const

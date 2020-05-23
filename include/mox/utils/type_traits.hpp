@@ -66,6 +66,10 @@ const std::type_info& getNakedTypeInfo()
     return typeid(NakedType);
 }
 
+/// Returns the N'th type of a variadic template argument>
+template <std::size_t N, typename... Args>
+using get_type = typename std::tuple_element<N, std::tuple<Args...>>::type;
+
 
 /// \name Shared pointer tester
 /// \{

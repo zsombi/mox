@@ -5,6 +5,7 @@
 
 namespace mox { namespace metakernel {
 
+static BindingPtr s_currentBinding;
 /******************************************************************************
  * PropertyCorePrivate
  */
@@ -54,12 +55,71 @@ PropertyCore::Data& PropertyCore::getDataProvider() const
 
 void PropertyCore::addBinding(BindingCore& binding)
 {
-    m_bindings.push_back(binding.shared_from_this());
+    if (m_activeBinding)
+    {
+        m_activeBinding->setEnabled(false);
+    }
+    m_activeBinding = binding.shared_from_this();
+    m_bindings.push_back(m_activeBinding);
+    m_activeBinding->setEnabled(true);
 }
 
 void PropertyCore::removeBinding(BindingCore& binding)
 {
-    erase(m_bindings, binding.shared_from_this());
+    auto shared = binding.shared_from_this();
+    auto it = find(m_bindings, shared);
+    if (it)
+    {
+        it.value().reset();
+        if (shared == m_activeBinding)
+        {
+            shared->setEnabled(false);
+            auto getLast = [](auto& b)
+            {
+                return b && b->isAttached();
+            };
+            it = reverse_find_if(m_bindings, getLast);
+            if (it)
+            {
+                m_activeBinding = it.value();
+                m_activeBinding->setEnabled(true);
+            }
+            else
+            {
+                m_activeBinding.reset();
+            }
+        }
+    }
+}
+
+void PropertyCore::notifyGet() const
+{
+
+}
+
+void PropertyCore::notifySet()
+{
+    if (BindingScope::getCurrent() && m_activeBinding)
+    {
+        // Check only the active scope
+        if ((m_activeBinding != BindingScope::getCurrent()) && (m_activeBinding->getPolicy() == BindingPolicy::DetachOnWrite))
+        {
+            m_activeBinding->detachFromTarget();
+        }
+    }
+    else
+    {
+        // The setter is called because of a simple value assignment
+        lock_guard lock(m_bindings);
+        auto dropBindings = [](auto& binding)
+        {
+            if (binding && (binding != BindingScope::getCurrent()) && (binding->getPolicy() == BindingPolicy::DetachOnWrite))
+            {
+                binding->detachFromTarget();
+            }
+        };
+        for_each(m_bindings, dropBindings);
+    }
 }
 
 ArgumentData PropertyCore::get() const
@@ -89,6 +149,12 @@ BindingCore::~BindingCore()
 {
 }
 
+void BindingCore::evaluate()
+{
+    BindingScope scopeCurrent(*this);
+    evaluateOverride();
+}
+
 bool BindingCore::isEnabled() const
 {
     return m_isEnabled;
@@ -101,7 +167,22 @@ void BindingCore::setEnabled(bool enabled)
     if (changed)
     {
         setEnabledOverride();
+        if (m_group)
+        {
+            m_group->setEnabled(m_isEnabled);
+        }
     }
+}
+
+BindingPolicy BindingCore::getPolicy() const
+{
+    return m_policy;
+}
+
+void BindingCore::setPolicy(BindingPolicy policy)
+{
+    m_policy = policy;
+    setPolicyOverride();
 }
 
 void BindingCore::setGroup(BindingGroupPtr group)
@@ -140,7 +221,9 @@ void BindingCore::detachFromTarget()
     m_target->removeBinding(*this);
     if (m_group)
     {
+        auto grp = m_group;
         m_group->removeFromGroup(*this);
+        grp->discard();
     }
     detachOverride();
     m_target = nullptr;
@@ -148,8 +231,31 @@ void BindingCore::detachFromTarget()
 }
 
 /******************************************************************************
+ * BindingScope
+ */
+BindingScope::BindingScope(BindingCore& currentBinding)
+    : m_previousBinding(s_currentBinding)
+{
+    s_currentBinding = currentBinding.shared_from_this();
+}
+
+BindingScope::~BindingScope()
+{
+    s_currentBinding = m_previousBinding.lock();
+}
+
+BindingPtr BindingScope::getCurrent()
+{
+    return s_currentBinding;
+}
+
+/******************************************************************************
  * BindingGroupd
  */
+BindingGroup::BindingGroup()
+{
+}
+
 BindingGroup::~BindingGroup()
 {
     auto looper = [](auto& binding)
@@ -160,29 +266,73 @@ BindingGroup::~BindingGroup()
         }
     };
     for_each(m_bindings, looper);
-    m_bindings.clear();
 }
 
-void BindingGroup::addToGroup(BindingCore& binding)
+BindingGroupPtr BindingGroup::create()
+{
+    return BindingGroupPtr(new BindingGroup);
+}
+
+void BindingGroup::discard()
+{
+    auto detacher = [](auto& binding)
+    {
+        if (binding)
+        {
+            binding->detachFromTarget();
+        }
+    };
+    for_each(m_bindings, detacher);
+}
+
+BindingGroup& BindingGroup::addToGroup(BindingCore& binding)
 {
     m_bindings.push_back(binding.shared_from_this());
     binding.setGroup(as_shared<BindingGroup>(this));
+    binding.setPolicy(m_policy);
+    binding.setEnabled(m_isEnabled);
+    return *this;
 }
 
 void BindingGroup::removeFromGroup(BindingCore& binding)
 {
     auto keepAlive = shared_from_this();
-    binding.setGroup(nullptr);
     erase(m_bindings, binding.shared_from_this());
+    binding.setGroup(nullptr);
 }
 
-void BindingGroup::setEnabledOverride()
+void BindingGroup::setPolicy(BindingPolicy policy)
 {
+    m_policy = policy;
     auto update = [this](auto& binding)
     {
         if (binding)
         {
-            binding->setEnabled(this->isEnabled());
+            binding->setPolicy(m_policy);
+        }
+    };
+    for_each(m_bindings, update);
+}
+
+bool BindingGroup::isEnabled() const
+{
+    return m_isEnabled;
+}
+
+void BindingGroup::setEnabled(bool enabled)
+{
+    if (m_isUpdating)
+    {
+        return;
+    }
+    ScopeValue lock(m_isUpdating, true);
+    m_isEnabled = enabled;
+
+    auto update = [this](auto& binding)
+    {
+        if (binding)
+        {
+            binding->setEnabled(m_isEnabled);
         }
     };
     for_each(m_bindings, update);

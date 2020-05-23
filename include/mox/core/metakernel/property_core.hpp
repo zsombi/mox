@@ -19,6 +19,7 @@ using BindingPtr = std::shared_ptr<BindingCore>;
 using BindingWeakPtr = std::weak_ptr<BindingCore>;
 class BindingGroup;
 using BindingGroupPtr = std::shared_ptr<BindingGroup>;
+using BindingGroupWeakPtr = std::weak_ptr<BindingGroup>;
 
 
 /// The property type.
@@ -28,6 +29,14 @@ enum class PropertyType
     ReadWrite
 };
 
+/// The BindingPolicy enum class defines the policy of a binding used when the user sets the
+/// value of a property manually.
+enum class BindingPolicy
+{
+    DetachOnWrite,
+    KeepOnWrite
+};
+
 /// The BindingCore class provides core functionality of the bindings on properties.
 class MOX_API BindingCore : public std::enable_shared_from_this<BindingCore>
 {
@@ -35,8 +44,22 @@ public:
     /// Destructor.
     virtual ~BindingCore();
 
+    /// Evaluates the binding.
+    void evaluate();
+
+    /// Returns the enabled state of a binding.
+    /// \return If the binding is enabled, returns \e true, otherwise \e false.
     bool isEnabled() const;
+    /// Sets the enabled state of a binding.
+    /// \param enabled The enabled state of the binding.
     void setEnabled(bool enabled);
+
+    /// Returns the binding policy of a binding.
+    /// \return The binding policy of a binding. The default policy value is BindingPolicy::DetachOnWrite.
+    BindingPolicy getPolicy() const;
+    /// Sets the binding policy of a binding.
+    /// \param policy The policy of the binding to set.
+    void setPolicy(BindingPolicy policy);
 
     /// Attaches a binding to a property. This property stands as the target of the binding.
     /// \param property The target proeprty to attach.
@@ -58,8 +81,10 @@ protected:
     /// Constructor.
     BindingCore();
 
+    virtual void evaluateOverride() {}
     virtual void detachOverride() {}
     virtual void setEnabledOverride() {}
+    virtual void setPolicyOverride() {}
 
     enum class Status : byte
     {
@@ -71,8 +96,20 @@ protected:
 
     PropertyCore* m_target = nullptr;
     BindingGroupPtr m_group;
+    BindingPolicy m_policy = BindingPolicy::DetachOnWrite;
     Status m_status = Status::Detached;
     bool m_isEnabled = true;
+};
+
+/// Helper class, scopes the active binding executed.
+class MOX_API BindingScope
+{
+    BindingWeakPtr m_previousBinding;
+public:
+    explicit BindingScope(BindingCore& currentBinding);
+    ~BindingScope();
+
+    static BindingPtr getCurrent();
 };
 
 /// The PropertyCore class provides the core functionality of the properties. Holds the
@@ -129,6 +166,9 @@ protected:
     void addBinding(BindingCore& binding);
     void removeBinding(BindingCore& binding);
 
+    void notifyGet() const;
+    void notifySet();
+
     ArgumentData get() const;
     void set(const ArgumentData& data);
 
@@ -153,6 +193,7 @@ protected:
     using BindingsStorage = SharedVector<BindingPtr, ZeroBindingCheck, ZeroBindingSet>;
 
     BindingsStorage m_bindings;
+    BindingPtr m_activeBinding;
     PropertyCore::Data& m_data;
     SignalCore& m_changedSignal;
 };
@@ -160,27 +201,37 @@ protected:
 /// The BindingGroup is a binding type which groups individual bindings to act as one.
 /// The first binding attached to the group serves as the main binding that evaluates
 /// and holds the target of the binding.
-class MOX_API BindingGroup : public BindingCore
+///
+/// The bindings added to a group have the same policy. It is recommended to set the group
+/// policy before adding bindings to it.
+class MOX_API BindingGroup : public std::enable_shared_from_this<BindingGroup>
 {
 public:
-    explicit BindingGroup() = default;
-    ~BindingGroup() override;
+    static BindingGroupPtr create();
+    ~BindingGroup();
 
-    template <class... BindingPtrType>
-    explicit BindingGroup(BindingPtrType... bindings)
-    {
-        auto tupleArg = std::tuple<BindingPtrType...>(bindings...);
-        std::apply([this](auto ...x){ (static_cast<void>(addToGroup(*x)), ...);}, tupleArg);
-    }
-
-    void addToGroup(BindingCore& binding);
+    /// Discards the group by removing all its bindings. As result of this call, the group is
+    /// orphaned, and potentially destroyed.
+    void discard();
+    /// Adds a binding to a group, and sets the group holding the binding.
+    BindingGroup& addToGroup(BindingCore& binding);
+    /// Removes a binding from a group, and resets the group of the binding.
     void removeFromGroup(BindingCore& binding);
 
+    /// Sets the policy of the group.
+    void setPolicy(BindingPolicy policy);
+
+    bool isEnabled() const;
+    void setEnabled(bool enabled);
+
 protected:
-    void setEnabledOverride() override;
+    explicit BindingGroup();
 
 private:
-    std::vector<BindingPtr> m_bindings;
+    SharedVector<BindingPtr> m_bindings;
+    std::atomic<BindingPolicy> m_policy = BindingPolicy::KeepOnWrite;
+    std::atomic_bool m_isEnabled = true;
+    std::atomic_bool m_isUpdating = false;
 };
 
 }} // mox::metakernel

@@ -180,6 +180,9 @@ private:
     template <typename T, typename C, typename I, typename F>
     friend std::optional<T> find_if(SharedVector<T, C, I>&, F);
 
+    template <typename T, typename C, typename I, typename F>
+    friend std::optional<T> reverse_find_if(SharedVector<T, C, I>&, F);
+
     template <typename T, typename C, typename I, typename VT>
     friend void erase(SharedVector<T, C, I>&, const VT&);
 
@@ -218,6 +221,19 @@ std::optional<Type> find_if(SharedVector<Type, Compact, Invalidate>& shv, Functi
     auto end = shv.m_container.end();
     auto it = std::find_if(shv.m_container.begin(), end, function);
     if (it != shv.m_container.end())
+    {
+        return std::make_optional(*it);
+    }
+    return std::nullopt;
+}
+
+template <typename Type, typename Compact, typename Invalidate, typename Function>
+std::optional<Type> reverse_find_if(SharedVector<Type, Compact, Invalidate>& shv, Function function)
+{
+    lock_guard ref(shv);
+    auto end = shv.m_container.rend();
+    auto it = std::find_if(shv.m_container.rbegin(), end, function);
+    if (it != shv.m_container.rend())
     {
         return std::make_optional(*it);
     }
