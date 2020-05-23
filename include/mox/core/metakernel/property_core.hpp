@@ -6,8 +6,9 @@
 #include <mox/config/pimpl.hpp>
 #include <mox/config/platform_config.hpp>
 #include <mox/core/metakernel/argument_data.hpp>
-//#include <mox/utils/locks.hpp>
+#include <mox/core/metakernel/signals.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
+#include <functional>
 
 namespace mox { namespace metakernel {
 
@@ -76,6 +77,9 @@ public:
     /// Sets the group of a binding.
     /// \param group The binding group to set, \e nullptr to reset the group the binding belongs.
     void setGroup(BindingGroupPtr group);
+
+    using ConnectFunc = std::function<ConnectionPtr(BindingCore&)>;
+    virtual void notifyPropertyAccessed(ConnectFunc) {}
 
 protected:
     /// Constructor.
@@ -156,7 +160,7 @@ public:
 
 protected:
     /// Constructs a property core using a proeprty data provider.
-    PropertyCore(Data& data, SignalCore& changedSignal);
+    PropertyCore(Data& data);
 
     /// Returns the data provider of a property.
     /// \return The data provider of a property.
@@ -166,11 +170,7 @@ protected:
     void addBinding(BindingCore& binding);
     void removeBinding(BindingCore& binding);
 
-    void notifyGet() const;
     void notifySet();
-
-    ArgumentData get() const;
-    void set(const ArgumentData& data);
 
     struct ZeroBindingCheck
     {
@@ -195,7 +195,6 @@ protected:
     BindingsStorage m_bindings;
     BindingPtr m_activeBinding;
     PropertyCore::Data& m_data;
-    SignalCore& m_changedSignal;
 };
 
 /// The BindingGroup is a binding type which groups individual bindings to act as one.
@@ -219,12 +218,20 @@ public:
     void removeFromGroup(BindingCore& binding);
 
     /// Sets the policy of the group.
+    /// \param policy The policy to set. All the bindings grouped are updated with the policy
+    /// set.
     void setPolicy(BindingPolicy policy);
 
+    /// Returns the enabled state of a binding group.
+    /// \return The enabled state of the binding group.
     bool isEnabled() const;
+    /// Sets the enabled state of a binding group.
+    /// \param enabled The enabled state to set. All the bindings grouped are updated with the
+    /// state set.
     void setEnabled(bool enabled);
 
 protected:
+    /// Constructor.
     explicit BindingGroup();
 
 private:

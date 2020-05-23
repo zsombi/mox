@@ -19,6 +19,10 @@ Connection::Connection(SignalCore& sender)
 
 Connection::~Connection()
 {
+    if (isConnected())
+    {
+        disconnect();
+    }
 }
 
 bool Connection::isConnected() const
@@ -104,6 +108,7 @@ SignalCore::SignalCore(size_t argCount)
 
 SignalCore::~SignalCore()
 {
+    lock_guard guard(m_connections);
     auto disconnector = [self = this](auto& connection)
     {
         if (connection && connection->isConnected())
@@ -134,9 +139,7 @@ int SignalCore::activate(const PackedArguments &args)
     ScopeValue triggerLock(m_isActivated, true);
     int activationCount = -1;
 
-    // create a copy of the connections, as it may change during activation time.
-    auto connectionCopy = m_connections;
-
+    lock_guard guard(m_connections);
     auto activateConnection = [&args, self = this, &activationCount](auto& connection)
     {
         if (!connection || !connection->isConnected())
@@ -148,7 +151,7 @@ int SignalCore::activate(const PackedArguments &args)
         connection->invoke(args);
         ++activationCount;
     };
-    for_each(connectionCopy, activateConnection);
+    for_each(m_connections, activateConnection);
 
     if (activationCount >= 0)
     {

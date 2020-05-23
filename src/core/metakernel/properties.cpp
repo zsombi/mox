@@ -20,9 +20,8 @@ PropertyCore::Data::Data(PropertyType type)
 /******************************************************************************
  * PropertyCore
  */
-PropertyCore::PropertyCore(Data& data, SignalCore& changedSignal)
+PropertyCore::PropertyCore(Data& data)
     : m_data(data)
-    , m_changedSignal(changedSignal)
 {
 }
 
@@ -92,11 +91,6 @@ void PropertyCore::removeBinding(BindingCore& binding)
     }
 }
 
-void PropertyCore::notifyGet() const
-{
-
-}
-
 void PropertyCore::notifySet()
 {
     if (BindingScope::getCurrent() && m_activeBinding)
@@ -119,22 +113,6 @@ void PropertyCore::notifySet()
             }
         };
         for_each(m_bindings, dropBindings);
-    }
-}
-
-ArgumentData PropertyCore::get() const
-{
-    return m_data.get();
-}
-
-void PropertyCore::set(const ArgumentData& data)
-{
-    if (!m_data.isEqual(data))
-    {
-        m_data.set(data);
-        auto signalArg = PackedArguments();
-        signalArg += data;
-        m_changedSignal.activate(signalArg);
     }
 }
 

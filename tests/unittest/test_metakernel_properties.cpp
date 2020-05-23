@@ -156,11 +156,7 @@ TEST_F(MetakernelProperties, test_two_way_binding_of_2_properties_grouped)
     EXPECT_EQ(1, property1);
     EXPECT_EQ(2, property2);
 
-    {
-        auto b1 = property1.bind(property2);
-        auto b2 = property2.bind(property1);
-        metakernel::BindingGroup::create()->addToGroup(*b1).addToGroup(*b2);
-    }
+    metakernel::bindProperties(property1, property2);
     EXPECT_EQ(2, property1);
     EXPECT_EQ(2, property2);
 
@@ -329,4 +325,21 @@ TEST_F(MetakernelProperties, test_stacked_binding)
     EXPECT_EQ(1, property1);
     property2 = 9;
     EXPECT_EQ(1, property1);
+}
+
+TEST_F(MetakernelProperties, test_expression_binding)
+{
+    metakernel::Property<int> source(10);
+    metakernel::Property<std::string> target;
+
+    auto expression = [&source]()
+    {
+        return std::to_string(int(source));
+    };
+    target.bind(expression);
+    EXPECT_EQ("10"s, std::string(target));
+
+    // update source
+    source = 7;
+    EXPECT_EQ("7"s, std::string(target));
 }

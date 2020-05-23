@@ -7,6 +7,7 @@
 #include <mox/config/platform_config.hpp>
 #include <mox/core/metakernel/argument_data.hpp>
 #include <mox/core/metakernel/lockable.hpp>
+#include <mox/utils/containers/shared_vector.hpp>
 
 namespace mox { namespace metakernel {
 
@@ -61,7 +62,7 @@ public:
 protected:
     explicit SignalCore(size_t argCount);
 
-    using ConnectionContainer = std::vector<ConnectionPtr>;
+    using ConnectionContainer = SharedVector<ConnectionPtr>;
 
     ConnectionContainer m_connections;
     const size_t m_argumentCount;
