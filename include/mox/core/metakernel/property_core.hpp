@@ -147,8 +147,6 @@ public:
         /// signal.
         /// \param data The property data to set.
         virtual void set(const ArgumentData& data) = 0;
-
-        virtual bool isEqual(const ArgumentData& other) = 0;
     };
 
     /// Destructor.
@@ -160,12 +158,7 @@ public:
 
 protected:
     /// Constructs a property core using a proeprty data provider.
-    PropertyCore(Data& data);
-
-    /// Returns the data provider of a property.
-    /// \return The data provider of a property.
-    Data& getDataProvider();
-    Data& getDataProvider() const;
+    PropertyCore(PropertyType type);
 
     void addBinding(BindingCore& binding);
     void removeBinding(BindingCore& binding);
@@ -194,7 +187,8 @@ protected:
 
     BindingsStorage m_bindings;
     BindingPtr m_activeBinding;
-    PropertyCore::Data& m_data;
+    const PropertyType m_propertyType;
+//    PropertyCore::Data& m_data;
 };
 
 /// The BindingGroup is a binding type which groups individual bindings to act as one.

@@ -20,8 +20,8 @@ PropertyCore::Data::Data(PropertyType type)
 /******************************************************************************
  * PropertyCore
  */
-PropertyCore::PropertyCore(Data& data)
-    : m_data(data)
+PropertyCore::PropertyCore(PropertyType type)
+    : m_propertyType(type)
 {
 }
 
@@ -39,17 +39,8 @@ PropertyCore::~PropertyCore()
 }
 
 PropertyType PropertyCore::getType() const
-{    return m_data.propertyType;
-}
-
-PropertyCore::Data& PropertyCore::getDataProvider()
 {
-    return m_data;
-}
-
-PropertyCore::Data& PropertyCore::getDataProvider() const
-{
-    return m_data;
+    return m_propertyType;
 }
 
 void PropertyCore::addBinding(BindingCore& binding)

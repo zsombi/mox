@@ -36,10 +36,6 @@ public:
         CTRACE(propertyTest, "Custom property data provider setter");
         this->data = data;
     }
-    bool isEqual(const metakernel::ArgumentData& other) override
-    {
-        return data == int(other);
-    }
 };
 
 }
@@ -56,25 +52,6 @@ TEST_F(MetakernelProperties, test_property_api)
     };
     property.changed.connect(onPropertyChanged);
     EXPECT_TRACE(propertyTest, "Property value changed to 10");
-    property = 10;
-    EXPECT_EQ(10, property);
-}
-
-TEST_F(MetakernelProperties, test_custom_data_provider)
-{
-    EXPECT_TRACE(propertyTest, "Custom property data provider getter");
-    EXPECT_TRACE(propertyTest, "Custom property data provider setter");
-    EXPECT_TRACE(propertyTest, "Property value changed to 10");
-    test_property::CustomDP datadProvider;
-    metakernel::Property<int> property(datadProvider);
-
-    EXPECT_EQ(metakernel::PropertyType::ReadWrite, property.getType());
-
-    auto onPropertyChanged = [](int value)
-    {
-        CTRACE(propertyTest, "Property value changed to" << value);
-    };
-    property.changed.connect(onPropertyChanged);
     property = 10;
     EXPECT_EQ(10, property);
 }

@@ -18,31 +18,7 @@ namespace mox { namespace metakernel {
 template <class Type>
 class Property : public PropertyCore
 {
-    // Default property data provider.
-    class PropertyData : public Data
-    {
-        Type m_data;
-
-    public:
-        PropertyData(const Type& defaultValue)
-            : Data(PropertyType::ReadWrite)
-            , m_data(defaultValue)
-        {
-            set(defaultValue);
-        }
-        ArgumentData get() const override
-        {
-            return m_data;
-        }
-        void set(const ArgumentData& data) override
-        {
-            m_data = Type(data);
-        }
-        bool isEqual(const ArgumentData &other) override
-        {
-            return m_data == Type(other);
-        }
-    };
+    Type m_data;
 
 public:
     typedef Type ValueType;
@@ -52,9 +28,6 @@ public:
 
     /// Constructs a property with the default property value provider.
     explicit Property(const Type& defaultValue = Type());
-
-    /// Constructs a property with a custom property value provider.
-    explicit Property(Data& dataProvider);
 
     ~Property();
 
@@ -136,19 +109,21 @@ protected:
 template <class Type>
 class StatusProperty : public PropertyCore
 {
+    Data& m_dataProvider;
+
 public:
     /// The changed signal of the property.
     metakernel::Signal<Type> changed;
 
     explicit StatusProperty(Data& dataProvider)
-        : PropertyCore(dataProvider)
+        : PropertyCore(PropertyType::ReadOnly)
+        , m_dataProvider(dataProvider)
     {
-        FATAL(dataProvider.propertyType == PropertyType::ReadOnly, "The data provider is not meant for a read-only property.");
     }
 
     operator Type() const
     {
-        return static_cast<Type>(getDataProvider().get());
+        return static_cast<Type>(m_dataProvider.get());
     }
 };
 
@@ -157,26 +132,14 @@ public:
  */
 template <class Type>
 Property<Type>::Property(const Type& defaultValue)
-    : PropertyCore(*(new PropertyData(defaultValue)))
+    : PropertyCore(PropertyType::ReadWrite)
+    , m_data(defaultValue)
 {
-    FATAL(getDataProvider().propertyType == PropertyType::ReadWrite, "The data provider is not meant for a writable property.");
-}
-
-template <class Type>
-Property<Type>::Property(Data& dataProvider)
-    : PropertyCore(dataProvider)
-{
-    FATAL(getDataProvider().propertyType == PropertyType::ReadWrite, "The data provider is not meant for a writable property.");
 }
 
 template <class Type>
 Property<Type>::~Property()
 {
-    auto dp = dynamic_cast<PropertyData*>(&getDataProvider());
-    if (dp)
-    {
-        delete dp;
-    }
 }
 
 template <class Type>
@@ -191,18 +154,17 @@ Property<Type>::operator Type() const
         };
         currentBinding->notifyPropertyAccessed(connectFunc);
     }
-    return static_cast<Type>(getDataProvider().get());
+    return m_data;
 }
 
 template <class Type>
 void Property<Type>::operator=(const Type& value)
 {
     notifySet();
-    auto& dp = getDataProvider();
-    if (!dp.isEqual(value))
+    if (m_data != value)
     {
-        dp.set(value);
-        changed(value);
+        m_data = value;
+        changed(m_data);
     }
 }
 
