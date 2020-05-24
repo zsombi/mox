@@ -74,17 +74,10 @@ template <typename Type,
 class MOX_API SharedVector
 {
     using Self = SharedVector<Type, ValidityChecker, Invalidator>;
-    using Container = std::vector<Type>;
-
-    Container m_container;
-    ValidityChecker m_zeroCheck;
-    Invalidator m_invalidate;
-    int m_refCount = 0;
-    int m_dirtyCount = 0;
-
-    DISABLE_COPY(SharedVector)
 
 public:
+    using ContainerType = std::vector<Type>;
+
     explicit SharedVector() = default;
 
     SharedVector(Self&& other)
@@ -100,6 +93,11 @@ public:
         std::swap(m_refCount, other.m_refCount);
         std::swap(m_dirtyCount, other.m_dirtyCount);
         return *this;
+    }
+
+    operator ContainerType() const
+    {
+        return m_container;
     }
 
     int lockCount() const
@@ -171,6 +169,14 @@ public:
     }
 
 private:
+    ContainerType m_container;
+    ValidityChecker m_zeroCheck;
+    Invalidator m_invalidate;
+    int m_refCount = 0;
+    int m_dirtyCount = 0;
+
+    DISABLE_COPY(SharedVector)
+
     template <typename T, typename C, typename I, typename F>
     friend void for_each(SharedVector<T, C, I>&, F);
 

@@ -138,8 +138,8 @@ int SignalCore::activate(const PackedArguments &args)
     }
     ScopeValue triggerLock(m_isActivated, true);
     int activationCount = -1;
+    decltype(m_connections)::ContainerType connectionsCopy = m_connections;
 
-    lock_guard guard(m_connections);
     auto activateConnection = [&args, self = this, &activationCount](auto& connection)
     {
         if (!connection || !connection->isConnected())
@@ -151,7 +151,7 @@ int SignalCore::activate(const PackedArguments &args)
         connection->invoke(args);
         ++activationCount;
     };
-    for_each(m_connections, activateConnection);
+    for_each(connectionsCopy, activateConnection);
 
     if (activationCount >= 0)
     {
