@@ -9,19 +9,11 @@ static BindingPtr s_currentBinding;
 /******************************************************************************
  * PropertyCorePrivate
  */
-/******************************************************************************
- * PropertyCore::Data
- */
-PropertyCore::Data::Data(PropertyType type)
-    : propertyType(type)
-{
-}
 
 /******************************************************************************
  * PropertyCore
  */
-PropertyCore::PropertyCore(PropertyType type)
-    : m_propertyType(type)
+PropertyCore::PropertyCore()
 {
 }
 
@@ -36,11 +28,6 @@ PropertyCore::~PropertyCore()
         }
     };
     for_each(m_bindings, bindingDetach);
-}
-
-PropertyType PropertyCore::getType() const
-{
-    return m_propertyType;
 }
 
 void PropertyCore::addBinding(BindingCore& binding)

@@ -23,13 +23,6 @@ using BindingGroupPtr = std::shared_ptr<BindingGroup>;
 using BindingGroupWeakPtr = std::weak_ptr<BindingGroup>;
 
 
-/// The property type.
-enum class PropertyType
-{
-    ReadOnly,
-    ReadWrite
-};
-
 /// The BindingPolicy enum class defines the policy of a binding used when the user sets the
 /// value of a property manually.
 enum class BindingPolicy
@@ -124,41 +117,12 @@ class MOX_API PropertyCore
     friend class BindingCore;
 
 public:
-    /// Property data interface. Provides generic and non-thread safe access to the property
-    /// data and type. Derive your property data providers from this class when creating
-    /// properties with custom data provider.
-    class MOX_API Data
-    {
-    public:
-        /// The property type.
-        const PropertyType propertyType;
-
-        /// Constructs a property data provider with the property type specified.
-        /// \param type The property type.
-        explicit Data(PropertyType type);
-        /// Default destructor.
-        virtual ~Data() = default;
-
-        /// Property getter, returns the property value in an opaque argument data.
-        /// \return The argument value enclosed in an opaque argument data.
-        virtual ArgumentData get() const = 0;
-        /// Property setter, sets the value of the property using an opaque argument
-        /// data. Implementations are not expected to activate the property changed
-        /// signal.
-        /// \param data The property data to set.
-        virtual void set(const ArgumentData& data) = 0;
-    };
-
     /// Destructor.
     ~PropertyCore();
 
-    /// Gets the type of the property.
-    /// \return The type of the property.
-    PropertyType getType() const;
-
 protected:
     /// Constructs a property core using a proeprty data provider.
-    PropertyCore(PropertyType type);
+    PropertyCore();
 
     void addBinding(BindingCore& binding);
     void removeBinding(BindingCore& binding);
@@ -187,8 +151,6 @@ protected:
 
     BindingsStorage m_bindings;
     BindingPtr m_activeBinding;
-    const PropertyType m_propertyType;
-//    PropertyCore::Data& m_data;
 };
 
 /// The BindingGroup is a binding type which groups individual bindings to act as one.

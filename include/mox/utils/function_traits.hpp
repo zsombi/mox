@@ -49,6 +49,13 @@ struct function_traits : public function_traits<decltype(&Function::operator())>
     static constexpr int type = FunctionType::Functor;
 };
 
+/// Tests a function for
+template <typename Function>
+struct is_lambda
+{
+    static constexpr bool value = function_traits<Function>::type == FunctionType::Functor;
+};
+
 /// Method traits.
 template <class TObject, typename TRet, typename... Args>
 struct function_traits<TRet(TObject::*)(Args...)>

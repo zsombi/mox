@@ -17,24 +17,48 @@ class MetakernelProperties : public UnitTest
 namespace test_property
 {
 
-class CustomDP : public metakernel::PropertyCore::Data
+class CustomDP : public metakernel::StatusProperty<int>::Data
 {
-    int data = -1;
+    int m_data = -1;
 
 public:
-    CustomDP(metakernel::PropertyType access = metakernel::PropertyType::ReadWrite)
-        : Data(access)
+    CustomDP() = default;
+    CustomDP(int defValue)
+        : m_data(defValue)
     {
     }
-    metakernel::ArgumentData get() const override
+    int get() const override
     {
-        CTRACE(propertyTest, "Custom property data provider getter");
-        return data;
+        return m_data;
     }
-    void set(const metakernel::ArgumentData& data) override
+    void set(int data)
     {
-        CTRACE(propertyTest, "Custom property data provider setter");
-        this->data = data;
+        m_data = data;
+        update();
+    }
+};
+
+template <class Type>
+class TestStatus : public metakernel::StatusProperty<Type>::Data, public metakernel::StatusProperty<Type>
+{
+    Type m_data;
+
+    int get() const override
+    {
+        return m_data;
+    }
+
+public:
+    TestStatus(Type defValue)
+        : metakernel::StatusProperty<Type>(static_cast<typename metakernel::StatusProperty<Type>::Data&>(*this))
+        , m_data(defValue)
+    {
+    }
+
+    void setData(Type data)
+    {
+        m_data = data;
+        metakernel::StatusProperty<Type>::Data::update();
     }
 };
 
@@ -44,7 +68,6 @@ TEST_F(MetakernelProperties, test_property_api)
 {
     metakernel::Property<int> property;
     EXPECT_EQ(0, property);
-    EXPECT_EQ(metakernel::PropertyType::ReadWrite, property.getType());
 
     auto onPropertyChanged = [](int value)
     {
@@ -58,13 +81,9 @@ TEST_F(MetakernelProperties, test_property_api)
 
 TEST_F(MetakernelProperties, test_status_property)
 {
-    GTEST_SKIP();
-    EXPECT_TRACE(propertyTest, "Custom property data provider getter");
-    EXPECT_TRACE(propertyTest, "Custom property data provider setter");
-    EXPECT_TRACE(propertyTest, "Property value changed to 10");
-    test_property::CustomDP datadProvider(metakernel::PropertyType::ReadOnly);
+    EXPECT_TRACE(propertyTest, "Property value changed to 1");
+    test_property::CustomDP datadProvider;
     metakernel::StatusProperty<int> property(datadProvider);
-    EXPECT_EQ(metakernel::PropertyType::ReadOnly, property.getType());
 
     auto onPropertyChanged = [](int value)
     {
@@ -72,6 +91,8 @@ TEST_F(MetakernelProperties, test_status_property)
     };
     property.changed.connect(onPropertyChanged);
     EXPECT_EQ(-1, property);
+
+    datadProvider.set(1);
 }
 
 
@@ -319,4 +340,29 @@ TEST_F(MetakernelProperties, test_expression_binding)
     // update source
     source = 7;
     EXPECT_EQ("7"s, std::string(target));
+}
+
+TEST_F(MetakernelProperties, test_bind_to_status)
+{
+    metakernel::Property<int> target(1);
+    test_property::TestStatus<int> source(10);
+
+    auto binding = target.bind(source);
+    EXPECT_EQ(10, target);
+
+    source.setData(99);
+    EXPECT_EQ(99, target);
+}
+
+TEST_F(MetakernelProperties, test_expression_binding_with_status)
+{
+    test_property::TestStatus<int> status(10);
+    metakernel::Property<std::string> target;
+
+    auto expression = [&status]() { return std::to_string(int(status)); };
+    target.bind(expression);
+    EXPECT_EQ("10"s, std::string(target));
+
+    status.setData(99);
+    EXPECT_EQ("99"s, std::string(target));
 }

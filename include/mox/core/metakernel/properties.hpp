@@ -13,6 +13,52 @@ namespace mox { namespace metakernel {
  * Templates
  */
 
+/// This template class provides functionalities for read-only properties. Unlike the writable
+/// properties, the read-only properties use value providers. These value providers can update
+/// the value of the property, so the users of the properties can get notified about the change
+/// of the property value. A typical use case of these types of properties is to provide status
+/// updates on an entity.
+///
+/// You cannot bind properties to a status property, but you can use the status property in
+/// bindings as source, or as part of an expression.
+template <class Type>
+class StatusProperty
+{
+    using Self = StatusProperty<Type>;
+
+public:
+    /// Status property data provider type. Provides the data of the status property and an
+    /// interface to update the property.
+    class Data
+    {
+        Self* m_property = nullptr;
+
+    public:
+        /// Destructor.
+        virtual ~Data() = default;
+        /// Attaches a property data provider to a \a property.
+        /// \param property The property the data provider is to attach.
+        void attach(Self& property);
+        /// Updates the property the data provider is attached to.
+        void update();
+
+        /// Property data getter.
+        virtual Type get() const = 0;
+    };
+    /// The changed signal of the property.
+    metakernel::Signal<Type> changed;
+
+    /// Construct a status property instance using a \a dataProvider.
+    explicit StatusProperty(Data& dataProvider);
+
+    /// Property getter.
+    /// \return The value of the property.
+    operator Type() const;
+
+private:
+    Data& m_dataProvider;
+};
+
 /// The template class defines a read-write property with a change signal. Provides a default
 /// property data provider.
 template <class Type>
@@ -29,8 +75,6 @@ public:
     /// Constructs a property with the default property value provider.
     explicit Property(const Type& defaultValue = Type());
 
-    ~Property();
-
     /// Property getter.
     operator Type() const;
 
@@ -39,45 +83,45 @@ public:
 
     /// \name Bindings
     /// \{
-    /// Creates a property binding between this property and an other property given as argument.
-    /// The binding is a one-way binding, created with BindingPolicy::DetachOnWrite policy.
-    /// \param source The source property to bind to this property.
-    /// \param polict The binding policy to use. The default policy is BindingPolicy::DetachOnWrite.
-    /// \return The binding object created.
-    auto bind(Property<Type>& source, BindingPolicy policy = BindingPolicy::DetachOnWrite);
 
-    /// Creates a binding on a property with an expression. The expression can use other properties
-    /// and must return the same type as the target proprety type.
-    /// \tparam ExpressionType The expression type, a function, a functor or a static member function.
-    /// \param expression The expression function.
+    /// Creates a binding between a binding source and this property. The source of a binding is
+    /// either a writable property, a status property or a function expression.
+    /// \tparam BindingSource The type of the binding source.
+    /// \param source The binding source.
     /// \param polict The binding policy to use. The default policy is BindingPolicy::DetachOnWrite.
     /// \return The binding object created.
-    template <class ExpressionType>
-    auto bind(ExpressionType expression, BindingPolicy policy = BindingPolicy::DetachOnWrite);
+    template <class BindingSource>
+    auto bind(BindingSource& source, BindingPolicy policy = BindingPolicy::DetachOnWrite);
     /// \}
 };
 
-/// The PropertyBinding defines a property binding behavior.
-template <class Type>
-class PropertyBinding : public BindingCore
+/// Template class implementing bindings to a property and an other property type. The source
+/// property type is either a writable property or a status property.
+template <class Type, class PropertyType>
+class PropertyTypeBinding : public BindingCore
 {
-    Property<Type>& m_target;
-    Property<Type>& m_source;
+    using Self = PropertyTypeBinding<Type, PropertyType>;
 
+    Property<Type>& m_target;
+    PropertyType& m_source;
     ConnectionPtr m_sourceWatch;
 
 public:
-    static BindingPtr create(Property<Type>& target, Property<Type>& source);
+    /// Creates a binding object between a target property and a source.
+    static BindingPtr create(Property<Type>& target, PropertyType& source);
 
 protected:
-    explicit PropertyBinding(Property<Type>& target, Property<Type>& source);
-    ~PropertyBinding();
-
+    /// Constructor.
+    explicit PropertyTypeBinding(Property<Type>& target, PropertyType& source);
+    /// Overrides BindingCore::evaluateOverride().
     void evaluateOverride() override;
+    /// Overrides BindingCore::detachOverride().
     void detachOverride() override;
 };
 
-/// Expression binding.
+/// Template class implementing bindings to a property and an expression. The expression is
+/// a function or a lambda that can use other properties. An example is a binding that converts
+/// a property from one type into an other.
 template <class ExpressionType>
 class ExpressionBinding : public BindingCore
 {
@@ -89,56 +133,63 @@ class ExpressionBinding : public BindingCore
     ExpressionType m_expression;
 
 public:
+    /// Creates a binding to \a target, using an \a expression.
     static BindingPtr create(PropertyType& target, ExpressionType expression);
 
+    /// Override of BindingCore::notifyPropertyAccessed().
     void notifyPropertyAccessed(ConnectFunc connectFunc) override;
 
 protected:
+    /// Constructor.
     explicit ExpressionBinding(PropertyType& target, ExpressionType expression);
-
+    /// Overrides BindingCore::evaluateOverride().
     void evaluateOverride() override;
+    /// Overrides BindingCore::detachOverride().
     void detachOverride() override;
 };
 
-
-/// This template class provides functionalities for read-only properties. Unlike the writable
-/// properties, the read-only properties use value providers. These value providers can update
-/// the value of the property, so the users of the properties can get notified about the change
-/// of the property value. A typical use case of these types of properties is to provide status
-/// updates on an entity.
-template <class Type>
-class StatusProperty : public PropertyCore
-{
-    Data& m_dataProvider;
-
-public:
-    /// The changed signal of the property.
-    metakernel::Signal<Type> changed;
-
-    explicit StatusProperty(Data& dataProvider)
-        : PropertyCore(PropertyType::ReadOnly)
-        , m_dataProvider(dataProvider)
-    {
-    }
-
-    operator Type() const
-    {
-        return static_cast<Type>(m_dataProvider.get());
-    }
-};
 
 /******************************************************************************
  * Implementations
  */
 template <class Type>
-Property<Type>::Property(const Type& defaultValue)
-    : PropertyCore(PropertyType::ReadWrite)
-    , m_data(defaultValue)
+void StatusProperty<Type>::Data::attach(Self& property)
 {
+    m_property = &property;
 }
 
 template <class Type>
-Property<Type>::~Property()
+void StatusProperty<Type>::Data::update()
+{
+    m_property->changed(get());
+}
+
+template <class Type>
+StatusProperty<Type>::StatusProperty(Data& dataProvider)
+    : m_dataProvider(dataProvider)
+{
+    m_dataProvider.attach(*this);
+}
+
+template <class Type>
+StatusProperty<Type>::operator Type() const
+{
+    auto currentBinding = BindingScope::getCurrent();
+    if (currentBinding)
+    {
+        auto connectFunc = [this](auto& binding)
+        {
+            return const_cast<Self*>(this)->changed.connect(binding, &BindingCore::evaluate);
+        };
+        currentBinding->notifyPropertyAccessed(connectFunc);
+    }
+    return m_dataProvider.get();
+}
+
+
+template <class Type>
+Property<Type>::Property(const Type& defaultValue)
+    : m_data(defaultValue)
 {
 }
 
@@ -169,24 +220,21 @@ void Property<Type>::operator=(const Type& value)
 }
 
 template <class Type>
-auto Property<Type>::bind(Property<Type>& source, BindingPolicy policy)
+template <class BindingSource>
+auto Property<Type>::bind(BindingSource& source, BindingPolicy policy)
 {
-    // source to target
-    auto binding = PropertyBinding<Type>::create(*this, source);
-    binding->setPolicy(policy);
-    // Evaluate the binding.
-    binding->evaluate();
-    return binding;
-}
-
-template <class Type>
-template <class ExpressionType>
-auto Property<Type>::bind(ExpressionType expression, BindingPolicy policy)
-{
-    using ReturnType = typename function_traits<ExpressionType>::return_type;
-    static_assert(std::is_same_v<ReturnType, Type>, "Expression return type must be same as the target property type.");
-
-    auto binding = ExpressionBinding<ExpressionType>::create(*this, expression);
+    BindingPtr binding;
+    if constexpr (std::is_base_of_v<PropertyCore, BindingSource> || std::is_base_of_v<StatusProperty<Type>, BindingSource>)
+    {
+        binding = PropertyTypeBinding<Type, BindingSource>::create(*this, source);
+    }
+    else
+    {
+        using ReturnType = typename function_traits<BindingSource>::return_type;
+        static_assert(std::is_same_v<ReturnType, Type>, "Expression return type must be same as the target property type.");
+        binding = ExpressionBinding<BindingSource>::create(*this, source);
+    }
+    binding->attachToTarget(*this);
     binding->setPolicy(policy);
     binding->evaluate();
     return binding;
@@ -196,16 +244,23 @@ auto Property<Type>::bind(ExpressionType expression, BindingPolicy policy)
 /*-----------------------------------------------------------------------------
  * Bindings
  */
-template <class Type>
-BindingPtr PropertyBinding<Type>::create(Property<Type>& target, Property<Type>& source)
+template <class Type, class PropertyType>
+BindingPtr PropertyTypeBinding<Type, PropertyType>::create(Property<Type>& target, PropertyType& source)
 {
-    auto binding = make_polymorphic_shared_ptr<BindingCore>(new PropertyBinding<Type>(target, source));
-    binding->attachToTarget(target);
-    return binding;
+    return make_polymorphic_shared_ptr<BindingCore>(new Self(target, source));
 }
 
-template <class Type>
-void PropertyBinding<Type>::evaluateOverride()
+template <class Type, class PropertyType>
+PropertyTypeBinding<Type, PropertyType>::PropertyTypeBinding(Property<Type>& target, PropertyType& source)
+    : m_target(target)
+    , m_source(source)
+{
+    setEnabled(false);
+    m_sourceWatch = m_source.changed.connect(*this, &Self::evaluate);
+}
+
+template <class Type, class PropertyType>
+void PropertyTypeBinding<Type, PropertyType>::evaluateOverride()
 {
     if (!isEnabled())
     {
@@ -215,22 +270,8 @@ void PropertyBinding<Type>::evaluateOverride()
     m_target = Type(m_source);
 }
 
-template <class Type>
-PropertyBinding<Type>::PropertyBinding(Property<Type>& target, Property<Type>& source)
-    : m_target(target)
-    , m_source(source)
-{
-    setEnabled(false);
-    m_sourceWatch = m_source.changed.connect(*this, &PropertyBinding<Type>::evaluate);
-}
-
-template <class Type>
-PropertyBinding<Type>::~PropertyBinding()
-{
-}
-
-template <class Type>
-void PropertyBinding<Type>::detachOverride()
+template <class Type, class PropertyType>
+void PropertyTypeBinding<Type, PropertyType>::detachOverride()
 {
     if (m_sourceWatch && m_sourceWatch->isConnected())
     {
@@ -243,9 +284,7 @@ void PropertyBinding<Type>::detachOverride()
 template <class ExpressionType>
 BindingPtr ExpressionBinding<ExpressionType>::create(PropertyType& target, ExpressionType expression)
 {
-    auto binding = make_polymorphic_shared_ptr<BindingCore>(new ExpressionBinding<ExpressionType>(target, expression));
-    binding->attachToTarget(target);
-    return binding;
+    return make_polymorphic_shared_ptr<BindingCore>(new ExpressionBinding<ExpressionType>(target, expression));
 }
 
 template <class ExpressionType>
