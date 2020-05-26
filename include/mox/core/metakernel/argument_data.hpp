@@ -138,6 +138,7 @@ auto PackedArguments::repack(void* instance) const
     }
     else
     {
+        UNUSED(instance);
         return PackToTuple<FunctionSignature, 0>::template convert<N>(*this);
     }
 }
