@@ -95,6 +95,7 @@ protected:
     BindingGroupPtr m_group;
     BindingPolicy m_policy = BindingPolicy::DetachOnWrite;
     Status m_status = Status::Detached;
+    AtomicRefCounted<byte> m_activationCount = 0;
     bool m_isEnabled = true;
 };
 

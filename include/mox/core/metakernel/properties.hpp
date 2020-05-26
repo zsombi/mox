@@ -84,14 +84,24 @@ public:
     /// \name Bindings
     /// \{
 
-    /// Creates a binding between a binding source and this property. The source of a binding is
-    /// either a writable property, a status property or a function expression.
+    /// Creates a binding between two properties. The method accepts writable properties aswell
+    /// as status properties.
     /// \tparam BindingSource The type of the binding source.
     /// \param source The binding source.
     /// \param polict The binding policy to use. The default policy is BindingPolicy::DetachOnWrite.
     /// \return The binding object created.
     template <class BindingSource>
-    auto bind(BindingSource& source, BindingPolicy policy = BindingPolicy::DetachOnWrite);
+    std::enable_if_t<std::is_base_of_v<PropertyCore, BindingSource> || std::is_base_of_v<StatusProperty<Type>, BindingSource>, BindingPtr>
+    bind(BindingSource& source, BindingPolicy policy = BindingPolicy::DetachOnWrite);
+
+    /// Creates a binding on a property and an expression as source.
+    /// \tparam ExpressionType The type of the binding source.
+    /// \param source The binding expression source.
+    /// \param polict The binding policy to use. The default policy is BindingPolicy::DetachOnWrite.
+    /// \return The binding object created. The binding takes the ownership over the expression.
+    template <class ExpressionType>
+    std::enable_if_t<!std::is_base_of_v<PropertyCore, ExpressionType> && !std::is_base_of_v<StatusProperty<Type>, ExpressionType>, BindingPtr>
+    bind(ExpressionType source, BindingPolicy policy = BindingPolicy::DetachOnWrite);
     /// \}
 };
 
@@ -221,19 +231,24 @@ void Property<Type>::operator=(const Type& value)
 
 template <class Type>
 template <class BindingSource>
-auto Property<Type>::bind(BindingSource& source, BindingPolicy policy)
+std::enable_if_t<std::is_base_of_v<PropertyCore, BindingSource> || std::is_base_of_v<StatusProperty<Type>, BindingSource>, BindingPtr>
+Property<Type>::bind(BindingSource& source, BindingPolicy policy)
 {
-    BindingPtr binding;
-    if constexpr (std::is_base_of_v<PropertyCore, BindingSource> || std::is_base_of_v<StatusProperty<Type>, BindingSource>)
-    {
-        binding = PropertyTypeBinding<Type, BindingSource>::create(*this, source);
-    }
-    else
-    {
-        using ReturnType = typename function_traits<BindingSource>::return_type;
-        static_assert(std::is_same_v<ReturnType, Type>, "Expression return type must be same as the target property type.");
-        binding = ExpressionBinding<BindingSource>::create(*this, source);
-    }
+    auto binding = PropertyTypeBinding<Type, BindingSource>::create(*this, source);
+    binding->attachToTarget(*this);
+    binding->setPolicy(policy);
+    binding->evaluate();
+    return binding;
+}
+
+template <class Type>
+template <class ExpressionType>
+std::enable_if_t<!std::is_base_of_v<PropertyCore, ExpressionType> && !std::is_base_of_v<StatusProperty<Type>, ExpressionType>, BindingPtr>
+Property<Type>::bind(ExpressionType source, BindingPolicy policy)
+{
+    using ReturnType = typename function_traits<ExpressionType>::return_type;
+    static_assert(std::is_same_v<ReturnType, Type>, "Expression return type must be same as the target property type.");
+    auto binding = ExpressionBinding<ExpressionType>::create(*this, source);
     binding->attachToTarget(*this);
     binding->setPolicy(policy);
     binding->evaluate();
@@ -350,5 +365,7 @@ BindingGroupPtr bindProperties(PropertyType&... properties)
 }
 
 }} // mox::metakernel
+
+DECLARE_LOG_CATEGORY(bindings)
 
 #endif // PROPERTIES_HPP

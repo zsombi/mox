@@ -355,11 +355,10 @@ TEST_F(MetakernelProperties, test_expression_binding)
     metakernel::Property<int> source(10);
     metakernel::Property<std::string> target;
 
-    auto expression = [&source]()
+    target.bind([&source]()
     {
         return std::to_string(int(source));
-    };
-    target.bind(expression);
+    });
     EXPECT_EQ("10"s, std::string(target));
 
     // update source
@@ -384,10 +383,32 @@ TEST_F(MetakernelProperties, test_expression_binding_with_status)
     test_property::TestStatus<int> status(10);
     metakernel::Property<std::string> target;
 
-    auto expression = [&status]() { return std::to_string(int(status)); };
-    target.bind(expression);
+    target.bind([&status]() { return std::to_string(int(status)); });
     EXPECT_EQ("10"s, std::string(target));
 
     status.setData(99);
     EXPECT_EQ("99"s, std::string(target));
+}
+
+TEST_F(MetakernelProperties, test_binding_loop_with_expressions)
+{
+    metakernel::Property<int> p1(1);
+    metakernel::Property<int> p2(2);
+    metakernel::Property<int> p3(3);
+
+    auto b1 = p1.bind([&p2]() { return p2 + 2; });
+    EXPECT_EQ(4, p1);
+    EXPECT_EQ(2, p2);
+    EXPECT_EQ(3, p3);
+
+    auto b2 = p3.bind([&p1]() { return p1 + 4; });
+    EXPECT_EQ(4, p1);
+    EXPECT_EQ(2, p2);
+    EXPECT_EQ(8, p3);
+
+    // This shall cause binding loop
+    auto b3 = p2.bind([&p3]() { return p3 + 1; });
+    EXPECT_EQ(11, p1);
+    EXPECT_EQ(9, p2);
+    EXPECT_EQ(15, p3);
 }

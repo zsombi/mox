@@ -107,7 +107,13 @@ BindingCore::~BindingCore()
 
 void BindingCore::evaluate()
 {
+    if (m_activationCount > 0)
+    {
+        WARN("binding loop detected!");
+        return;
+    }
     BindingScope scopeCurrent(*this);
+    RefCounter callRef(m_activationCount);
     evaluateOverride();
 }
 
