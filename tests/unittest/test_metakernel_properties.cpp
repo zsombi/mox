@@ -17,6 +17,13 @@ class MetakernelProperties : public UnitTest
 namespace test_property
 {
 
+enum class TestEnum
+{
+    One,
+    Two,
+    Three
+};
+
 class CustomDP : public metakernel::StatusProperty<int>::Data
 {
     int m_data = -1;
@@ -43,7 +50,7 @@ class TestStatus : public metakernel::StatusProperty<Type>::Data, public metaker
 {
     Type m_data;
 
-    int get() const override
+    Type get() const override
     {
         return m_data;
     }
@@ -93,6 +100,24 @@ TEST_F(MetakernelProperties, test_status_property)
     EXPECT_EQ(-1, property);
 
     datadProvider.set(1);
+}
+
+TEST_F(MetakernelProperties, test_writable_enum_property)
+{
+    metakernel::Property<test_property::TestEnum> property(test_property::TestEnum::Two);
+    EXPECT_EQ(test_property::TestEnum::Two, property);
+
+    property = test_property::TestEnum::Three;
+    EXPECT_EQ(test_property::TestEnum::Three, property);
+}
+
+TEST_F(MetakernelProperties, test_enum_status_property)
+{
+    test_property::TestStatus<test_property::TestEnum> property(test_property::TestEnum::Two);
+    EXPECT_EQ(test_property::TestEnum::Two, property);
+
+    property.setData(test_property::TestEnum::Three);
+    EXPECT_EQ(test_property::TestEnum::Three, property);
 }
 
 
