@@ -60,6 +60,8 @@ void LoggerData::initialize()
 {
 }
 
+#endif
+
 void LoggerData::log(LogCategory& category, LogType type, std::string_view heading, const std::string& text)
 {
     if (!m_logger)
@@ -70,7 +72,6 @@ void LoggerData::log(LogCategory& category, LogType type, std::string_view headi
     m_logger->log(category, type, heading, text);
 }
 
-#endif
 
 //-------------------------------------------------
 // Common code
