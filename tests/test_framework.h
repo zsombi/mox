@@ -22,8 +22,6 @@
 #include <gtest/gtest.h>
 #include <mox/config/deftypes.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
-#include <mox/core/meta/core/metadata.hpp>
-#include <mox/core/meta/core/metatype_descriptor.hpp>
 #include <mox/core/process/application.hpp>
 #include <mox/core/process/thread_loop.hpp>
 #include <mox/config/error.hpp>

@@ -46,18 +46,6 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/property_core.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/properties.hpp
 
-    # meta/core
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metatype.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metatype_descriptor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/metatype_descriptor_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/variant_descriptor.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/variant.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/variant_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/callable.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/callable_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metadata.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/metadata_impl.hpp
-
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event_queue.hpp
@@ -97,13 +85,6 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/lockable.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/signals.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/properties.cpp
-
-    # meta/core
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/metadata.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/metatype.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/converters.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/variant.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/callable.cpp
 
     # Event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/event.cpp

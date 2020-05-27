@@ -6,6 +6,7 @@
 #include <mox/core/metakernel/property_core.hpp>
 #include <mox/core/metakernel/signals.hpp>
 #include <mox/utils/type_traits.hpp>
+#include <mox/utils/log/logger.hpp>
 
 namespace mox { namespace metakernel {
 

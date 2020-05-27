@@ -6,6 +6,7 @@
 #include <mox/config/memory.hpp>
 #include <mox/config/platform_config.hpp>
 #include <mox/core/metakernel/argument_data.hpp>
+#include <mox/utils/log/logger.hpp>
 
 namespace mox { namespace metakernel {
 

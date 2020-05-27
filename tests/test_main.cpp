@@ -80,7 +80,6 @@ void UnitTest::SetUp()
     ::testing::Test::SetUp();
 
     mox::Logger::setLogger(std::make_unique<TestLogger>(*this));
-    mox::registerMetaType<TestApp>();
 }
 void UnitTest::TearDown()
 {

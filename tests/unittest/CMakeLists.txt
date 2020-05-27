@@ -24,13 +24,10 @@ include(configure-target)
 project(test VERSION 0.0.1)
 
 set(SOURCES
-    test_enumerate_metatypes.cpp
     test_flatset.cpp
     test_flatmap.cpp
-    test_metatypes.cpp
-    test_converters.cpp
-    test_argument.cpp
-    test_callables.cpp
+    test_metakernel_signals.cpp
+    test_metakernel_properties.cpp
     test_object.cpp
     test_event.cpp
     test_event_queue.cpp
@@ -38,8 +35,6 @@ set(SOURCES
     test_event_handling.cpp
     test_threads.cpp
     test_applets.cpp
-    test_metakernel_signals.cpp
-    test_metakernel_properties.cpp
     )
 
 add_executable(unittest ${SOURCES} ${TEST_FRAMEWORK})

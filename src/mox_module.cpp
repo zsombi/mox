@@ -31,15 +31,6 @@ namespace mox
 
 void MoxModule::registerModule()
 {
-    registerMetaType<SocketNotifierSharedPtr>("shared_ptr<SocketNotifier>");
-//    registerMetaClass<SocketNotifier>();
-//    registerMetaClass<Timer>();
-//    registerMetaClass<MetaObject>();
-//    registerMetaClass<Object>();
-//    registerMetaClass<ThreadInterface>();
-//    registerMetaClass<ThreadLoop>();
-//    registerMetaClass<Application>();
-//    registerMetaClass<Applet>();
 }
 
 }

@@ -5,6 +5,7 @@
 
 #include <any>
 #include <mox/config/deftypes.hpp>
+#include <mox/config/error.hpp>
 #include <mox/config/platform_config.hpp>
 #include <mox/utils/function_traits.hpp>
 
@@ -87,7 +88,7 @@ struct MOX_API PackedArguments : protected std::vector<ArgumentData>
     auto repack(void* instance) const;
 
 private:
-    template <typename Function, std::size_t Offset>
+    template <typename Function>
     struct PackToTuple
     {
         template <int Index>
@@ -100,7 +101,7 @@ private:
             else
             {
                 using ArgType = typename function_traits<Function>::template argument<Index - 1>::type;
-                return std::tuple_cat(convert<Index - 1>(arguments), std::make_tuple(arguments.get<ArgType>(Index - 1 + Offset)));
+                return std::tuple_cat(convert<Index - 1>(arguments), std::make_tuple(arguments.get<ArgType>(Index - 1)));
             }
         }
     };
@@ -134,12 +135,12 @@ auto PackedArguments::repack(void* instance) const
     if constexpr (function_traits<FunctionSignature>::type == FunctionType::Method)
     {
         return std::tuple_cat(std::make_tuple(static_cast<typename function_traits<FunctionSignature>::object*>(instance)),
-                              PackToTuple<FunctionSignature, 0>::template convert<N>(*this));
+                              PackToTuple<FunctionSignature>::template convert<N>(*this));
     }
     else
     {
         UNUSED(instance);
-        return PackToTuple<FunctionSignature, 0>::template convert<N>(*this);
+        return PackToTuple<FunctionSignature>::template convert<N>(*this);
     }
 }
 

@@ -17,9 +17,6 @@
  */
 
 #include <mox/core/object.hpp>
-#include <mox/core/meta/core/callable.hpp>
-
-#include <mox/core/meta/core/metatype_descriptor.hpp>
 
 namespace mox
 {

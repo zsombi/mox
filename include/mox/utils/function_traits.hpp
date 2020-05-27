@@ -24,9 +24,6 @@
 #include <tuple>
 #include <vector>
 
-#include <mox/core/meta/core/metatype.hpp>
-#include <mox/core/meta/core/variant_descriptor.hpp>
-
 namespace mox
 {
 
@@ -80,11 +77,6 @@ struct function_traits<TRet(TObject::*)(Args...)>
     {
         static constexpr bool value = std::is_same_v<std::tuple<Args...>, std::tuple<TestArgs...>>;
     };
-
-    static VariantDescriptorContainer argument_descriptors()
-    {
-        return VariantDescriptorContainer::getArgs<Args...>();
-    }
 };
 
 /// Const method traits.
@@ -111,11 +103,6 @@ struct function_traits<TRet(TObject::*)(Args...) const>
     {
         static constexpr bool value = std::is_same_v<std::tuple<Args...>, std::tuple<TestArgs...>>;
     };
-
-    static VariantDescriptorContainer argument_descriptors()
-    {
-        return VariantDescriptorContainer::getArgs<Args...>();
-    }
 };
 
 /// Function and static member function traits.
@@ -141,11 +128,6 @@ struct function_traits<TRet(*)(Args...)>
     {
         static constexpr bool value = std::is_same_v<std::tuple<Args...>, std::tuple<TestArgs...>>;
     };
-
-    static VariantDescriptorContainer argument_descriptors()
-    {
-        return VariantDescriptorContainer::getArgs<Args...>();
-    }
 };
 
 } // namespace mox
