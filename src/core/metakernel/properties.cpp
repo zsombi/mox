@@ -9,17 +9,61 @@ static BindingPtr s_currentBinding;
 /******************************************************************************
  * PropertyCorePrivate
  */
+PropertyCorePrivate::~PropertyCorePrivate()
+{
+}
+
+void PropertyCorePrivate::addBinding(BindingCore& binding)
+{
+    if (activeBinding)
+    {
+        activeBinding->setEnabled(false);
+    }
+    activeBinding = binding.shared_from_this();
+    bindings.push_back(activeBinding);
+    activeBinding->setEnabled(true);
+}
+
+void PropertyCorePrivate::removeBinding(BindingCore& binding)
+{
+    auto shared = binding.shared_from_this();
+    auto it = find(bindings, shared);
+    if (it)
+    {
+        it.value().reset();
+        if (shared == activeBinding)
+        {
+            shared->setEnabled(false);
+            auto getLast = [](auto& b)
+            {
+                return b && b->isAttached();
+            };
+            it = reverse_find_if(bindings, getLast);
+            if (it)
+            {
+                activeBinding = it.value();
+                activeBinding->setEnabled(true);
+            }
+            else
+            {
+                activeBinding.reset();
+            }
+        }
+    }
+}
+
 
 /******************************************************************************
  * PropertyCore
  */
 PropertyCore::PropertyCore()
+    : d_ptr(pimpl::make_d_ptr<PropertyCorePrivate>(this))
 {
 }
 
 PropertyCore::~PropertyCore()
 {
-    lock_guard lock(m_bindings);
+    lock_guard lock(d_ptr->bindings);
     auto bindingDetach = [](auto& binding)
     {
         if (binding && binding->isAttached())
@@ -27,62 +71,33 @@ PropertyCore::~PropertyCore()
             binding->detachFromTarget();
         }
     };
-    for_each(m_bindings, bindingDetach);
+    for_each(d_ptr->bindings, bindingDetach);
 }
 
-void PropertyCore::addBinding(BindingCore& binding)
+void PropertyCore::notifyGet(PropertyChangeConnector connectChange) const
 {
-    if (m_activeBinding)
+    auto currentBinding = BindingScope::getCurrent();
+    if (currentBinding)
     {
-        m_activeBinding->setEnabled(false);
-    }
-    m_activeBinding = binding.shared_from_this();
-    m_bindings.push_back(m_activeBinding);
-    m_activeBinding->setEnabled(true);
-}
-
-void PropertyCore::removeBinding(BindingCore& binding)
-{
-    auto shared = binding.shared_from_this();
-    auto it = find(m_bindings, shared);
-    if (it)
-    {
-        it.value().reset();
-        if (shared == m_activeBinding)
-        {
-            shared->setEnabled(false);
-            auto getLast = [](auto& b)
-            {
-                return b && b->isAttached();
-            };
-            it = reverse_find_if(m_bindings, getLast);
-            if (it)
-            {
-                m_activeBinding = it.value();
-                m_activeBinding->setEnabled(true);
-            }
-            else
-            {
-                m_activeBinding.reset();
-            }
-        }
+        currentBinding->notifyPropertyAccessed(connectChange);
     }
 }
 
 void PropertyCore::notifySet()
 {
-    if (BindingScope::getCurrent() && m_activeBinding)
+    D();
+    if (BindingScope::getCurrent() && d->activeBinding)
     {
         // Check only the active scope
-        if ((m_activeBinding != BindingScope::getCurrent()) && (m_activeBinding->getPolicy() == BindingPolicy::DetachOnWrite))
+        if ((d->activeBinding != BindingScope::getCurrent()) && (d->activeBinding->getPolicy() == BindingPolicy::DetachOnWrite))
         {
-            m_activeBinding->detachFromTarget();
+            d->activeBinding->detachFromTarget();
         }
     }
     else
     {
         // The setter is called because of a simple value assignment
-        lock_guard lock(m_bindings);
+        lock_guard lock(d->bindings);
         auto dropBindings = [](auto& binding)
         {
             if (binding && (binding != BindingScope::getCurrent()) && (binding->getPolicy() == BindingPolicy::DetachOnWrite))
@@ -90,7 +105,7 @@ void PropertyCore::notifySet()
                 binding->detachFromTarget();
             }
         };
-        for_each(m_bindings, dropBindings);
+        for_each(d->bindings, dropBindings);
     }
 }
 
@@ -98,6 +113,7 @@ void PropertyCore::notifySet()
  * BindingCore
  */
 BindingCore::BindingCore()
+    : d_ptr(pimpl::make_d_ptr<BindingCorePrivate>(this))
 {
 }
 
@@ -107,89 +123,95 @@ BindingCore::~BindingCore()
 
 void BindingCore::evaluate()
 {
-    if (m_activationCount > 0)
+    D();
+    if (d->activationCount > 0)
     {
         WARN("binding loop detected!");
         return;
     }
     BindingScope scopeCurrent(*this);
-    RefCounter callRef(m_activationCount);
+    RefCounter callRef(d->activationCount);
     evaluateOverride();
 }
 
 bool BindingCore::isEnabled() const
 {
-    return m_isEnabled;
+    return d_func()->isEnabled;
 }
 
 void BindingCore::setEnabled(bool enabled)
 {
-    bool changed = (m_isEnabled != enabled);
-    m_isEnabled = enabled;
+    D();
+    bool changed = (d->isEnabled != enabled);
+    d->isEnabled = enabled;
     if (changed)
     {
         setEnabledOverride();
-        if (m_group)
+        if (d->group)
         {
-            m_group->setEnabled(m_isEnabled);
+            d->group->setEnabled(d->isEnabled);
         }
     }
 }
 
 BindingPolicy BindingCore::getPolicy() const
 {
-    return m_policy;
+    return d_func()->policy;
 }
 
 void BindingCore::setPolicy(BindingPolicy policy)
 {
-    m_policy = policy;
+    d_func()->policy = policy;
     setPolicyOverride();
 }
 
 void BindingCore::setGroup(BindingGroupPtr group)
 {
-    m_group = group;
+    d_func()->group = group;
 }
 
 bool BindingCore::isAttached() const
 {
-    return m_status == Status::Attaching || m_status == Status::Attached;
+    D();
+    return d->status == BindingCorePrivate::Status::Attaching || d->status == BindingCorePrivate::Status::Attached;
 }
 
 void BindingCore::attachToTarget(PropertyCore& property)
 {
-    throwIf<ExceptionType::BindingAttached>(m_status == Status::Attached);
-    if (m_status == Status::Attaching)
+    D();
+    throwIf<ExceptionType::BindingAttached>(d->status == BindingCorePrivate::Status::Attached);
+    if (d->status == BindingCorePrivate::Status::Attaching)
     {
         return;
     }
-    m_status = Status::Attaching;
-    m_target = &property;
-    m_target->addBinding(*this);
-    m_status = Status::Attached;
+    d->status = BindingCorePrivate::Status::Attaching;
+    d->target = &property;
+    PropertyCorePrivate::get(*d->target)->addBinding(*this);
+    d->status = BindingCorePrivate::Status::Attached;
 }
 
 void BindingCore::detachFromTarget()
 {
-    throwIf<ExceptionType::BindingDetached>(m_status == Status::Detached);
-    if (m_status == Status::Detaching)
+    D();
+    throwIf<ExceptionType::BindingDetached>(d->status == BindingCorePrivate::Status::Detached);
+    if (d->status == BindingCorePrivate::Status::Detaching)
     {
         return;
     }
-    lock_guard lock(m_target->m_bindings);
+    auto d_target = PropertyCorePrivate::get(*d->target);
+    lock_guard lock(d_target->bindings);
     auto keepAlive = shared_from_this();
-    m_status = Status::Detaching;
-    m_target->removeBinding(*this);
-    if (m_group)
+    d->status = BindingCorePrivate::Status::Detaching;
+    d_target->removeBinding(*this);
+    if (d->group)
     {
-        auto grp = m_group;
-        m_group->removeFromGroup(*this);
+        auto grp = d->group;
+        d->group->removeFromGroup(*this);
         grp->discard();
     }
     detachOverride();
-    m_target = nullptr;
-    m_status = Status::Detached;
+    d->target = nullptr;
+    d->status = BindingCorePrivate::Status::Detached;
 }
 
 /******************************************************************************

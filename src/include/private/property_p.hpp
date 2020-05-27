@@ -99,26 +99,74 @@ protected:
     void notifyChanges();
 };
 
-//namespace metakernel
-//{
+namespace metakernel
+{
 
-//class PropertyCorePrivate
-//{
-//public:
-//    DECLARE_PUBLIC_PTR(PropertyCore)
-//    PropertyCorePrivate(PropertyCore* pp, PropertyCore::Data& data, SignalCore& changedSignal)
-//        : p_ptr(pp)
-//        , data(data)
-//        , changedSignal(changedSignal)
-//    {
-//    }
+class PropertyCorePrivate
+{
+public:
+    DECLARE_PUBLIC_PTR(PropertyCore)
+    PropertyCorePrivate(PropertyCore* pp)
+        : p_ptr(pp)
+    {
+    }
+    ~PropertyCorePrivate();
 
-//    std::vector<BindingPtr> bindings;
-//    PropertyCore::Data& data;
-//    SignalCore& changedSignal;
-//};
+    void addBinding(BindingCore& binding);
+    void removeBinding(BindingCore& binding);
 
-//}
+
+    struct ZeroBindingCheck
+    {
+        bool operator()(BindingPtr binding)
+        {
+            return !binding || !binding->isAttached();
+        }
+    };
+    struct ZeroBindingSet
+    {
+        void operator()(BindingPtr& binding)
+        {
+            if (binding && binding->isAttached())
+            {
+                binding->detachFromTarget();
+            }
+            binding.reset();
+        }
+    };
+    using BindingsStorage = SharedVector<BindingPtr, ZeroBindingCheck, ZeroBindingSet>;
+
+    BindingsStorage bindings;
+    BindingPtr activeBinding;
+};
+
+class BindingCorePrivate
+{
+public:
+    DECLARE_PUBLIC_PTR(BindingCore);
+
+    explicit BindingCorePrivate(BindingCore* pp)
+        : p_ptr(pp)
+    {
+    }
+
+    enum class Status : byte
+    {
+        Detaching,
+        Detached,
+        Attaching,
+        Attached
+    };
+
+    PropertyCore* target = nullptr;
+    BindingGroupPtr group;
+    BindingPolicy policy = BindingPolicy::DetachOnWrite;
+    Status status = Status::Detached;
+    AtomicRefCounted<byte> activationCount = 0;
+    bool isEnabled = true;
+};
+
+}
 
 }
 

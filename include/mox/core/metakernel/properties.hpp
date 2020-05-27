@@ -206,15 +206,11 @@ Property<Type>::Property(const Type& defaultValue)
 template <class Type>
 Property<Type>::operator Type() const
 {
-    auto currentBinding = BindingScope::getCurrent();
-    if (currentBinding)
+    auto connectFunc = [this](BindingCore& binding)
     {
-        auto connectFunc = [this](BindingCore& binding)
-        {
-            return const_cast<Property<Type>*>(this)->changed.connect(binding, &BindingCore::evaluate);
-        };
-        currentBinding->notifyPropertyAccessed(connectFunc);
-    }
+        return const_cast<Property<Type>*>(this)->changed.connect(binding, &BindingCore::evaluate);
+    };
+    notifyGet(connectFunc);
     return m_data;
 }
 

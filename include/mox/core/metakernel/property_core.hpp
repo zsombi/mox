@@ -27,13 +27,20 @@ using BindingGroupWeakPtr = std::weak_ptr<BindingGroup>;
 /// value of a property manually.
 enum class BindingPolicy
 {
+    /// The binding is detached when you write on the target property, except if the write occurs
+    /// due to a binding that is the current one. In this case the policy is ignored.
     DetachOnWrite,
+    /// The binding is kept on the property no matter what is teh cause of the property setter
+    /// call.
     KeepOnWrite
 };
 
 /// The BindingCore class provides core functionality of the bindings on properties.
+class BindingCorePrivate;
 class MOX_API BindingCore : public std::enable_shared_from_this<BindingCore>
 {
+    DECLARE_PRIVATE_PTR(BindingCore);
+
 public:
     /// Destructor.
     virtual ~BindingCore();
@@ -71,7 +78,16 @@ public:
     /// \param group The binding group to set, \e nullptr to reset the group the binding belongs.
     void setGroup(BindingGroupPtr group);
 
+    /// Signal connection template function type, expecting a binding and returning a signal
+    /// connection token.
     using ConnectFunc = std::function<ConnectionPtr(BindingCore&)>;
+
+    /// The method is called by the target property getter to notify the current binding that
+    /// the getter of the property is called. The proeprty passes on a function template, which
+    /// the binding uses to create the connection to the property change signal, to get notified
+    /// when the property is changed.
+    /// This method is overridden by the expression bindings to gather the properties participating
+    /// in the expression.
     virtual void notifyPropertyAccessed(ConnectFunc) {}
 
 protected:
@@ -82,21 +98,6 @@ protected:
     virtual void detachOverride() {}
     virtual void setEnabledOverride() {}
     virtual void setPolicyOverride() {}
-
-    enum class Status : byte
-    {
-        Detaching,
-        Detached,
-        Attaching,
-        Attached
-    };
-
-    PropertyCore* m_target = nullptr;
-    BindingGroupPtr m_group;
-    BindingPolicy m_policy = BindingPolicy::DetachOnWrite;
-    Status m_status = Status::Detached;
-    AtomicRefCounted<byte> m_activationCount = 0;
-    bool m_isEnabled = true;
 };
 
 /// Helper class, scopes the active binding executed.
@@ -115,8 +116,6 @@ public:
 class PropertyCorePrivate;
 class MOX_API PropertyCore
 {
-    friend class BindingCore;
-
 public:
     /// Destructor.
     ~PropertyCore();
@@ -125,33 +124,13 @@ protected:
     /// Constructs a property core using a proeprty data provider.
     PropertyCore();
 
-    void addBinding(BindingCore& binding);
-    void removeBinding(BindingCore& binding);
-
+    using PropertyChangeConnector = std::function<ConnectionPtr(BindingCore&)>;
+    void notifyGet(PropertyChangeConnector connectChange) const;
+    /// Cleans the bindings.
     void notifySet();
 
-    struct ZeroBindingCheck
-    {
-        bool operator()(BindingPtr binding)
-        {
-            return !binding || !binding->isAttached();
-        }
-    };
-    struct ZeroBindingSet
-    {
-        void operator()(BindingPtr& binding)
-        {
-            if (binding && binding->isAttached())
-            {
-                binding->detachFromTarget();
-            }
-            binding.reset();
-        }
-    };
-    using BindingsStorage = SharedVector<BindingPtr, ZeroBindingCheck, ZeroBindingSet>;
-
-    BindingsStorage m_bindings;
-    BindingPtr m_activeBinding;
+private:
+    DECLARE_PRIVATE_PTR(PropertyCore);
 };
 
 /// The BindingGroup is a binding type which groups individual bindings to act as one.
