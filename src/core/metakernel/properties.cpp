@@ -69,6 +69,7 @@ void StatusPropertyCore::notifyGet(SignalCore& changedSignal) const
     auto currentBinding = const_cast<BindingCore*>(dynamic_cast<const BindingCore*>(BindingScope::getCurrent().get()));
     if (currentBinding)
     {
+        ScopeRelock re(const_cast<StatusPropertyCore&>(*this));
         changedSignal.connectBinding(*currentBinding);
     }
 }

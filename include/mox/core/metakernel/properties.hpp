@@ -66,8 +66,6 @@ private:
 template <class Type>
 class Property : public PropertyCore
 {
-    Type m_data;
-
 public:
     using ValueType = Type;
     using ChangedSignal = metakernel::Signal<Type>;
@@ -106,6 +104,9 @@ public:
     std::enable_if_t<!std::is_base_of_v<PropertyCore, ExpressionType> && !std::is_base_of_v<StatusProperty<Type>, ExpressionType>, BindingPtr>
     bind(ExpressionType source, BindingPolicy policy = BindingPolicy::DetachOnWrite);
     /// \}
+
+private:
+    Type m_data;
 };
 
 /// Template class implementing bindings to a property and an other property type. The source
@@ -174,6 +175,7 @@ void StatusProperty<Type>::Data::update()
 template <class Type>
 StatusProperty<Type>::StatusProperty(Lockable& host, Data& dataProvider)
     : StatusPropertyCore(host)
+    , changed(host)
     , m_dataProvider(dataProvider)
 {
     m_dataProvider.attach(*this);
@@ -190,6 +192,7 @@ StatusProperty<Type>::operator Type() const
 template <class Type>
 Property<Type>::Property(Lockable& host, const Type& defaultValue)
     : PropertyCore(host)
+    , changed(host)
     , m_data(defaultValue)
 {
 }
