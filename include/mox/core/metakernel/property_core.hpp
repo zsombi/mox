@@ -82,39 +82,65 @@ public:
     /// connection token.
     using ConnectFunc = std::function<ConnectionPtr(BindingCore&)>;
 
-    /// The method is called by the target property getter to notify the current binding that
-    /// the getter of the property is called. The proeprty passes on a function template, which
-    /// the binding uses to create the connection to the property change signal, to get notified
-    /// when the property is changed.
-    /// This method is overridden by the expression bindings to gather the properties participating
-    /// in the expression.
-    virtual void notifyPropertyAccessed(ConnectFunc) {}
-
 protected:
     /// Constructor.
     BindingCore();
 
+    /// \name Overridables
+    /// These overridables allow you to execute custom actions during certain phases of the binding.
+    /// \{
+    /// The method is called when a binding is evaluated.
     virtual void evaluateOverride() {}
+    /// The method is called when a binding is attaching to a target property.
+    virtual void attachOverride() {}
+    /// The method is called when a binding is detaching from the attached target property.
     virtual void detachOverride() {}
+    /// The method is called when the binding is enabled or disabled.
     virtual void setEnabledOverride() {}
+    /// The method is called when the policy of a binding is changed.
     virtual void setPolicyOverride() {}
+    /// \}
 };
 
-/// Helper class, scopes the active binding executed.
+/// Helper class, scopes the active binding evaluated.
 class MOX_API BindingScope
 {
     BindingWeakPtr m_previousBinding;
+
 public:
+    /// Scope constructor, takes a scope object to set as the active binding.
     explicit BindingScope(BindingCore& currentBinding);
+    /// Scope destructor, restores teh previous binding as active.
     ~BindingScope();
 
+    /// Returns the current active binding.
+    /// \return The binding that is the current active one.
     static BindingPtr getCurrent();
+};
+
+/// The StatusPropertyCore class provides the core functionality for the status properties.
+/// Mox status properties are read-only properties.
+class MOX_API StatusPropertyCore
+{
+public:
+    /// Destructor.
+    ~StatusPropertyCore() = default;
+
+protected:
+    /// Constructor.
+    explicit StatusPropertyCore() = default;
+
+    /// Called by the property getter to notify the active binding that the property getter
+    /// is called. The binding connects to the changed signal passed as argument to receive
+    /// notification about the property value changes.
+    /// \param changedSignal The changed signal of the property the binding connects.
+    void notifyGet(SignalCore& changedSignal) const;
 };
 
 /// The PropertyCore class provides the core functionality of the properties. Holds the
 /// attributes and the bindings of a property.
 class PropertyCorePrivate;
-class MOX_API PropertyCore
+class MOX_API PropertyCore : public StatusPropertyCore
 {
 public:
     /// Destructor.
@@ -124,21 +150,18 @@ protected:
     /// Constructs a property core using a proeprty data provider.
     PropertyCore();
 
-    using PropertyChangeConnector = std::function<ConnectionPtr(BindingCore&)>;
-    void notifyGet(PropertyChangeConnector connectChange) const;
-    /// Cleans the bindings.
+    /// Called by the property setter, notifies the property to remove the bindings which have
+    /// BindingPolicy::DetachOnWrite policy set.
     void notifySet();
 
 private:
     DECLARE_PRIVATE_PTR(PropertyCore);
 };
 
-/// The BindingGroup is a binding type which groups individual bindings to act as one.
-/// The first binding attached to the group serves as the main binding that evaluates
-/// and holds the target of the binding.
+/// The BindingGroup class groups a individual bindings to act as one. The bindings added to a
+/// group have the same policy.
 ///
-/// The bindings added to a group have the same policy. It is recommended to set the group
-/// policy before adding bindings to it.
+/// It is recommended to set the group policy before adding bindings to it.
 class MOX_API BindingGroup : public std::enable_shared_from_this<BindingGroup>
 {
 public:

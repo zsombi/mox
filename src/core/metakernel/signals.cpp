@@ -1,5 +1,6 @@
 // Copyright (C) 2020 bitWelder
 
+#include <mox/core/metakernel/properties.hpp>
 #include <mox/core/metakernel/signals.hpp>
 #include <mox/core/metakernel/signal_connection.hpp>
 #include <mox/utils/algorithm.hpp>
@@ -38,6 +39,11 @@ void Connection::disconnect()
 
 void Connection::invalidate()
 {
+    if (!m_sender)
+    {
+        // Already invalidated.
+        return;
+    }
     m_sender = nullptr;
     invalidateOverride();
 }
@@ -98,6 +104,19 @@ void SlotHolder::removeConnection(ConnectionPtr connection)
     erase(m_slots, connection);
 }
 
+
+void SlotHolder::disconnectAll()
+{
+    auto disconnector = [](auto& connection)
+    {
+        if (connection && connection->isConnected())
+        {
+            connection->disconnect();
+        }
+    };
+    for_each(m_slots, disconnector);
+}
+
 /******************************************************************************
  * SignalCore
  */
@@ -131,23 +150,26 @@ int SignalCore::activate(const PackedArguments &args)
         return 0;
     }
 
-    lock_guard lock(*this);
-    if (m_connections.empty())
+    decltype(m_connections)::ContainerType connectionsCopy;
+    int activationCount = -1;
     {
-        return -1;
+        // Lock only till we copy the connections.
+        lock_guard lock(*this);
+        if (m_connections.empty())
+        {
+            return activationCount;
+        }
+        connectionsCopy = m_connections;
     }
     ScopeValue triggerLock(m_isActivated, true);
-    int activationCount = -1;
-    decltype(m_connections)::ContainerType connectionsCopy = m_connections;
 
-    auto activateConnection = [&args, self = this, &activationCount](auto& connection)
+    auto activateConnection = [&args, &activationCount](auto& connection)
     {
         if (!connection || !connection->isConnected())
         {
             return;
         }
 
-        ScopeRelock re(*self);
         connection->invoke(args);
         ++activationCount;
     };
@@ -158,6 +180,20 @@ int SignalCore::activate(const PackedArguments &args)
         ++activationCount;
     }
     return activationCount;
+}
+
+ConnectionPtr SignalCore::connectBinding(BindingCore& binding)
+{
+    using SlotFunction = decltype(&BindingCore::evaluate);
+    auto connection = MethodConnection<SlotFunction>::create(*this, binding, &BindingCore::evaluate);
+    addConnection(connection);
+
+    auto holder = dynamic_cast<SlotHolder*>(&binding);
+    if (holder)
+    {
+        holder->addConnection(connection);
+    }
+    return connection;
 }
 
 void SignalCore::disconnect(ConnectionPtr connection)

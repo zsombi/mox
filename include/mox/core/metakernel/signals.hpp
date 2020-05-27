@@ -11,6 +11,7 @@
 
 namespace mox { namespace metakernel {
 
+class BindingCore;
 class Connection;
 using ConnectionPtr = std::shared_ptr<Connection>;
 
@@ -40,6 +41,7 @@ public:
     /// if the signal is already activated.
     int activate(const PackedArguments& args);
 
+    ConnectionPtr connectBinding(BindingCore& binding);
     /// Disconnects a connection from a signal. Removes the \a connection from the connections
     /// of the signal.
     /// \param connection The connection to remove.
@@ -135,12 +137,7 @@ protected:
 /// methods of a class.
 class MOX_API SlotHolder
 {
-    std::vector<ConnectionPtr> m_slots;
     DISABLE_COPY_OR_MOVE(SlotHolder)
-
-protected:
-    /// Constructor.
-    SlotHolder() = default;
 
 public:
     /// Destructor.
@@ -151,6 +148,16 @@ public:
 
     /// Removes a connection from the receiver.
     void removeConnection(ConnectionPtr connection);
+
+    /// Disconnects every connection to this slot and removes each from this slot holder.
+    void disconnectAll();
+
+protected:
+    /// Constructor.
+    SlotHolder() = default;
+
+private:
+    SharedVector<ConnectionPtr> m_slots;
 };
 
 /// Use this template to declare signals. Connect the functions, lambdas, methods or signals
@@ -169,7 +176,6 @@ public:
     /// Signal emitter. Packs the \a arguments into a PackedArguments and activates the signal.
     /// \param arguments... The variadic arguments passed.
     /// \return The number of connections invoked.
-//    int operator()(Arguments&&... arguments);
     int operator()(Arguments... arguments);
 
     /// Connects a \a method of a \a receiver to this signal.

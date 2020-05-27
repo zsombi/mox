@@ -54,6 +54,18 @@ void PropertyCorePrivate::removeBinding(BindingCore& binding)
 
 
 /******************************************************************************
+ * StatusPropertyCore
+ */
+void StatusPropertyCore::notifyGet(SignalCore& changedSignal) const
+{
+    auto currentBinding = const_cast<BindingCore*>(dynamic_cast<const BindingCore*>(BindingScope::getCurrent().get()));
+    if (currentBinding)
+    {
+        changedSignal.connectBinding(*currentBinding);
+    }
+}
+
+/******************************************************************************
  * PropertyCore
  */
 PropertyCore::PropertyCore()
@@ -72,15 +84,6 @@ PropertyCore::~PropertyCore()
         }
     };
     for_each(d_ptr->bindings, bindingDetach);
-}
-
-void PropertyCore::notifyGet(PropertyChangeConnector connectChange) const
-{
-    auto currentBinding = BindingScope::getCurrent();
-    if (currentBinding)
-    {
-        currentBinding->notifyPropertyAccessed(connectChange);
-    }
 }
 
 void PropertyCore::notifySet()
@@ -187,6 +190,7 @@ void BindingCore::attachToTarget(PropertyCore& property)
     d->status = BindingCorePrivate::Status::Attaching;
     d->target = &property;
     PropertyCorePrivate::get(*d->target)->addBinding(*this);
+    attachOverride();
     d->status = BindingCorePrivate::Status::Attached;
 }
 

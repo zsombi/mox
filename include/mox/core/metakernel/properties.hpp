@@ -22,11 +22,13 @@ namespace mox { namespace metakernel {
 /// You cannot bind properties to a status property, but you can use the status property in
 /// bindings as source, or as part of an expression.
 template <class Type>
-class StatusProperty
+class StatusProperty : public StatusPropertyCore
 {
     using Self = StatusProperty<Type>;
 
 public:
+    using ChangedSignal = metakernel::Signal<Type>;
+
     /// Status property data provider type. Provides the data of the status property and an
     /// interface to update the property.
     class Data
@@ -46,7 +48,7 @@ public:
         virtual Type get() const = 0;
     };
     /// The changed signal of the property.
-    metakernel::Signal<Type> changed;
+    ChangedSignal changed;
 
     /// Construct a status property instance using a \a dataProvider.
     explicit StatusProperty(Data& dataProvider);
@@ -67,10 +69,11 @@ class Property : public PropertyCore
     Type m_data;
 
 public:
-    typedef Type ValueType;
+    using ValueType = Type;
+    using ChangedSignal = metakernel::Signal<Type>;
 
     /// The changed signal of the property.
-    metakernel::Signal<Type> changed;
+    ChangedSignal changed;
 
     /// Constructs a property with the default property value provider.
     explicit Property(const Type& defaultValue = Type());
@@ -108,13 +111,12 @@ public:
 /// Template class implementing bindings to a property and an other property type. The source
 /// property type is either a writable property or a status property.
 template <class Type, class PropertyType>
-class PropertyTypeBinding : public BindingCore
+class PropertyTypeBinding : public BindingCore, public SlotHolder
 {
     using Self = PropertyTypeBinding<Type, PropertyType>;
 
     Property<Type>& m_target;
     PropertyType& m_source;
-    ConnectionPtr m_sourceWatch;
 
 public:
     /// Creates a binding object between a target property and a source.
@@ -133,21 +135,16 @@ protected:
 /// a function or a lambda that can use other properties. An example is a binding that converts
 /// a property from one type into an other.
 template <class ExpressionType>
-class ExpressionBinding : public BindingCore
+class ExpressionBinding : public BindingCore, public SlotHolder
 {
     using PropertyType = Property<typename function_traits<ExpressionType>::return_type>;
-    using ConnectionContainer = std::vector<ConnectionPtr>;
 
-    ConnectionContainer m_connections;
     PropertyType& m_target;
     ExpressionType m_expression;
 
 public:
     /// Creates a binding to \a target, using an \a expression.
     static BindingPtr create(PropertyType& target, ExpressionType expression);
-
-    /// Override of BindingCore::notifyPropertyAccessed().
-    void notifyPropertyAccessed(ConnectFunc connectFunc) override;
 
 protected:
     /// Constructor.
@@ -184,15 +181,7 @@ StatusProperty<Type>::StatusProperty(Data& dataProvider)
 template <class Type>
 StatusProperty<Type>::operator Type() const
 {
-    auto currentBinding = BindingScope::getCurrent();
-    if (currentBinding)
-    {
-        auto connectFunc = [this](auto& binding)
-        {
-            return const_cast<Self*>(this)->changed.connect(binding, &BindingCore::evaluate);
-        };
-        currentBinding->notifyPropertyAccessed(connectFunc);
-    }
+    notifyGet(const_cast<ChangedSignal&>(changed));
     return m_dataProvider.get();
 }
 
@@ -206,11 +195,7 @@ Property<Type>::Property(const Type& defaultValue)
 template <class Type>
 Property<Type>::operator Type() const
 {
-    auto connectFunc = [this](BindingCore& binding)
-    {
-        return const_cast<Property<Type>*>(this)->changed.connect(binding, &BindingCore::evaluate);
-    };
-    notifyGet(connectFunc);
+    notifyGet(const_cast<ChangedSignal&>(changed));
     return m_data;
 }
 
@@ -267,7 +252,6 @@ PropertyTypeBinding<Type, PropertyType>::PropertyTypeBinding(Property<Type>& tar
     , m_source(source)
 {
     setEnabled(false);
-    m_sourceWatch = m_source.changed.connect(*this, &Self::evaluate);
 }
 
 template <class Type, class PropertyType>
@@ -277,6 +261,7 @@ void PropertyTypeBinding<Type, PropertyType>::evaluateOverride()
     {
         return;
     }
+    detachOverride();
     ScopeSignalBlocker blockSource(m_source.changed);
     m_target = Type(m_source);
 }
@@ -284,11 +269,7 @@ void PropertyTypeBinding<Type, PropertyType>::evaluateOverride()
 template <class Type, class PropertyType>
 void PropertyTypeBinding<Type, PropertyType>::detachOverride()
 {
-    if (m_sourceWatch && m_sourceWatch->isConnected())
-    {
-        m_sourceWatch->disconnect();
-    }
-    m_sourceWatch.reset();
+    disconnectAll();
 }
 
 
@@ -307,12 +288,6 @@ ExpressionBinding<ExpressionType>::ExpressionBinding(PropertyType& target, Expre
 }
 
 template <class ExpressionType>
-void ExpressionBinding<ExpressionType>::notifyPropertyAccessed(ConnectFunc connectFunc)
-{
-    m_connections.push_back(connectFunc(*this));
-}
-
-template <class ExpressionType>
 void ExpressionBinding<ExpressionType>::evaluateOverride()
 {
     if (!isEnabled())
@@ -327,15 +302,7 @@ void ExpressionBinding<ExpressionType>::evaluateOverride()
 template <class ExpressionType>
 void ExpressionBinding<ExpressionType>::detachOverride()
 {
-    auto disconnector = [](auto& connection)
-    {
-        if (connection && connection->isConnected())
-        {
-            connection->disconnect();
-        }
-    };
-    for_each(m_connections, disconnector);
-    m_connections.clear();
+    disconnectAll();
 }
 
 /******************************************************************************
@@ -346,16 +313,17 @@ BindingGroupPtr bindProperties(PropertyType&... properties)
 {
     static_assert (sizeof... (properties) > 1, "at least two properties are required");
     auto group = BindingGroup::create();
-    group->setPolicy(BindingPolicy::KeepOnWrite);
+    auto policy = BindingPolicy::KeepOnWrite;
+    group->setPolicy(policy);
 
     std::array<std::add_pointer_t<std::remove_reference_t<get_type<0, PropertyType...>>>, sizeof...(properties)> aa = {{&properties...}};
     for (size_t i = 0; i < aa.size() - 1; ++i)
     {
         auto* target = aa[i];
         auto* source = aa[i + 1];
-        group->addToGroup(*target->bind(*source));
+        group->addToGroup(*target->bind(*source, policy));
     }
-    group->addToGroup(*aa.back()->bind(*aa.front()));
+    group->addToGroup(*aa.back()->bind(*aa.front(), policy));
 
     return group;
 }
