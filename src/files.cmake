@@ -72,7 +72,6 @@ set(HEADERS
 
 set(PRIVATE_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/private/logger_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/metadata_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/private/property_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/private/process_p.hpp
     )
