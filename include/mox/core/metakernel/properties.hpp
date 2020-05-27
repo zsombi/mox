@@ -51,7 +51,7 @@ public:
     ChangedSignal changed;
 
     /// Construct a status property instance using a \a dataProvider.
-    explicit StatusProperty(Data& dataProvider);
+    explicit StatusProperty(Lockable& host, Data& dataProvider);
 
     /// Property getter.
     /// \return The value of the property.
@@ -76,7 +76,7 @@ public:
     ChangedSignal changed;
 
     /// Constructs a property with the default property value provider.
-    explicit Property(const Type& defaultValue = Type());
+    explicit Property(Lockable& host, const Type& defaultValue = Type());
 
     /// Property getter.
     operator Type() const;
@@ -172,8 +172,9 @@ void StatusProperty<Type>::Data::update()
 }
 
 template <class Type>
-StatusProperty<Type>::StatusProperty(Data& dataProvider)
-    : m_dataProvider(dataProvider)
+StatusProperty<Type>::StatusProperty(Lockable& host, Data& dataProvider)
+    : StatusPropertyCore(host)
+    , m_dataProvider(dataProvider)
 {
     m_dataProvider.attach(*this);
 }
@@ -187,8 +188,9 @@ StatusProperty<Type>::operator Type() const
 
 
 template <class Type>
-Property<Type>::Property(const Type& defaultValue)
-    : m_data(defaultValue)
+Property<Type>::Property(Lockable& host, const Type& defaultValue)
+    : PropertyCore(host)
+    , m_data(defaultValue)
 {
 }
 
@@ -203,9 +205,11 @@ template <class Type>
 void Property<Type>::operator=(const Type& value)
 {
     notifySet();
+    lock_guard lock(*this);
     if (m_data != value)
     {
         m_data = value;
+        ScopeRelock re(*this);
         changed(m_data);
     }
 }
@@ -262,7 +266,6 @@ void PropertyTypeBinding<Type, PropertyType>::evaluateOverride()
         return;
     }
     detachOverride();
-    ScopeSignalBlocker blockSource(m_source.changed);
     m_target = Type(m_source);
 }
 

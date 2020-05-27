@@ -19,6 +19,7 @@ void PropertyCorePrivate::addBinding(BindingCore& binding)
     {
         activeBinding->setEnabled(false);
     }
+    lock_guard lock(*p_ptr);
     activeBinding = binding.shared_from_this();
     bindings.push_back(activeBinding);
     activeBinding->setEnabled(true);
@@ -26,6 +27,7 @@ void PropertyCorePrivate::addBinding(BindingCore& binding)
 
 void PropertyCorePrivate::removeBinding(BindingCore& binding)
 {
+    lock_guard lock(*p_ptr);
     auto shared = binding.shared_from_this();
     auto it = find(bindings, shared);
     if (it)
@@ -56,8 +58,14 @@ void PropertyCorePrivate::removeBinding(BindingCore& binding)
 /******************************************************************************
  * StatusPropertyCore
  */
+StatusPropertyCore::StatusPropertyCore(Lockable& host)
+    : SharedLock<Lockable>(host)
+{
+}
+
 void StatusPropertyCore::notifyGet(SignalCore& changedSignal) const
 {
+    lock_guard lock(const_cast<StatusPropertyCore&>(*this));
     auto currentBinding = const_cast<BindingCore*>(dynamic_cast<const BindingCore*>(BindingScope::getCurrent().get()));
     if (currentBinding)
     {
@@ -68,8 +76,9 @@ void StatusPropertyCore::notifyGet(SignalCore& changedSignal) const
 /******************************************************************************
  * PropertyCore
  */
-PropertyCore::PropertyCore()
-    : d_ptr(pimpl::make_d_ptr<PropertyCorePrivate>(this))
+PropertyCore::PropertyCore(Lockable& host)
+    : StatusPropertyCore(host)
+    , d_ptr(pimpl::make_d_ptr<PropertyCorePrivate>(this))
 {
 }
 
@@ -88,12 +97,14 @@ PropertyCore::~PropertyCore()
 
 void PropertyCore::notifySet()
 {
+    lock_guard lock(*this);
     D();
     if (BindingScope::getCurrent() && d->activeBinding)
     {
         // Check only the active scope
         if ((d->activeBinding != BindingScope::getCurrent()) && (d->activeBinding->getPolicy() == BindingPolicy::DetachOnWrite))
         {
+            ScopeRelock re(*this);
             d->activeBinding->detachFromTarget();
         }
     }
@@ -101,10 +112,11 @@ void PropertyCore::notifySet()
     {
         // The setter is called because of a simple value assignment
         lock_guard lock(d->bindings);
-        auto dropBindings = [](auto& binding)
+        auto dropBindings = [self = this](auto& binding)
         {
             if (binding && (binding != BindingScope::getCurrent()) && (binding->getPolicy() == BindingPolicy::DetachOnWrite))
             {
+                ScopeRelock re(*self);
                 binding->detachFromTarget();
             }
         };

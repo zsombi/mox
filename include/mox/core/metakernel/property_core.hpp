@@ -6,6 +6,7 @@
 #include <mox/config/pimpl.hpp>
 #include <mox/config/platform_config.hpp>
 #include <mox/core/metakernel/argument_data.hpp>
+#include <mox/core/metakernel/lockable.hpp>
 #include <mox/core/metakernel/signals.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 #include <functional>
@@ -120,7 +121,7 @@ public:
 
 /// The StatusPropertyCore class provides the core functionality for the status properties.
 /// Mox status properties are read-only properties.
-class MOX_API StatusPropertyCore
+class MOX_API StatusPropertyCore : public SharedLock<Lockable>
 {
 public:
     /// Destructor.
@@ -128,7 +129,7 @@ public:
 
 protected:
     /// Constructor.
-    explicit StatusPropertyCore() = default;
+    StatusPropertyCore(Lockable& host);
 
     /// Called by the property getter to notify the active binding that the property getter
     /// is called. The binding connects to the changed signal passed as argument to receive
@@ -148,7 +149,7 @@ public:
 
 protected:
     /// Constructs a property core using a proeprty data provider.
-    PropertyCore();
+    PropertyCore(Lockable& host);
 
     /// Called by the property setter, notifies the property to remove the bindings which have
     /// BindingPolicy::DetachOnWrite policy set.
