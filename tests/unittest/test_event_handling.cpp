@@ -24,11 +24,10 @@
 
 using namespace mox;
 
-class TestTimer : public MetaBase, public TimerSource::TimerRecord
+class TestTimer : public metakernel::Lockable, public TimerSource::TimerRecord
 {
 public:
-    static inline SignalTypeDecl<> TestTimerExpiredSignalType;
-    Signal expired{*this, TestTimerExpiredSignalType};
+    metakernel::Signal<> expired{*this};
 
     explicit TestTimer(std::chrono::milliseconds interval, bool singleShot)
         : TimerSource::TimerRecord(interval, singleShot)
@@ -45,11 +44,10 @@ public:
     }
 };
 
-class TestSocket : public MetaBase, public SocketNotifierSource::Notifier
+class TestSocket : public metakernel::Lockable, public metakernel::SlotHolder, public SocketNotifierSource::Notifier
 {
 public:
-    static inline SignalTypeDecl<Modes> TestSocketSignalType;
-    Signal modeChanged{*this, TestSocketSignalType};
+    metakernel::Signal<Modes> modeChanged{*this};
 
     explicit TestSocket(EventTarget handler, Modes modes)
         : SocketNotifierSource::Notifier(handler, modes)

@@ -81,7 +81,6 @@ void UnitTest::SetUp()
 
     mox::Logger::setLogger(std::make_unique<TestLogger>(*this));
     mox::registerMetaType<TestApp>();
-    mox::registerMetaClass<TestThreadLoop>();
 }
 void UnitTest::TearDown()
 {
@@ -135,7 +134,6 @@ int main(int argc, char** argv)
     ::testing::InitGoogleTest(&argc, argv);
     mox::MoxModule module;
     module.registerModule();
-    mox::registerMetaClass<TestApp>();
 
     return RUN_ALL_TESTS();
 }

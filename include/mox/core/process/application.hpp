@@ -19,7 +19,6 @@
 #ifndef APPLICATION_HPP
 #define APPLICATION_HPP
 
-#include <mox/core/meta/class/metaclass.hpp>
 #include <mox/mox_module.hpp>
 #include <mox/core/object.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
@@ -34,9 +33,9 @@ class MOX_API Application : public Object
 public:
     /// The static metaclass of the Application class.
     /// Signal is emitted when the application's event loop is started.
-    Signal started{*this, StaticMetaClass::StartedSignalType};
+    metakernel::Signal<> started{*this};
     /// Signal emitted when the application's event loop exits.
-    Signal stopped{*this, StaticMetaClass::StoppedSignalType};
+    metakernel::Signal<> stopped{*this};
 
     /// Constructor, creates an application object. You can have only one application object in your
     /// application.
@@ -75,13 +74,6 @@ public:
 
     /// Quits the application.
     void quit();
-
-    MetaInfo(Application, MetaObject)
-    {
-        static inline MetaSignal<Application> StartedSignalType{"started"};
-        static inline MetaSignal<Application> StoppedSignalType{"stopped"};
-        static inline MetaMethod<Application> QuitMethod{&Application::quit, "quit"};
-    };
 
 private:
     ObjectSharedPtr m_rootObject;

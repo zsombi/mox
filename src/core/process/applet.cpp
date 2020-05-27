@@ -48,12 +48,9 @@ RunLoopBasePtr Applet::createRunLoopOverride()
     {
         CTRACE(threads, "hook closed");
 
-        {
-            ScopeRelock unlocker(*this);
-            this->stopped(this);
-            // Tear down applet.
-            this->tearDown();
-        }
+        this->stopped(this);
+        // Tear down applet.
+        this->tearDown();
 
         return true;
     };

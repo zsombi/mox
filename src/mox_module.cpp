@@ -17,8 +17,6 @@
  */
 
 #include <mox/mox_module.hpp>
-#include <mox/core/meta/class/metaobject.hpp>
-#include <mox/core/meta/signal/signal.hpp>
 #include <mox/core/event_handling/socket_notifier.hpp>
 #include <mox/core/object.hpp>
 #include <mox/core/timer.hpp>
@@ -33,17 +31,15 @@ namespace mox
 
 void MoxModule::registerModule()
 {
-    registerClassMetaTypes<MetaBase>();
-
     registerMetaType<SocketNotifierSharedPtr>("shared_ptr<SocketNotifier>");
-    registerMetaClass<SocketNotifier>();
-    registerMetaClass<Timer>();
-    registerMetaClass<MetaObject>();
-    registerMetaClass<Object>();
-    registerMetaClass<ThreadInterface>();
-    registerMetaClass<ThreadLoop>();
-    registerMetaClass<Application>();
-    registerMetaClass<Applet>();
+//    registerMetaClass<SocketNotifier>();
+//    registerMetaClass<Timer>();
+//    registerMetaClass<MetaObject>();
+//    registerMetaClass<Object>();
+//    registerMetaClass<ThreadInterface>();
+//    registerMetaClass<ThreadLoop>();
+//    registerMetaClass<Application>();
+//    registerMetaClass<Applet>();
 }
 
 }

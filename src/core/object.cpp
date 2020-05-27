@@ -19,10 +19,7 @@
 #include <mox/core/object.hpp>
 #include <mox/core/meta/core/callable.hpp>
 
-#if MOX_ENABLE_LOGGING == ON
 #include <mox/core/meta/core/metatype_descriptor.hpp>
-#include <mox/core/meta/class/metaclass.hpp>
-#endif
 
 namespace mox
 {
@@ -469,10 +466,7 @@ LogLine& operator<<(LogLine& log, ObjectSharedPtr ptr)
         }
         else
         {
-            const auto* mc = ptr->__getStaticMetaClass();
-            auto type = mc->getMetaTypes().first;
-            const auto& typeInfo = MetatypeDescriptor::get(type);
-            log << ' ' << typeInfo.name();
+            log << " Object";
         }
     }
     return log;

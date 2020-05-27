@@ -50,14 +50,6 @@ public:
     /// \return The thread object.
     static ThreadLoopPtr create();
 
-    /// \name Metadata
-    /// \{
-    /// The static metaclass of the thread loop.
-    MetaInfo(ThreadLoop, ThreadInterface)
-    {
-    };
-    /// \}
-
 protected:
     /// Constructor.
     explicit ThreadLoop();

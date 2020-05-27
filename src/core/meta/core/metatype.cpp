@@ -24,7 +24,6 @@
 #include <cxxabi.h>
 
 #include <mox/utils/function_traits.hpp>
-#include <mox/core/meta/signal/signal.hpp>
 
 #include <mox/utils/log/logger.hpp>
 
@@ -107,36 +106,6 @@ bool MetatypeDescriptor::isCustomType()
 const MetatypeDescriptor& MetatypeDescriptor::get(Metatype typeId)
 {
     return MetaData::getMetaType(typeId);
-}
-
-bool MetatypeDescriptor::isSupertypeOf(const MetatypeDescriptor& type) const
-{
-    if (!isClass() || !type.isClass())
-    {
-        return false;
-    }
-
-    const auto* thisClass = MetaData::getMetaClass(m_id);
-    FATAL(thisClass, "No MetaClass for the class type.");
-
-    const auto* typeClass = MetaData::getMetaClass(type.id());
-    FATAL(typeClass, "No MetaClass for the class type.");
-    return thisClass->isSuperClassOf(*typeClass);
-}
-
-bool MetatypeDescriptor::derivesFrom(const MetatypeDescriptor& type) const
-{
-    if (!isClass() || !type.isClass())
-    {
-        return false;
-    }
-
-    const auto* thisClass = MetaData::getMetaClass(m_id);
-    FATAL(thisClass, "No MetaClass for the class type.");
-
-    const auto* typeClass = MetaData::getMetaClass(type.id());
-    FATAL(typeClass, "No MetaClass for the class type.");
-    return thisClass->derivesFrom(*typeClass);
 }
 
 bool MetatypeDescriptor::isValid() const

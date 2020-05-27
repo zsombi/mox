@@ -41,7 +41,7 @@ void ThreadLoopPrivate::threadMain(ThreadPromise threadDataReady)
     CTRACE(threads, "Notify thread starter");
     p->started(p);
 
-    auto status = ThreadInterface::Status(statusProperty);
+    auto status = statusProperty.get();
     if (status == ThreadInterface::Status::StartingUp)
     {
         CTRACE(threads, "Thread running" << intptr_t(thread.native_handle()));

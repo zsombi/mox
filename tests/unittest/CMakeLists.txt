@@ -30,12 +30,7 @@ set(SOURCES
     test_metatypes.cpp
     test_converters.cpp
     test_argument.cpp
-    test_metaclass.cpp
     test_callables.cpp
-    test_metamethod.cpp
-    test_signal.cpp
-    test_property_type.cpp
-    test_properties.cpp
     test_object.cpp
     test_event.cpp
     test_event_queue.cpp
@@ -43,7 +38,6 @@ set(SOURCES
     test_event_handling.cpp
     test_threads.cpp
     test_applets.cpp
-    test_bindings.cpp
     test_metakernel_signals.cpp
     test_metakernel_properties.cpp
     )

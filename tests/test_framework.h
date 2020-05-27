@@ -88,20 +88,6 @@ protected:
     void TearDown() override;
 };
 
-template <typename T>
-class UpdatingPropertyData : public mox::PropertyData<T>
-{
-public:
-    UpdatingPropertyData(T value)
-        : mox::PropertyData<T>(value)
-    {}
-
-    void update(T value)
-    {
-        mox::PropertyData<T>::update(mox::Variant(value));
-    }
-};
-
 class TestCoreApp
 {
     static inline TestCoreApp* m_instance = nullptr;
@@ -127,10 +113,6 @@ public:
 class TestApp : public mox::Application
 {
 public:
-    MetaInfo(TestApp, mox::Application)
-    {
-    };
-
     explicit TestApp() = default;
     int runOnce()
     {
@@ -154,10 +136,6 @@ public:
     static std::shared_ptr<TestThreadLoop> create(mox::ThreadPromise&& notifier);
 
     ~TestThreadLoop() override;
-
-    MetaInfo(TestThreadLoop, mox::ThreadLoop)
-    {
-    };
 
 protected:
     explicit TestThreadLoop(mox::ThreadPromise&& notifier);

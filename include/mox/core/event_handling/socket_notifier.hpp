@@ -20,26 +20,19 @@
 #define SOCKET_NOTIFIER_HPP
 
 #include <mox/core/event_handling/run_loop_sources.hpp>
-#include <mox/core/meta/signal/signal.hpp>
+#include <mox/core/metakernel/signals.hpp>
 #include <mox/core/event_handling/event_handling_declarations.hpp>
-#include <mox/core/meta/class/metaclass.hpp>
 
 namespace mox
 {
 
 /// The SocketNotifier class provides notifications on events occurring on a socket descriptor.
 /// The socket descriptor is either a file handler or a normal socket handler.
-class MOX_API SocketNotifier : public MetaBase, public SocketNotifierSource::Notifier
+class MOX_API SocketNotifier : public metakernel::Lockable, public metakernel::SlotHolder, public SocketNotifierSource::Notifier
 {
 public:
-    MetaInfo(SocketNotifier)
-    {
-        /// Activation signal type descriptor.
-        static inline MetaSignal<SocketNotifier, SocketNotifierSharedPtr, Modes> ActivatedSignalType{"activated"};
-    };
-
     /// Activation signal, emitted when the operation on the socket is notified.
-    Signal activated{*this, StaticMetaClass::ActivatedSignalType};
+    metakernel::Signal<SocketNotifierSharedPtr, Modes> activated{*this};
 
     /// Creates a socket notifier on a \a socket with notification \a modes.
     static SocketNotifierSharedPtr create(EventTarget socket, Modes modes);

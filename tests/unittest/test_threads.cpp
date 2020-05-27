@@ -36,11 +36,6 @@ public:
         TRACE("Stop main thread");
         threadData()->thread()->exit(10);
     }
-
-    MetaInfo(Quitter, mox::Object)
-    {
-        static inline MetaMethod<Quitter> quit{&Quitter::quit, "quit"};
-    };
 };
 
 class Threads : public UnitTest
@@ -49,8 +44,6 @@ protected:
     void SetUp() override
     {
         UnitTest::SetUp();
-
-        mox::registerMetaClass<Quitter>();
     }
 };
 
@@ -282,49 +275,6 @@ TEST_F(Threads, test_signal_connected_to_different_thread)
     }
 
     EXPECT_EQ(10, app.run());
-    watchDeath.wait();
-    EXPECT_EQ(0, TestThreadLoop::threadCount);
-}
-
-TEST_F(Threads, test_signal_connected_to_metamethod_in_different_thread)
-{
-#if MOX_HOST_LINUX
-    GTEST_SKIP_("Flaky on Linux");
-#endif
-    mox::Application getMainThreadData;
-    getMainThreadData.setRootObject(*Quitter::create());
-
-    mox::ThreadPromise notifyDeath;
-    mox::ThreadFuture watchDeath = notifyDeath.get_future();
-    {
-        auto thread = TestThreadLoop::create(std::move(notifyDeath));
-        EXPECT_NOT_NULL(mox::metainfo::connect(thread->stopped, *getMainThreadData.castRootObject<Quitter>(), Quitter::StaticMetaClass::quit));
-
-        mox::ThreadPromise notifyStart;
-        mox::ThreadFuture started = notifyStart.get_future();
-        auto onStarted = [&notifyStart]()
-        {
-            notifyStart.set_value();
-        };
-        thread->started.connect(onStarted);
-        thread->start();
-        started.wait();
-
-        EXPECT_EQ(1, TestThreadLoop::threadCount);
-
-        auto onIdle = [wthread = std::weak_ptr<TestThreadLoop>(thread)]()
-        {
-            auto t = wthread.lock();
-            if (t)
-            {
-                t->exit(0);
-            }
-            return true;
-        };
-        getMainThreadData.threadData()->thread()->addIdleTask(onIdle);
-    }
-
-    EXPECT_EQ(10, getMainThreadData.run());
     watchDeath.wait();
     EXPECT_EQ(0, TestThreadLoop::threadCount);
 }

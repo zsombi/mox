@@ -101,7 +101,7 @@ int QuitEvent::getExitCode() const
 /******************************************************************************
  * DeferredSignalEvent
  */
-DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, Signal::Connection& connection, const Callable::ArgumentPack& args)
+DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, metakernel::Connection& connection, const metakernel::PackedArguments& args)
     : Event(target, EventType::DeferredSignal, Priority::Urgent)
     , m_connection(connection.shared_from_this())
     , m_arguments(args)
@@ -115,7 +115,7 @@ void DeferredSignalEvent::activate()
     if (target() && m_connection && m_connection->isConnected())
     {
         CTRACE(event, "Activate...");
-        m_connection->activate(m_arguments);
+        m_connection->invoke(m_arguments);
         CTRACE(event, "Activation completed");
     }
 }

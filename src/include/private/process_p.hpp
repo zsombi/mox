@@ -25,6 +25,48 @@
 namespace mox
 {
 
+class StatusDP : public ThreadInterface::ThreadStatus::Data
+{
+    ThreadInterface::Status status = ThreadInterface::Status::InactiveOrJoined;
+
+public:
+
+    ThreadInterface::Status get() const override
+    {
+        return status;
+    }
+
+    operator ThreadInterface::Status() const
+    {
+        return status;
+    }
+    void operator=(ThreadInterface::Status value)
+    {
+        status = value;
+        update();
+    }
+};
+
+class ExitDP : public ThreadInterface::ExitCode::Data
+{
+    int exitCode = 0;
+public:
+    int get() const override
+    {
+        return exitCode;
+    }
+    operator int() const
+    {
+        return exitCode;
+    }
+
+    void operator=(int code)
+    {
+        exitCode = code;
+        update();
+    }
+};
+
 class ThreadInterfacePrivate
 {
 public:
@@ -34,8 +76,8 @@ public:
 
     EventQueue threadQueue;
     AttachedThreadsColletcion childThreads;
-    AtomicPropertyData<ThreadInterface::Status> statusProperty;
-    AtomicPropertyData<int> exitCodeProperty;
+    StatusDP statusProperty;
+    ExitDP exitCodeProperty;
     RunLoopBasePtr runLoop;
 
     explicit ThreadInterfacePrivate(ThreadInterface* pp);

@@ -19,9 +19,8 @@
 #ifndef TIMER_HPP
 #define TIMER_HPP
 
-#include <mox/core/meta/signal/signal.hpp>
+#include <mox/core/metakernel/signals.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
-#include <mox/core/meta/class/metaclass.hpp>
 
 namespace mox
 {
@@ -34,11 +33,11 @@ using TimerPtr = std::shared_ptr<Timer>;
 /// using createRepeating() or repeating() methods.
 ///
 /// When the timer expires, the expired signal is emitted.
-class MOX_API Timer : public MetaBase, public TimerSource::TimerRecord
+class MOX_API Timer : public metakernel::Lockable, public metakernel::SlotHolder, public TimerSource::TimerRecord
 {
 public:
     /// Expired signal emitted when the timer expires.
-    Signal expired{*this, StaticMetaClass::SigExpired};
+    metakernel::Signal<Timer*> expired{*this};
 
     /// Specifies the type of the timer.
     enum class Type
@@ -63,7 +62,7 @@ public:
     /// \param slot The slot to connect to the timer's expired signal.
     /// \return The pair of the timer and the connection objects.
     template <typename Slot>
-    static std::pair<TimerPtr, Signal::ConnectionSharedPtr> singleShot(std::chrono::milliseconds timeout, Slot slot)
+    static std::pair<TimerPtr, metakernel::ConnectionPtr> singleShot(std::chrono::milliseconds timeout, Slot slot)
     {
         auto timer = createSingleShot(timeout);
         auto connection = timer->expired.connect(slot);
@@ -76,7 +75,7 @@ public:
     /// \param slot The slot to connect to the timer's expired signal.
     /// \return The pair of the timer and the connection objects.
     template <typename Slot>
-    static std::pair<TimerPtr, Signal::ConnectionSharedPtr> repeating(std::chrono::milliseconds interval, Slot slot)
+    static std::pair<TimerPtr, metakernel::ConnectionPtr> repeating(std::chrono::milliseconds interval, Slot slot)
     {
         auto timer = createRepeating(interval);
         auto connection = timer->expired.connect(slot);
@@ -107,13 +106,6 @@ public:
     {
         return m_source;
     }
-
-    MetaInfo(Timer)
-    {
-        /// Expired signal descriptor. The signal's argument contains the timer object that is
-        /// expired when the signal is emitted.
-        static inline MetaSignal<Timer, Timer*> SigExpired{"expired"};
-    };
 
 private:
     /// Constructor.

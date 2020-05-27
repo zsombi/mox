@@ -19,24 +19,19 @@
 #include <private/metadata_p.hpp>
 #include <mox/core/meta/core/metadata.hpp>
 #include <mox/core/meta/core/metatype_descriptor.hpp>
-#include <mox/core/meta/class/metaclass.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/config/string.hpp>
 #include <mox/core/meta/core/variant.hpp>
 #include <algorithm>
 
-#ifdef MOX_ENABLE_LOGS
 #include <mox/utils/log/logger.hpp>
-#endif
 
 namespace mox
 {
 
 MetaData::MetaData()
 {
-#ifdef MOX_ENABLE_LOGS
     LoggerData::get();
-#endif
 
     FATAL(!globalMetaDataPtr, "global metadata store initialized twice!");
     globalMetaDataPtr = this;
@@ -164,61 +159,6 @@ MetatypeDescriptor& MetaData::getMetaType(Metatype type)
     lock_guard locker(*globalMetaDataPtr);
     FATAL(static_cast<size_t>(type) < globalMetaDataPtr->metaTypes.size(), "Type not registered to be reflectable.");
     return *globalMetaDataPtr->metaTypes[static_cast<size_t>(type)].get();
-}
-
-void MetaData::addMetaClass(const metainfo::MetaClass& metaClass)
-{
-    FATAL(globalMetaDataPtr, "mox is not initialized or down.");
-    std::string name = MetatypeDescriptor::get(metaClass.getMetaTypes().first).name();
-
-    lock_guard locker(*globalMetaDataPtr);
-    auto it = globalMetaDataPtr->metaClasses.find(name);
-    FATAL(it == globalMetaDataPtr->metaClasses.cend(), "Static metaclass for '" + name + "' already registered!");
-
-    globalMetaDataPtr->metaClassRegister.insert({metaClass.getMetaTypes().first, &metaClass});
-    globalMetaDataPtr->metaClasses.insert({name, &metaClass});
-
-    CTRACE(metacore, "MetaClass added:" << name);
-}
-
-void MetaData::removeMetaClass(const metainfo::MetaClass& metaClass)
-{
-    if (!globalMetaDataPtr)
-    {
-        CWARN(metacore, "MetaClass removal attempt after mox backend went down.");
-        return;
-    }
-    std::string name = MetatypeDescriptor::get(metaClass.getMetaTypes().first).name();
-
-    lock_guard locker(*globalMetaDataPtr);
-    auto it = globalMetaDataPtr->metaClasses.find(name);
-    if (it != globalMetaDataPtr->metaClasses.cend())
-    {
-        globalMetaDataPtr->metaClasses.erase(it, it);
-    }
-    auto cit = globalMetaDataPtr->metaClassRegister.find(metaClass.getMetaTypes().first);
-    if (cit != globalMetaDataPtr->metaClassRegister.cend())
-    {
-        globalMetaDataPtr->metaClassRegister.erase(cit, cit);
-    }
-
-    CTRACE(metacore, "MetaClass" << name << "removed");
-}
-
-const metainfo::MetaClass* MetaData::findMetaClass(std::string_view name)
-{
-    FATAL(globalMetaDataPtr, "mox is not initialized or down.");
-    lock_guard locker(*globalMetaDataPtr);
-    auto it = globalMetaDataPtr->metaClasses.find(std::string(name));
-    return it != globalMetaDataPtr->metaClasses.cend() ? it->second : nullptr;
-}
-
-const metainfo::MetaClass* MetaData::getMetaClass(Metatype metaType)
-{
-    FATAL(globalMetaDataPtr, "mox is not initialized or down.");
-    lock_guard locker(*globalMetaDataPtr);
-    auto it = globalMetaDataPtr->metaClassRegister.find(metaType);
-    return it != globalMetaDataPtr->metaClassRegister.cend() ? it->second : nullptr;
 }
 
 } // namespace mox

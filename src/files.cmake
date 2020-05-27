@@ -58,32 +58,6 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/metadata.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/core/detail/metadata_impl.hpp
 
-    # meta/base
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/base/metabase.hpp
-
-    # meta/signal
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signal/signal_type.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signal/signal.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signal/detail/signal_impl.hpp
-
-    # meta/property
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/property_decl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/property_data.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/property_type.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/property.hpp
-
-    # meta/class
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/class/detail/metaclass_impl.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/class/metaclass.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/class/metaobject.hpp
-
-    # meta/property/binding
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/binding.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/binding_normalizer.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/binding_group.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/property_binding.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property/binding/expression_binding.hpp
-
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event_queue.hpp
@@ -111,10 +85,7 @@ set(HEADERS
 set(PRIVATE_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/include/private/logger_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/private/metadata_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/metabase_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/private/property_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/binding_p.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/include/private/signal_p.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/include/private/process_p.hpp
     )
 
@@ -133,28 +104,6 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/converters.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/variant.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/core/callable.cpp
-
-    # meta/base
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/base/metabase.cpp
-    # meta/signal
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/signal/signal.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/signal/signal_storage.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/signal/signal_connections.cpp
-
-    # meta/property
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/property.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/property_storages.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/property_type.cpp
-
-    # meta/class
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/class/metaclass.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/class/metaobject.cpp
-
-    # meta/proeprty/binding
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/binding/binding.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/binding/binding_group.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/binding/property_binding.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/property/binding/expression_binding.cpp
 
     # Event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/event.cpp

@@ -36,10 +36,6 @@ public:
     /// Creates an applet.
     static AppletPtr create();
 
-    MetaInfo(Applet, ThreadInterface)
-    {
-    };
-
 protected:
     /// Constructor.
     explicit Applet();

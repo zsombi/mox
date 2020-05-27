@@ -53,24 +53,17 @@ public:
 
     /// \name Metadata
     /// \{
-    MetaInfo(ThreadInterface, Object)
-    {
-        static inline MetaSignal<ThreadInterface, ThreadInterface*> StartedSignalType{"started"};
-        static inline MetaSignal<ThreadInterface, ThreadInterface*> StoppedSignalType{"stopped"};
-        static inline MetaSignal<ThreadInterface, Status> StatusChangedSignalType{"statusChanged"};
-        static inline MetaProperty<ThreadInterface, Status, PropertyAccess::ReadOnly> StatusPropertyType{StatusChangedSignalType, "status", Status::InactiveOrJoined};
-        static inline MetaSignal<ThreadInterface, int> ExitCodeChangedSignalType{"exitCodeChanged"};
-        static inline MetaProperty<ThreadInterface, int, PropertyAccess::ReadOnly> ExitCodePropertyType{ExitCodeChangedSignalType, "exitCode", 0};
-    };
     /// Signal emitted when the thread starts the event loop.
-    Signal started{*this, StaticMetaClass::StartedSignalType};
+    metakernel::Signal<ThreadInterface*> started{*this};
     /// Signal emitted right before the thread stops its execution.
-    Signal stopped{*this, StaticMetaClass::StoppedSignalType};
+    metakernel::Signal<ThreadInterface*> stopped{*this};
 
     /// Read-only property reporting the status of the thread.
-    Property status;
+    using ThreadStatus = metakernel::StatusProperty<Status>;
+    ThreadStatus status;
     /// Read-only property reporting the exit code of the thread.
-    Property exitCode;
+    using ExitCode = metakernel::StatusProperty<int>;
+    ExitCode exitCode;
     /// \}
 
     /// Destructor.

@@ -25,8 +25,6 @@ namespace mox
 
 ThreadInterfacePrivate::ThreadInterfacePrivate(ThreadInterface* pp)
     : p_ptr(pp)
-    , statusProperty(ThreadInterface::Status::InactiveOrJoined)
-    , exitCodeProperty(0)
 {
 }
 
@@ -40,8 +38,8 @@ ThreadInterface::ThreadInterface()
 
 ThreadInterface::ThreadInterface(pimpl::d_ptr_type<ThreadInterfacePrivate> dd)
     : d_ptr(std::move(dd))
-    , status(*this, StaticMetaClass::StatusPropertyType, d_ptr->statusProperty)
-    , exitCode(*this, StaticMetaClass::ExitCodePropertyType, d_ptr->exitCodeProperty)
+    , status(*this, d_ptr->statusProperty)
+    , exitCode(*this, d_ptr->exitCodeProperty)
 {
     // The thread needs a new thread data, therefore reset the one it gets from Object.
     m_threadData.reset();
@@ -202,7 +200,6 @@ bool ThreadInterface::isRunning() const
 
 void ThreadInterface::start()
 {
-    lock_guard lock(*this);
     D_PTR(ThreadInterfacePrivate);
 
     switch (d->statusProperty)
@@ -213,7 +210,6 @@ void ThreadInterface::start()
             d_ptr->statusProperty = ThreadInterface::Status::StartingUp;
 
             {
-                ScopeRelock re(*this);
                 // execute thread implementation specific start routines
                 startOverride();
 
@@ -233,7 +229,6 @@ void ThreadInterface::start()
 
 void ThreadInterface::exit(int exitCode)
 {
-    lock_guard lock(*this);
     D();
 
     switch (d->statusProperty)
@@ -244,7 +239,6 @@ void ThreadInterface::exit(int exitCode)
             return;
         case Status::StartingUp:
         {
-            ScopeRelock re(*this);
             // post the quit event, execute a delayed exit
             postEvent<QuitEvent>(shared_from_this(), exitCode);
             break;

@@ -25,7 +25,6 @@
 #include <mox/config/deftypes.hpp>
 #include <mox/utils/containers/flat_map.hpp>
 #include <mox/core/meta/core/variant.hpp>
-#include <mox/core/meta/class/metaobject.hpp>
 #include <private/logger_p.hpp>
 
 namespace mox
@@ -53,11 +52,6 @@ struct MetaData
     static const MetatypeDescriptor& addMetaType(const char* name, const std::type_info& rtti, bool isEnum, bool isClass, bool isPointer);
     static MetatypeDescriptor& getMetaType(Metatype type);
 
-    static void addMetaClass(const metainfo::MetaClass& metaClass);
-    static void removeMetaClass(const metainfo::MetaClass& metaClass);
-    static const metainfo::MetaClass* findMetaClass(std::string_view name);
-    static const metainfo::MetaClass* getMetaClass(Metatype metaType);
-
     typedef std::vector<std::unique_ptr<MetatypeDescriptor>> MetaTypeContainer;
     typedef std::vector<std::pair<const std::type_info*, Metatype>> SynonymContainer;
     typedef FlatMap<Metatype, const metainfo::MetaClass*> MetaClassTypeRegister;
@@ -74,13 +68,6 @@ struct MetaData
 
     void registerAtomicTypes();
     void registerConverters();
-
-//    template <typename T, typename N>
-//    auto registerAtomicType(N name)
-//    {
-//        const auto& rtti = getNakedTypeInfo<T>();
-//        auto newType = metadata::tryRegisterMetatype(rtti, std::is_enum_v<Type>, std::is_class_v<Type>, std::is_pointer_v<Type>, name);
-//    }
 };
 
 } // namespace mox

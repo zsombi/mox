@@ -17,7 +17,6 @@
  */
 
 #include "test_framework.h"
-#include <mox/core/meta/class/metaclass.hpp>
 #include <mox/core/meta/core/metadata.hpp>
 #include <mox/core/meta/core/metatype.hpp>
 #include <mox/core/meta/core/metatype_descriptor.hpp>
@@ -38,108 +37,4 @@ TEST(MetaDataEnum, test_enumerate_default_metatypes)
         return it == typeNames.end();
     };
     mox::metadata::findMetatype(scanner);
-}
-
-TEST(MetaDataEnum, test_find_user_metatypes)
-{
-    std::array<std::string, 8> typeNames = {
-        "mox::Object"s, "mox::Object*"s, "mox::MetaObject"s, "mox::MetaObject*"s,
-        "mox::MetaBase"s, "mox::MetaBase*"s, "mox::ThreadLoop"s, "mox::ThreadLoop*"s,
-    };
-    for (auto name : typeNames)
-    {
-        auto scanner = [&name](const auto& des)
-        {
-            return name == des.name();
-        };
-        auto typeDes = mox::metadata::findMetatype(scanner);
-        EXPECT_NOT_NULL(typeDes);
-        EXPECT_EQ(name, typeDes->name());
-    }
-}
-
-struct MetaTest
-{
-    std::string metaClass;
-    std::vector<std::string> properties;
-    std::vector<std::string> signals;
-    std::vector<std::string> methods;
-
-    void clear()
-    {
-        metaClass.clear();
-        properties.clear();
-        signals.clear();
-        methods.clear();
-    }
-
-    bool verifyMetaClass(const mox::metainfo::MetaClass& mc)
-    {
-        bool result = metaClass == mox::MetatypeDescriptor::get(mc.getMetaTypes().first).name();
-
-        if (!result)
-        {
-            return result;
-        }
-
-        auto propertyIt = properties.begin();
-        auto propertyVisitor = [this, &propertyIt](const auto, const auto& meta)
-        {
-            EXPECT_EQ(*propertyIt, meta.name());
-            ++propertyIt;
-            return propertyIt == properties.end();
-        };
-        mc.visitProperties(propertyVisitor);
-
-        auto signalIt = signals.begin();
-        auto signalVisitor = [&signalIt, this](const auto, const auto& meta)
-        {
-            EXPECT_EQ(*signalIt, meta.name());
-            ++signalIt;
-            return signalIt == signals.end();
-        };
-        mc.visitSignals(signalVisitor);
-
-        auto methodIt = methods.begin();
-        auto methodVisitor = [&methodIt, this](const auto, const auto& meta)
-        {
-            EXPECT_EQ(*methodIt, meta.name());
-            ++methodIt;
-            return methodIt == methods.end();
-        };
-        mc.visitMethods(methodVisitor);
-        return result;
-    }
-};
-
-TEST(MetaDataEnum, test_enumerate_metaclasses)
-{
-    MetaTest test;
-    test.metaClass = "mox::Object";
-    test.properties.push_back("objectName"s);
-    test.signals.push_back("objectNameChanged");
-
-    EXPECT_NOT_NULL(mox::metainfo::find(std::bind(&MetaTest::verifyMetaClass, &test, std::placeholders::_1)));
-    test.clear();
-
-    test.metaClass = "mox::ThreadLoop";
-    test.properties.push_back("status"s);
-    test.properties.push_back("exitCode"s);
-    test.properties.push_back("objectName"s);
-    test.signals.push_back("started");
-    test.signals.push_back("stopped");
-    test.signals.push_back("statusChanged");
-    test.signals.push_back("exitCodeChanged");
-    test.signals.push_back("objectNameChanged");
-
-    EXPECT_NOT_NULL(mox::metainfo::find(std::bind(&MetaTest::verifyMetaClass, &test, std::placeholders::_1)));
-    test.clear();
-
-    test.metaClass = "mox::Application";
-    test.signals.push_back("started");
-    test.signals.push_back("stopped");
-    test.methods.push_back("quit");
-
-    EXPECT_NOT_NULL(mox::metainfo::find(std::bind(&MetaTest::verifyMetaClass, &test, std::placeholders::_1)));
-    test.clear();
 }

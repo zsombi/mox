@@ -19,7 +19,6 @@
 #include "test_framework.h"
 
 #include <mox/core/meta/core/variant.hpp>
-#include <mox/core/meta/class/metaobject.hpp>
 
 namespace converter_test
 {
@@ -62,16 +61,6 @@ int32_t convert2(UserType v)
     return ret;
 }
 
-class Derived : public mox::MetaObject
-{
-public:
-    explicit Derived() = default;
-
-    MetaInfo(Derived, mox::MetaObject)
-    {
-    };
-};
-
 } // converter_test
 
 class Converters : public UnitTest
@@ -86,7 +75,6 @@ protected:
         mox::registerMetaType<converter_test::UserType>();
         mox::registerMetaType<converter_test::UserType*>();
         mox::registerMetaType<converter_test::SelfConvertible>();
-        mox::registerMetaClass<converter_test::Derived>();
     }
 };
 
@@ -190,21 +178,4 @@ TEST_F(Converters, test_register_converter_method)
     EXPECT_NO_THROW(pdst = std::any_cast<converter_test::UserType*>(anyresult));
     EXPECT_EQ(10, pdst->v1);
     EXPECT_EQ(20, pdst->v2);
-}
-
-TEST_F(Converters, test_metaobject_conversion)
-{
-    mox::Variant arg;
-    converter_test::Derived obj;
-    arg = &obj;
-
-    mox::MetaObject* pbase = arg;
-    EXPECT_NOT_NULL(pbase);
-
-    mox::MetaObject obj2;
-    arg = &obj2;
-
-    EXPECT_TRUE(arg.isValid());
-    converter_test::Derived *pderived = arg;
-    EXPECT_NULL(pderived);
 }

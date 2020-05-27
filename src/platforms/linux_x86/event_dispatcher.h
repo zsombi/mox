@@ -19,7 +19,6 @@
 #ifndef EVENT_LOOP_H
 #define EVENT_LOOP_H
 
-#include <mox/core/meta/class/metaobject.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
 #include <mox/core/event_handling/run_loop_sources.hpp>
 #include <mox/core/timer.hpp>
