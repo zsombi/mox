@@ -38,13 +38,13 @@ set(HEADERS
     # Logger
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/utils/log/logger.hpp
 
-    # core/metakernel
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/argument_data.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/lockable.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/signal_connection.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/signals.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/property_core.hpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/metakernel/properties.hpp
+    # core/meta
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/argument_data.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/lockable.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signal_connection.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signals.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property_core.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/properties.hpp
 
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event.hpp
@@ -61,11 +61,7 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/process/application.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/process/applet.hpp
 
-    # module
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/module/module.hpp
-
     # Mox core
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/mox_module.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/timer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/object.hpp
     )
@@ -80,10 +76,10 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/utils/log/logger.cpp
 
-    # core/metakernel
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/lockable.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/signals.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/metakernel/properties.cpp
+    # core/meta
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/lockable.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/signals.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/core/meta/properties.cpp
 
     # Event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/core/event_handling/event.cpp
@@ -102,10 +98,6 @@ set(SOURCES
     # object
     ${CMAKE_CURRENT_SOURCE_DIR}/core/timer.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/core/object.cpp
-
-    # module
-    ${CMAKE_CURRENT_SOURCE_DIR}/core/module/modules.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/mox_module.cpp
     )
 
 if ("${CMAKE_SYSTEM_NAME}" STREQUAL "Linux")

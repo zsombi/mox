@@ -2,8 +2,8 @@
 
 #include "test_framework.h"
 #include <mox/utils/log/logger.hpp>
-#include <mox/core/metakernel/argument_data.hpp>
-#include <mox/core/metakernel/signals.hpp>
+#include <mox/core/meta/argument_data.hpp>
+#include <mox/core/meta/signals.hpp>
 
 DECLARE_LOG_CATEGORY(signalTest)
 using namespace mox;
@@ -18,7 +18,7 @@ public:
 namespace test_signals
 {
 
-class TestMethods : public metakernel::SlotHolder
+class TestMethods : public SlotHolder
 {
 public:
     virtual ~TestMethods() = default;
@@ -45,10 +45,10 @@ public:
     }
 };
 
-class TestDerived : public metakernel::Lockable, public TestMethods
+class TestDerived : public Lockable, public TestMethods
 {
 public:
-    metakernel::Signal<> memberSignal{*this};
+    Signal<> memberSignal{*this};
 
     void virtual1() override
     {
@@ -72,15 +72,15 @@ int function3(int value)
     return -1 * value;
 }
 
-class CustomConnection : public metakernel::Connection
+class CustomConnection : public Connection
 {
-    CustomConnection(metakernel::SignalCore& sender)
-        : metakernel::Connection(sender)
+    CustomConnection(SignalCore& sender)
+        : Connection(sender)
     {
     }
 
 public:
-    static metakernel::ConnectionPtr connect(metakernel::SignalCore& sender)
+    static ConnectionPtr connect(SignalCore& sender)
     {
         auto connection = mox::make_polymorphic_shared_ptr<Connection>(new CustomConnection(sender));
         sender.addConnection(connection);
@@ -88,7 +88,7 @@ public:
     }
 
 protected:
-    void invokeOverride(const metakernel::PackedArguments&) override
+    void invokeOverride(const PackedArguments&) override
     {
         CTRACE(signalTest, "CustomConnection invoked by a signal with" << m_sender->getArgumentCount() << "arguments");
     }
@@ -98,30 +98,30 @@ protected:
 
 TEST_F(MetakernelSignals, test_signal_api_no_arguments)
 {
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     EXPECT_EQ(-1, signal());
 }
 
 TEST_F(MetakernelSignals, test_signal_api_int_argument)
 {
-    metakernel::Lockable host;
-    metakernel::Signal<int> signal(host);
+    Lockable host;
+    Signal<int> signal(host);
     EXPECT_EQ(-1, signal(10));
 }
 
 TEST_F(MetakernelSignals, test_signal_api_int_stringview_argument)
 {
-    metakernel::Lockable host;
-    metakernel::Signal<int, std::string_view> signal(host);
+    Lockable host;
+    Signal<int, std::string_view> signal(host);
     EXPECT_EQ(-1, signal(10, "signal"sv));
 }
 
 TEST_F(MetakernelSignals, test_signal_no_args_connected_to_method)
 {
     EXPECT_TRACE(signalTest, "method1 called");
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     test_signals::TestMethods receiver;
     EXPECT_NOT_NULL(signal.connect(receiver, &test_signals::TestMethods::method1));
     EXPECT_EQ(1, signal());
@@ -134,8 +134,8 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connected_to_method)
 {
     EXPECT_TRACE(signalTest, "method1 called");
     EXPECT_TRACE(signalTest, "method2 called with 101");
-    metakernel::Lockable host;
-    metakernel::Signal<int> signal(host);
+    Lockable host;
+    Signal<int> signal(host);
     test_signals::TestMethods receiver;
     EXPECT_NOT_NULL(signal.connect(receiver, &test_signals::TestMethods::method1));
     EXPECT_NOT_NULL(signal.connect(receiver, &test_signals::TestMethods::method2));
@@ -145,8 +145,8 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connected_to_method)
 TEST_F(MetakernelSignals, test_signal_int_arg_connected_to_method_with_return_type)
 {
     EXPECT_TRACE(signalTest, "method3 called with 101");
-    metakernel::Lockable host;
-    metakernel::Signal<int> signal(host);
+    Lockable host;
+    Signal<int> signal(host);
     test_signals::TestMethods receiver;
     EXPECT_NOT_NULL(signal.connect(receiver, &test_signals::TestMethods::method3));
     EXPECT_EQ(1, signal(101));
@@ -155,8 +155,8 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connected_to_method_with_return_ty
 TEST_F(MetakernelSignals, test_signal_no_arg_connect_to_function)
 {
     EXPECT_TRACE(signalTest, "function1 called");
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     EXPECT_NOT_NULL(signal.connect(&test_signals::function1));
     EXPECT_EQ(1, signal());
 
@@ -168,8 +168,8 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_function)
 {
     EXPECT_TRACE(signalTest, "function1 called");
     EXPECT_TRACE(signalTest, "function2 called with 1002");
-    metakernel::Lockable host;
-    metakernel::Signal<int> signal(host);
+    Lockable host;
+    Signal<int> signal(host);
     EXPECT_NOT_NULL(signal.connect(&test_signals::function1));
     EXPECT_NOT_NULL(signal.connect(&test_signals::function2));
     EXPECT_EQ(2, signal(1002));
@@ -178,8 +178,8 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_function)
 TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_function_with_return_type)
 {
     EXPECT_TRACE(signalTest, "function3 called with 1001");
-    metakernel::Lockable host;
-    metakernel::Signal<int> signal(host);
+    Lockable host;
+    Signal<int> signal(host);
     EXPECT_NOT_NULL(signal.connect(&test_signals::function3));
     EXPECT_EQ(1, signal(1001));
 }
@@ -187,8 +187,8 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_function_with_return_ty
 TEST_F(MetakernelSignals, test_signal_no_arg_connect_to_lambda)
 {
     EXPECT_TRACE(signalTest, "lambda called");
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     auto lambda = []()
     {
         CTRACE(signalTest, "lambda called");
@@ -205,8 +205,8 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_lambda)
 {
     EXPECT_TRACE(signalTest, "lambda1 called");
     EXPECT_TRACE(signalTest, "lambda2 called with 1002");
-    metakernel::Lockable host;
-    metakernel::Signal<int> signal(host);
+    Lockable host;
+    Signal<int> signal(host);
     auto lambda1 = []()
     {
         CTRACE(signalTest, "lambda1 called");
@@ -223,8 +223,8 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_lambda)
 TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_lambda_with_return_type)
 {
     EXPECT_TRACE(signalTest, "lambda called with 1001");
-    metakernel::Lockable host;
-    metakernel::Signal<int> signal(host);
+    Lockable host;
+    Signal<int> signal(host);
     auto lambda = [](int value)
     {
         CTRACE(signalTest, "lambda called with" << value);
@@ -238,24 +238,24 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_lambda_with_return_type
 TEST_F(MetakernelSignals, test_signal_connect_to_signal)
 {
     EXPECT_TRACE(signalTest, "function1 called");
-    metakernel::Lockable host;
-    metakernel::Signal<> sender(host);
-    metakernel::Signal<> receiver(host);
+    Lockable host;
+    Signal<> sender(host);
+    Signal<> receiver(host);
     EXPECT_NOT_NULL(sender.connect(receiver));
     receiver.connect(&test_signals::function1);
     EXPECT_EQ(1, sender());
 
     // Must not compile!
-//    metakernel::Signal<int> receiver2;
+//    Signal<int> receiver2;
 //    sender.connect(receiver2);
 }
 
 TEST_F(MetakernelSignals, test_signal_connect_to_signal_with_compatible_arguments)
 {
     EXPECT_TRACE(signalTest, "function1 called");
-    metakernel::Lockable host;
-    metakernel::Signal<int> sender(host);
-    metakernel::Signal<> receiver(host);
+    Lockable host;
+    Signal<int> sender(host);
+    Signal<> receiver(host);
     EXPECT_NOT_NULL(sender.connect(receiver));
     receiver.connect(&test_signals::function1);
     EXPECT_EQ(1, sender(10));
@@ -263,8 +263,8 @@ TEST_F(MetakernelSignals, test_signal_connect_to_signal_with_compatible_argument
 
 TEST_F(MetakernelSignals, test_disconnect_connection_using_signal_api)
 {
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     auto lambda = [](){};
     auto connection = signal.connect(lambda);
     EXPECT_NOT_NULL(connection);
@@ -275,12 +275,12 @@ TEST_F(MetakernelSignals, test_disconnect_connection_using_signal_api)
 
 TEST_F(MetakernelSignals, test_disconnect_in_slot)
 {
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     auto lambda = []()
     {
-        EXPECT_NOT_NULL(metakernel::Connection::getActiveConnection());
-        metakernel::Connection::getActiveConnection()->disconnect();
+        EXPECT_NOT_NULL(Connection::getActiveConnection());
+        Connection::getActiveConnection()->disconnect();
     };
     auto connection = signal.connect(lambda);
     EXPECT_NOT_NULL(connection);
@@ -291,8 +291,8 @@ TEST_F(MetakernelSignals, test_disconnect_in_slot)
 
 TEST_F(MetakernelSignals, test_new_connection_in_slot)
 {
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     auto lambda = [&signal]()
     {
         auto innerLambda = [](){};
@@ -312,8 +312,8 @@ TEST_F(MetakernelSignals, test_new_connection_in_slot)
 TEST_F(MetakernelSignals, test_custom_connection)
 {
     EXPECT_TRACE(signalTest, "CustomConnection invoked by a signal with 0 arguments");
-    metakernel::Lockable host;
-    metakernel::Signal<> signal1(host);
+    Lockable host;
+    Signal<> signal1(host);
     auto connection = test_signals::CustomConnection::connect(signal1);
     EXPECT_NOT_NULL(connection);
     EXPECT_EQ(&signal1, connection->getSignal());
@@ -325,10 +325,10 @@ TEST_F(MetakernelSignals, test_multipe_signals_connect_to_same_custom_connection
     EXPECT_TRACE(signalTest, "CustomConnection invoked by a signal with 0 arguments");
     EXPECT_TRACE(signalTest, "CustomConnection invoked by a signal with 1 arguments");
     EXPECT_TRACE(signalTest, "CustomConnection invoked by a signal with 2 arguments");
-    metakernel::Lockable host;
-    metakernel::Signal<> signal1(host);
-    metakernel::Signal<int> signal2(host);
-    metakernel::Signal<int, std::string_view> signal3(host);
+    Lockable host;
+    Signal<> signal1(host);
+    Signal<int> signal2(host);
+    Signal<int, std::string_view> signal3(host);
     test_signals::CustomConnection::connect(signal1);
     test_signals::CustomConnection::connect(signal2);
     test_signals::CustomConnection::connect(signal3);
@@ -339,10 +339,10 @@ TEST_F(MetakernelSignals, test_multipe_signals_connect_to_same_custom_connection
 
 TEST_F(MetakernelSignals, test_receiver_destroyed_early)
 {
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     auto receiver = std::make_shared<test_signals::TestMethods>();
-    auto connection = std::weak_ptr<metakernel::Connection>(signal.connect(*receiver, &test_signals::TestMethods::method1));
+    auto connection = std::weak_ptr<Connection>(signal.connect(*receiver, &test_signals::TestMethods::method1));
     EXPECT_TRUE(connection.lock()->isConnected());
 
     receiver.reset();
@@ -352,10 +352,10 @@ TEST_F(MetakernelSignals, test_receiver_destroyed_early)
 
 TEST_F(MetakernelSignals, test_sender_destroyed_early)
 {
-    metakernel::Lockable host;
-    auto signal = std::make_shared<metakernel::Signal<>>(host);
+    Lockable host;
+    auto signal = std::make_shared<Signal<>>(host);
     test_signals::TestMethods receiver;
-    auto connection = std::weak_ptr<metakernel::Connection>(signal->connect(receiver, &test_signals::TestMethods::method1));
+    auto connection = std::weak_ptr<Connection>(signal->connect(receiver, &test_signals::TestMethods::method1));
     EXPECT_TRUE(connection.lock()->isConnected());
 
     signal.reset();
@@ -366,8 +366,8 @@ TEST_F(MetakernelSignals, test_signal_connected_to_virtual_method)
 {
     EXPECT_TRACE(signalTest, "virtual1 base called");
     EXPECT_TRACE(signalTest, "virtual1 derived called");
-    metakernel::Lockable host;
-    metakernel::Signal<> signal(host);
+    Lockable host;
+    Signal<> signal(host);
     test_signals::TestDerived receiver;
     test_signals::TestMethods base;
     signal.connect(receiver, &test_signals::TestDerived::virtual1);

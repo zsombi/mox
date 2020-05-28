@@ -54,15 +54,15 @@ public:
     /// \name Metadata
     /// \{
     /// Signal emitted when the thread starts the event loop.
-    metakernel::Signal<ThreadInterface*> started{*this};
+    Signal<ThreadInterface*> started{*this};
     /// Signal emitted right before the thread stops its execution.
-    metakernel::Signal<ThreadInterface*> stopped{*this};
+    Signal<ThreadInterface*> stopped{*this};
 
     /// Read-only property reporting the status of the thread.
-    using ThreadStatus = metakernel::StatusProperty<Status>;
+    using ThreadStatus = StatusProperty<Status>;
     ThreadStatus status;
     /// Read-only property reporting the exit code of the thread.
-    using ExitCode = metakernel::StatusProperty<int>;
+    using ExitCode = StatusProperty<int>;
     ExitCode exitCode;
     /// \}
 

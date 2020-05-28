@@ -2,9 +2,9 @@
 
 #include "test_framework.h"
 #include <mox/utils/log/logger.hpp>
-#include <mox/core/metakernel/argument_data.hpp>
-#include <mox/core/metakernel/signals.hpp>
-#include <mox/core/metakernel/properties.hpp>
+#include <mox/core/meta/argument_data.hpp>
+#include <mox/core/meta/signals.hpp>
+#include <mox/core/meta/properties.hpp>
 
 DECLARE_LOG_CATEGORY(propertyTest)
 using namespace mox;
@@ -24,7 +24,7 @@ enum class TestEnum
     Three
 };
 
-class CustomDP : public metakernel::StatusProperty<int>::Data
+class CustomDP : public StatusProperty<int>::Data
 {
     int m_data = -1;
 
@@ -46,7 +46,7 @@ public:
 };
 
 template <class Type>
-class TestStatus : public metakernel::StatusProperty<Type>::Data, public metakernel::StatusProperty<Type>
+class TestStatus : public StatusProperty<Type>::Data, public StatusProperty<Type>
 {
     Type m_data;
 
@@ -56,8 +56,8 @@ class TestStatus : public metakernel::StatusProperty<Type>::Data, public metaker
     }
 
 public:
-    TestStatus(metakernel::Lockable& host, Type defValue)
-        : metakernel::StatusProperty<Type>(host, static_cast<typename metakernel::StatusProperty<Type>::Data&>(*this))
+    TestStatus(Lockable& host, Type defValue)
+        : StatusProperty<Type>(host, static_cast<typename StatusProperty<Type>::Data&>(*this))
         , m_data(defValue)
     {
     }
@@ -65,12 +65,12 @@ public:
     void setData(Type data)
     {
         m_data = data;
-        metakernel::StatusProperty<Type>::Data::update();
+        StatusProperty<Type>::Data::update();
     }
 };
 
 template <class ValueType>
-class TestHost : public metakernel::Lockable
+class TestHost : public Lockable
 {
 public:
     explicit TestHost(ValueType defValue = ValueType())
@@ -78,18 +78,18 @@ public:
         property1 = defValue;
     }
 
-    metakernel::Property<ValueType> property1{*this};
-    metakernel::Property<ValueType> property2{*this};
-    metakernel::Property<ValueType> property3{*this};
-    metakernel::Property<ValueType> property4{*this};
+    Property<ValueType> property1{*this};
+    Property<ValueType> property2{*this};
+    Property<ValueType> property3{*this};
+    Property<ValueType> property4{*this};
 };
 
 }
 
 TEST_F(MetakernelProperties, test_property_api)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property(host);
+    Lockable host;
+    Property<int> property(host);
     EXPECT_EQ(0, property);
 
     auto onPropertyChanged = [](int value)
@@ -105,9 +105,9 @@ TEST_F(MetakernelProperties, test_property_api)
 TEST_F(MetakernelProperties, test_status_property)
 {
     EXPECT_TRACE(propertyTest, "Property value changed to 1");
-    metakernel::Lockable host;
+    Lockable host;
     test_property::CustomDP datadProvider;
-    metakernel::StatusProperty<int> property(host, datadProvider);
+    StatusProperty<int> property(host, datadProvider);
 
     auto onPropertyChanged = [](int value)
     {
@@ -121,8 +121,8 @@ TEST_F(MetakernelProperties, test_status_property)
 
 TEST_F(MetakernelProperties, test_writable_enum_property)
 {
-    metakernel::Lockable host;
-    metakernel::Property<test_property::TestEnum> property(host, test_property::TestEnum::Two);
+    Lockable host;
+    Property<test_property::TestEnum> property(host, test_property::TestEnum::Two);
     EXPECT_EQ(test_property::TestEnum::Two, property);
 
     property = test_property::TestEnum::Three;
@@ -131,7 +131,7 @@ TEST_F(MetakernelProperties, test_writable_enum_property)
 
 TEST_F(MetakernelProperties, test_enum_status_property)
 {
-    metakernel::Lockable host;
+    Lockable host;
     test_property::TestStatus<test_property::TestEnum> property(host, test_property::TestEnum::Two);
     EXPECT_EQ(test_property::TestEnum::Two, property);
 
@@ -156,9 +156,9 @@ TEST_F(MetakernelProperties, test_member_writable_property)
 
 TEST_F(MetakernelProperties, test_one_way_binding_on_same_host_discard_on_write)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property1(host, 1);
-    metakernel::Property<int> property2(host, 2);
+    Lockable host;
+    Property<int> property1(host, 1);
+    Property<int> property2(host, 2);
 
     auto binding = property1.bind(property2);
     EXPECT_TRUE(binding->isAttached());
@@ -176,10 +176,10 @@ TEST_F(MetakernelProperties, test_one_way_binding_on_same_host_discard_on_write)
 
 TEST_F(MetakernelProperties, test_one_way_binding_on_separate_hosts_discard_on_write)
 {
-    metakernel::Lockable host1;
-    metakernel::Lockable host2;
-    metakernel::Property<int> property1(host1, 1);
-    metakernel::Property<int> property2(host2, 2);
+    Lockable host1;
+    Lockable host2;
+    Property<int> property1(host1, 1);
+    Property<int> property2(host2, 2);
 
     auto binding = property1.bind(property2);
     EXPECT_TRUE(binding->isAttached());
@@ -236,11 +236,11 @@ TEST_F(MetakernelProperties, test_one_way_binding_on_member_properties_on_separa
 
 TEST_F(MetakernelProperties, test_one_way_binding_on_same_host_keep_on_write)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property1(host, 1);
-    metakernel::Property<int> property2(host, 2);
+    Lockable host;
+    Property<int> property1(host, 1);
+    Property<int> property2(host, 2);
 
-    auto binding = property1.bind(property2, metakernel::BindingPolicy::KeepOnWrite);
+    auto binding = property1.bind(property2, BindingPolicy::KeepOnWrite);
     EXPECT_TRUE(binding->isAttached());
     EXPECT_EQ(2, property1);
 
@@ -260,11 +260,11 @@ TEST_F(MetakernelProperties, test_one_way_binding_on_same_host_keep_on_write)
 
 TEST_F(MetakernelProperties, test_grouped_bindings_discard_group_when_binding_is_detached)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property1(host, 1);
-    metakernel::Property<int> property2(host, 2);
+    Lockable host;
+    Property<int> property1(host, 1);
+    Property<int> property2(host, 2);
 
-    metakernel::BindingGroup::create()->addToGroup(*property1.bind(property2)).addToGroup(*property2.bind(property1)).setPolicy(metakernel::BindingPolicy::DetachOnWrite);
+    BindingGroup::create()->addToGroup(*property1.bind(property2)).addToGroup(*property2.bind(property1)).setPolicy(BindingPolicy::DetachOnWrite);
     EXPECT_EQ(2, property1);
     EXPECT_EQ(2, property2);
 
@@ -275,13 +275,13 @@ TEST_F(MetakernelProperties, test_grouped_bindings_discard_group_when_binding_is
 
 TEST_F(MetakernelProperties, test_two_way_binding_of_2_properties_grouped)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property1(host, 1);
-    metakernel::Property<int> property2(host, 2);
+    Lockable host;
+    Property<int> property1(host, 1);
+    Property<int> property2(host, 2);
     EXPECT_EQ(1, property1);
     EXPECT_EQ(2, property2);
 
-    metakernel::bindProperties(property1, property2);
+    bindProperties(property1, property2);
     EXPECT_EQ(2, property1);
     EXPECT_EQ(2, property2);
 
@@ -306,12 +306,12 @@ TEST_F(MetakernelProperties, test_two_way_binding_of_2_properties_grouped)
 
 TEST_F(MetakernelProperties, test_bind_3_properties)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property1(host, 1);
-    metakernel::Property<int> property2(host, 2);
-    metakernel::Property<int> property3(host, 3);
+    Lockable host;
+    Property<int> property1(host, 1);
+    Property<int> property2(host, 2);
+    Property<int> property3(host, 3);
 
-    metakernel::bindProperties(property1, property2, property3);
+    bindProperties(property1, property2, property3);
     EXPECT_EQ(3, property1);
     EXPECT_EQ(3, property2);
     EXPECT_EQ(3, property3);
@@ -334,13 +334,13 @@ TEST_F(MetakernelProperties, test_bind_3_properties)
 
 TEST_F(MetakernelProperties, test_bind_4_properties_in_loop)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property1(host, 1);
-    metakernel::Property<int> property2(host, 2);
-    metakernel::Property<int> property3(host, 3);
-    metakernel::Property<int> property4(host, 4);
+    Lockable host;
+    Property<int> property1(host, 1);
+    Property<int> property2(host, 2);
+    Property<int> property3(host, 3);
+    Property<int> property4(host, 4);
 
-    metakernel::bindProperties(property1, property2, property3, property4);
+    bindProperties(property1, property2, property3, property4);
     EXPECT_EQ(4, property1);
     EXPECT_EQ(4, property2);
     EXPECT_EQ(4, property3);
@@ -371,12 +371,12 @@ TEST_F(MetakernelProperties, test_bind_4_properties_in_loop)
 
 TEST_F(MetakernelProperties, test_disabled_binding)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property1(host, 1);
-    metakernel::Property<int> property2(host, 2);
+    Lockable host;
+    Property<int> property1(host, 1);
+    Property<int> property2(host, 2);
     EXPECT_EQ(1, property1);
     EXPECT_EQ(2, property2);
-    auto binding = metakernel::bindProperties(property1, property2);
+    auto binding = bindProperties(property1, property2);
     EXPECT_EQ(2, property1);
     EXPECT_EQ(2, property2);
 
@@ -404,9 +404,9 @@ TEST_F(MetakernelProperties, test_disabled_binding)
 
 TEST_F(MetakernelProperties, test_property_in_property_binding_destroyed)
 {
-    metakernel::Lockable host;
-    auto property = metakernel::Property<int>(host, 1);
-    auto dynamic = new metakernel::Property<int>(host, -1);
+    Lockable host;
+    auto property = Property<int>(host, 1);
+    auto dynamic = new Property<int>(host, -1);
 
     auto binding = property.bind(*dynamic);
     EXPECT_EQ(-1, property);
@@ -423,11 +423,11 @@ TEST_F(MetakernelProperties, test_property_in_property_binding_destroyed)
 
 TEST_F(MetakernelProperties, test_stacked_binding)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> property1(host, 1);
-    metakernel::Property<int> property2(host, 2);
-    metakernel::Property<int> property3(host, 3);
-    metakernel::Property<int> property4(host, 4);
+    Lockable host;
+    Property<int> property1(host, 1);
+    Property<int> property2(host, 2);
+    Property<int> property3(host, 3);
+    Property<int> property4(host, 4);
 
     // All bindings detach on write. Only the active one shall detach!
     auto b1 = property1.bind(property2);
@@ -459,9 +459,9 @@ TEST_F(MetakernelProperties, test_stacked_binding)
 
 TEST_F(MetakernelProperties, test_expression_binding)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> source(host, 10);
-    metakernel::Property<std::string> target(host);
+    Lockable host;
+    Property<int> source(host, 10);
+    Property<std::string> target(host);
 
     target.bind([&source]()
     {
@@ -476,8 +476,8 @@ TEST_F(MetakernelProperties, test_expression_binding)
 
 TEST_F(MetakernelProperties, test_bind_to_status)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> target(host, 1);
+    Lockable host;
+    Property<int> target(host, 1);
     test_property::TestStatus<int> source(host, 10);
 
     auto binding = target.bind(source);
@@ -489,9 +489,9 @@ TEST_F(MetakernelProperties, test_bind_to_status)
 
 TEST_F(MetakernelProperties, test_expression_binding_with_status)
 {
-    metakernel::Lockable host;
+    Lockable host;
     test_property::TestStatus<int> status(host, 10);
-    metakernel::Property<std::string> target(host);
+    Property<std::string> target(host);
 
     target.bind([&status]() { return std::to_string(int(status)); });
     EXPECT_EQ("10"s, std::string(target));
@@ -502,10 +502,10 @@ TEST_F(MetakernelProperties, test_expression_binding_with_status)
 
 TEST_F(MetakernelProperties, test_binding_loop_with_expressions)
 {
-    metakernel::Lockable host;
-    metakernel::Property<int> p1(host, 1);
-    metakernel::Property<int> p2(host, 2);
-    metakernel::Property<int> p3(host, 3);
+    Lockable host;
+    Property<int> p1(host, 1);
+    Property<int> p2(host, 2);
+    Property<int> p3(host, 3);
 
     auto b1 = p1.bind([&p2]() { return p2 + 2; });
     EXPECT_EQ(4, p1);

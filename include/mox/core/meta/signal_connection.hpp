@@ -5,10 +5,11 @@
 
 #include <mox/config/memory.hpp>
 #include <mox/config/platform_config.hpp>
-#include <mox/core/metakernel/argument_data.hpp>
+#include <mox/core/meta/argument_data.hpp>
 #include <mox/utils/log/logger.hpp>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 /// Template slot specialized on methods.
 template <class Method>
@@ -71,7 +72,7 @@ public:
 protected:
     void invokeOverride(const PackedArguments &arguments) override
     {
-        auto argPack = arguments.repack<Function>(nullptr);
+        auto argPack = arguments.repack<Function>();
         std::apply(m_slot, argPack);
     }
 };
@@ -134,7 +135,7 @@ Signal<Arguments...>::connect(typename function_traits<SlotFunction>::object& re
 
 template <class... Arguments>
 template <class SlotFunction>
-std::enable_if_t<!std::is_base_of_v<mox::metakernel::SignalCore, SlotFunction>, ConnectionPtr>
+std::enable_if_t<!std::is_base_of_v<mox::SignalCore, SlotFunction>, ConnectionPtr>
 Signal<Arguments...>::connect(const SlotFunction& slot)
 {
     static_assert(
@@ -159,6 +160,6 @@ ConnectionPtr Signal<Arguments...>::connect(Signal<SignalArguments...>& signal)
     return connection;
 }
 
-}} // mox::metakernel
+} // mox
 
 #endif // SIGNAL_CONNECTION_HPP

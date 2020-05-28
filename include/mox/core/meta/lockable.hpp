@@ -7,7 +7,8 @@
 #include <mox/config/platform_config.hpp>
 #include <mox/utils/locks.hpp>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 class MOX_API Lockable : public mox::AtomicRefCounted<int32_t>
 {
@@ -27,6 +28,6 @@ public:
     bool try_lock();
 };
 
-}} // mox::metakernel
+} // mox
 
 #endif // LOCKABLE_HPP

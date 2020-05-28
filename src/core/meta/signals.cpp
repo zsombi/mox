@@ -1,12 +1,13 @@
 // Copyright (C) 2020 bitWelder
 
-#include <mox/core/metakernel/properties.hpp>
-#include <mox/core/metakernel/signals.hpp>
-#include <mox/core/metakernel/signal_connection.hpp>
+#include <mox/core/meta/properties.hpp>
+#include <mox/core/meta/signals.hpp>
+#include <mox/core/meta/signal_connection.hpp>
 #include <mox/utils/algorithm.hpp>
 #include <mox/utils/locks.hpp>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 static ConnectionPtr s_currentConnection;
 
@@ -224,4 +225,4 @@ void SignalCore::setBlocked(bool block)
     m_isBlocked = block;
 }
 
-}} // mox::metakernel
+} // mox

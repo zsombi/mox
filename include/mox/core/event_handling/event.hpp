@@ -20,8 +20,8 @@
 #define EVENT_HPP
 
 #include <mox/config/deftypes.hpp>
-#include <mox/core/metakernel/argument_data.hpp>
-#include <mox/core/metakernel/signals.hpp>
+#include <mox/core/meta/argument_data.hpp>
+#include <mox/core/meta/signals.hpp>
 #include <mox/utils/locks.hpp>
 #include <mox/utils/type_traits.hpp>
 #include <mox/utils/type_traits/enum_operators.hpp>
@@ -128,11 +128,11 @@ public:
 class MOX_API DeferredSignalEvent : public Event
 {
     DISABLE_COPY(DeferredSignalEvent)
-    metakernel::ConnectionPtr m_connection;
-    metakernel::PackedArguments m_arguments;
+    ConnectionPtr m_connection;
+    PackedArguments m_arguments;
 
 public:
-    explicit DeferredSignalEvent(ObjectSharedPtr target, metakernel::Connection& connection, const metakernel::PackedArguments& args);
+    explicit DeferredSignalEvent(ObjectSharedPtr target, Connection& connection, const PackedArguments& args);
 
     void activate();
 };

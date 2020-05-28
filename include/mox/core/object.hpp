@@ -22,7 +22,7 @@
 #include <mox/core/event_handling/event.hpp>
 #include <mox/core/event_handling/run_loop_sources.hpp>
 #include <mox/core/process/thread_data.hpp>
-#include <mox/core/metakernel/properties.hpp>
+#include <mox/core/meta/properties.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 #include <mox/utils/containers/flat_map.hpp>
 
@@ -39,10 +39,10 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 /// by deriving your classes from Object and adding those as children to each other.
 ///
 /// Provides event dispatching.
-class MOX_API Object : public metakernel::Lockable, public metakernel::SlotHolder, public EventSource::EventDispatcher, public std::enable_shared_from_this<Object>
+class MOX_API Object : public Lockable, public SlotHolder, public EventSource::EventDispatcher, public std::enable_shared_from_this<Object>
 {
 public:
-    metakernel::Property<std::string> objectName{*this};
+    Property<std::string> objectName{*this};
 
     /// \name Event handling
     /// \{

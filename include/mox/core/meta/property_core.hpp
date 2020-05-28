@@ -5,13 +5,14 @@
 
 #include <mox/config/pimpl.hpp>
 #include <mox/config/platform_config.hpp>
-#include <mox/core/metakernel/argument_data.hpp>
-#include <mox/core/metakernel/lockable.hpp>
-#include <mox/core/metakernel/signals.hpp>
+#include <mox/core/meta/argument_data.hpp>
+#include <mox/core/meta/lockable.hpp>
+#include <mox/core/meta/signals.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 #include <functional>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 // Forward declarations
 class SignalCore;
@@ -201,6 +202,6 @@ private:
     std::atomic_bool m_isUpdating = false;
 };
 
-}} // mox::metakernel
+} // mox
 
 #endif // PROPERTY_CORE_HPP

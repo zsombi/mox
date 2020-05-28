@@ -1,9 +1,10 @@
 // Copyright (C) 2020 bitWelder
 
-#include <mox/core/metakernel/lockable.hpp>
+#include <mox/core/meta/lockable.hpp>
 #include <mox/utils/log/logger.hpp>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 Lockable::Lockable()
     : Base(0)
@@ -76,4 +77,4 @@ bool Lockable::try_lock()
 }
 
 #endif
-}} // mox::metakernel
+} // mox

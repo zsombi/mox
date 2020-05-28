@@ -5,11 +5,12 @@
 
 #include <mox/config/deftypes.hpp>
 #include <mox/config/platform_config.hpp>
-#include <mox/core/metakernel/argument_data.hpp>
-#include <mox/core/metakernel/lockable.hpp>
+#include <mox/core/meta/argument_data.hpp>
+#include <mox/core/meta/lockable.hpp>
 #include <mox/utils/containers/shared_vector.hpp>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 class BindingCore;
 class Connection;
@@ -190,7 +191,7 @@ public:
     /// \param slot The function, functor or lambda to connect.
     /// \return Returns the shared pointer to the connection.
     template <class SlotFunction>
-    std::enable_if_t<!std::is_base_of_v<mox::metakernel::SignalCore, SlotFunction>, ConnectionPtr>
+    std::enable_if_t<!std::is_base_of_v<mox::SignalCore, SlotFunction>, ConnectionPtr>
     connect(const SlotFunction& slot);
 
     /// Creates a connection between this signal and a receiver \a signal.
@@ -218,11 +219,11 @@ private:
     bool m_oldBlockedState;
 };
 
-}} // mox::metakernel
+} // mox
 
 /******************************************************************************
  * Implementation
  */
-#include <mox/core/metakernel/signal_connection.hpp>
+#include <mox/core/meta/signal_connection.hpp>
 
 #endif // SIGNALS_HPP

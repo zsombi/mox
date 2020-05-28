@@ -21,11 +21,11 @@
 
 #include <mox/config/pimpl.hpp>
 
-#include <mox/core/metakernel/properties.hpp>
+#include <mox/core/meta/properties.hpp>
 
 #include <unordered_set>
 
-namespace mox { namespace metakernel
+namespace mox
 {
 
 class PropertyCorePrivate
@@ -91,8 +91,6 @@ public:
     AtomicRefCounted<byte> activationCount = 0;
     bool isEnabled = true;
 };
-
-}
 
 }
 

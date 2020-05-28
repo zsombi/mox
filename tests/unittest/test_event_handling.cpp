@@ -24,10 +24,10 @@
 
 using namespace mox;
 
-class TestTimer : public metakernel::Lockable, public TimerSource::TimerRecord
+class TestTimer : public Lockable, public TimerSource::TimerRecord
 {
 public:
-    metakernel::Signal<> expired{*this};
+    Signal<> expired{*this};
 
     explicit TestTimer(std::chrono::milliseconds interval, bool singleShot)
         : TimerSource::TimerRecord(interval, singleShot)
@@ -44,10 +44,10 @@ public:
     }
 };
 
-class TestSocket : public metakernel::Lockable, public metakernel::SlotHolder, public SocketNotifierSource::Notifier
+class TestSocket : public Lockable, public SlotHolder, public SocketNotifierSource::Notifier
 {
 public:
-    metakernel::Signal<Modes> modeChanged{*this};
+    Signal<Modes> modeChanged{*this};
 
     explicit TestSocket(EventTarget handler, Modes modes)
         : SocketNotifierSource::Notifier(handler, modes)

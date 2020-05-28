@@ -101,7 +101,7 @@ int QuitEvent::getExitCode() const
 /******************************************************************************
  * DeferredSignalEvent
  */
-DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, metakernel::Connection& connection, const metakernel::PackedArguments& args)
+DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, Connection& connection, const PackedArguments& args)
     : Event(target, EventType::DeferredSignal, Priority::Urgent)
     , m_connection(connection.shared_from_this())
     , m_arguments(args)

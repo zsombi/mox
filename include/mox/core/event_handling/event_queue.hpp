@@ -37,7 +37,7 @@ struct MOX_API EventQueueComparator
 using EventQueueBase = std::priority_queue<EventPtr, std::vector<EventPtr>, EventQueueComparator>;
 
 /// EventQueue implements the prioritized queueing of events to handle.
-class MOX_API EventQueue : public metakernel::Lockable, protected EventQueueBase
+class MOX_API EventQueue : public Lockable, protected EventQueueBase
 {
 public:
     /// Constructor.

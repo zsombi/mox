@@ -9,11 +9,13 @@
 #include <mox/config/platform_config.hpp>
 #include <mox/utils/function_traits.hpp>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 /// ArgumentData stores an argument passed on slot invocation.
-struct MOX_API ArgumentData
+class MOX_API ArgumentData : public std::any
 {
+public:
     /// Creates a default argument data, with no data stored.
     ArgumentData() = default;
 
@@ -22,18 +24,18 @@ struct MOX_API ArgumentData
     /// \param value The value to store.
     template <class T>
     ArgumentData(T value)
-        : m_data(value)
+        : std::any(value)
     {
     }
 
-    /// Assignment operator, replaces the data stored.
-    /// \tparam T The type of the value passed as argument.
-    /// \param value The value to store.
-    template <class T>
-    void operator=(T value)
-    {
-        m_data = value;
-    }
+//    /// Assignment operator, replaces the data stored.
+//    /// \tparam T The type of the value passed as argument.
+//    /// \param value The value to store.
+//    template <class T>
+//    void operator=(T value)
+//    {
+//        *this = value;
+//    }
 
     /// Cast operator, returns the data stored by an ArgumentData instance.
     /// \tparam T The type of the casted value.
@@ -42,11 +44,8 @@ struct MOX_API ArgumentData
     template <class T>
     operator T() const
     {
-        return std::any_cast<T>(m_data);
+        return std::any_cast<T>(*this);
     }
-
-private:
-    std::any m_data;  
 };
 
 /// The PackedArguments class packs values passed as arguments to a signal or a slot invocation.
@@ -76,16 +75,24 @@ struct MOX_API PackedArguments : protected std::vector<ArgumentData>
 
     /// Repacks the argument pack into a tuple, using the signature of a function
     /// \tparam FunctionSignature The function signature to use in repacking
-    /// \param instance Type-erased instance of the method to call with. Pass \e nullptr for
-    /// functions, lambdas or static methods. When the argument pack is repackaged with a method
-    /// signature, the instance is casted to the class type owning the method.
+    /// \param instance The instance of the method to call with.
     /// \return The tuple prepared with the arguments ready to invoke a callable.
     /// \throws ExceptionType::InvalidArgument when the function signature requires more arguments
     /// than it is available in the package.
     /// \throws std::bad_any_cast when the argument types of the signature do not match the type
     /// of the argument value stored in the package.
     template <typename FunctionSignature>
-    auto repack(void* instance) const;
+    auto repack(typename function_traits<FunctionSignature>::object* instance) const;
+
+    /// Repacks the argument pack into a tuple, using the signature of a function
+    /// \tparam FunctionSignature The function signature to use in repacking
+    /// \return The tuple prepared with the arguments ready to invoke a callable.
+    /// \throws ExceptionType::InvalidArgument when the function signature requires more arguments
+    /// than it is available in the package.
+    /// \throws std::bad_any_cast when the argument types of the signature do not match the type
+    /// of the argument value stored in the package.
+    template <class FunctionSignature>
+    auto repack() const;
 
 private:
     template <typename Function>
@@ -129,21 +136,21 @@ T PackedArguments::get(size_t index) const
 }
 
 template <typename FunctionSignature>
-auto PackedArguments::repack(void* instance) const
+auto PackedArguments::repack(typename function_traits<FunctionSignature>::object* instance) const
 {
     constexpr std::size_t N = function_traits<FunctionSignature>::arity;
-    if constexpr (function_traits<FunctionSignature>::type == FunctionType::Method)
-    {
-        return std::tuple_cat(std::make_tuple(static_cast<typename function_traits<FunctionSignature>::object*>(instance)),
-                              PackToTuple<FunctionSignature>::template convert<N>(*this));
-    }
-    else
-    {
-        UNUSED(instance);
-        return PackToTuple<FunctionSignature>::template convert<N>(*this);
-    }
+    return std::tuple_cat(std::make_tuple(static_cast<typename function_traits<FunctionSignature>::object*>(instance)),
+                          PackToTuple<FunctionSignature>::template convert<N>(*this));
 }
 
-}} // mox::metakernel
+template <class FunctionSignature>
+auto PackedArguments::repack() const
+{
+    constexpr std::size_t N = function_traits<FunctionSignature>::arity;
+    return PackToTuple<FunctionSignature>::template convert<N>(*this);
+}
+
+
+} // mox
 
 #endif // ARGUMENT_DATA_HPP

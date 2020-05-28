@@ -20,7 +20,7 @@
 #define SOCKET_NOTIFIER_HPP
 
 #include <mox/core/event_handling/run_loop_sources.hpp>
-#include <mox/core/metakernel/signals.hpp>
+#include <mox/core/meta/signals.hpp>
 #include <mox/core/event_handling/event_handling_declarations.hpp>
 
 namespace mox
@@ -28,11 +28,11 @@ namespace mox
 
 /// The SocketNotifier class provides notifications on events occurring on a socket descriptor.
 /// The socket descriptor is either a file handler or a normal socket handler.
-class MOX_API SocketNotifier : public metakernel::Lockable, public metakernel::SlotHolder, public SocketNotifierSource::Notifier
+class MOX_API SocketNotifier : public Lockable, public SlotHolder, public SocketNotifierSource::Notifier
 {
 public:
     /// Activation signal, emitted when the operation on the socket is notified.
-    metakernel::Signal<SocketNotifierSharedPtr, Modes> activated{*this};
+    Signal<SocketNotifierSharedPtr, Modes> activated{*this};
 
     /// Creates a socket notifier on a \a socket with notification \a modes.
     static SocketNotifierSharedPtr create(EventTarget socket, Modes modes);

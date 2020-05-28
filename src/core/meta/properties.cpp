@@ -1,9 +1,10 @@
 // Copyright (C) 2020 bitWelder
 
-#include <mox/core/metakernel/properties.hpp>
+#include <mox/core/meta/properties.hpp>
 #include <private/property_p.hpp>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 static BindingPtr s_currentBinding;
 /******************************************************************************
@@ -339,4 +340,4 @@ void BindingGroup::setEnabled(bool enabled)
     for_each(m_bindings, update);
 }
 
-}} // mox::metakernel
+} // mox

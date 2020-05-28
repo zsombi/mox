@@ -3,12 +3,13 @@
 #ifndef PROPERTIES_HPP
 #define PROPERTIES_HPP
 
-#include <mox/core/metakernel/property_core.hpp>
-#include <mox/core/metakernel/signals.hpp>
+#include <mox/core/meta/property_core.hpp>
+#include <mox/core/meta/signals.hpp>
 #include <mox/utils/type_traits.hpp>
 #include <mox/utils/log/logger.hpp>
 
-namespace mox { namespace metakernel {
+namespace mox
+{
 
 /******************************************************************************
  * Templates
@@ -28,7 +29,7 @@ class StatusProperty : public StatusPropertyCore
     using Self = StatusProperty<Type>;
 
 public:
-    using ChangedSignal = metakernel::Signal<Type>;
+    using ChangedSignal = Signal<Type>;
 
     /// Status property data provider type. Provides the data of the status property and an
     /// interface to update the property.
@@ -69,7 +70,7 @@ class Property : public PropertyCore
 {
 public:
     using ValueType = Type;
-    using ChangedSignal = metakernel::Signal<Type>;
+    using ChangedSignal = Signal<Type>;
 
     /// The changed signal of the property.
     ChangedSignal changed;
@@ -335,7 +336,7 @@ BindingGroupPtr bindProperties(PropertyType&... properties)
     return group;
 }
 
-}} // mox::metakernel
+} // mox
 
 DECLARE_LOG_CATEGORY(bindings)
 

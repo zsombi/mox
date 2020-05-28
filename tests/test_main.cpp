@@ -1,7 +1,6 @@
 #include "test_framework.h"
 #include <gtest/gtest.h>
 
-#include <mox/mox_module.hpp>
 #include "../src/include/private/process_p.hpp"
 
 /******************************************************************************
@@ -131,8 +130,5 @@ void TestThreadLoop::onStopped()
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
-    mox::MoxModule module;
-    module.registerModule();
-
     return RUN_ALL_TESTS();
 }

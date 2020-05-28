@@ -19,7 +19,6 @@
 #ifndef APPLICATION_HPP
 #define APPLICATION_HPP
 
-#include <mox/mox_module.hpp>
 #include <mox/core/object.hpp>
 #include <mox/core/event_handling/run_loop.hpp>
 
@@ -33,9 +32,9 @@ class MOX_API Application : public Object
 public:
     /// The static metaclass of the Application class.
     /// Signal is emitted when the application's event loop is started.
-    metakernel::Signal<> started{*this};
+    Signal<> started{*this};
     /// Signal emitted when the application's event loop exits.
-    metakernel::Signal<> stopped{*this};
+    Signal<> stopped{*this};
 
     /// Constructor, creates an application object. You can have only one application object in your
     /// application.
