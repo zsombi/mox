@@ -127,11 +127,11 @@ template <typename T,
           void (*ReleaseFunction)(std::atomic<remove_cvref_t<T>>&) = default_atomic_release<T>>
 class AtomicRefCounted
 {
-    using Type = remove_cvref_t<T>;
+    using RefType = remove_cvref_t<T>;
 
 public:
     /// Construct the reference counted from a value.
-    AtomicRefCounted(const Type& t = Type())
+    AtomicRefCounted(const RefType& t = RefType())
         : m_value(t)
     {
     }
@@ -139,7 +139,7 @@ public:
     AtomicRefCounted(AtomicRefCounted&& other)
         : m_value(other.m_value)
     {
-        other.value = Type();
+        other.value = RefType();
     }
     /// Copy constructor.
     AtomicRefCounted(const AtomicRefCounted& other)
@@ -189,7 +189,7 @@ public:
 
 protected:
     /// The reference counted value.
-    std::atomic<Type> m_value;
+    std::atomic<RefType> m_value;
 };
 
 /// Template for reference counted types.

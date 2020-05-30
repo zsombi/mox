@@ -10,12 +10,15 @@
 namespace mox
 {
 
+#ifdef DEBUG
 class MOX_API Lockable : public mox::AtomicRefCounted<int32_t>
+#else
+class MOX_API Lockable
+#endif
 {
-    using Base = mox::AtomicRefCounted<int32_t>;
     mutable std::mutex m_mutex;
 #ifdef DEBUG
-    mutable atomic_int32_t m_lockCount = 0;
+    using Base = mox::AtomicRefCounted<int32_t>;
     mutable std::atomic<std::thread::id> m_owner = std::thread::id();
 #endif
 

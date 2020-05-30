@@ -23,7 +23,7 @@ using ConnectionPtr = std::shared_ptr<Connection>;
 /// A generic signal is activated using the activate() method. When a signal is activated, its
 /// connections are invoked. Connections created within connections are left out from the signal
 /// activation.
-class MOX_API SignalCore : public SharedLock<Lockable>
+class MOX_API SignalCore : public Lockable
 {
 public:
     /// Destructor.

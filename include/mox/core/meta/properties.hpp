@@ -23,13 +23,14 @@ namespace mox
 ///
 /// You cannot bind properties to a status property, but you can use the status property in
 /// bindings as source, or as part of an expression.
-template <class Type>
+template <class _DataType>
 class StatusProperty : public StatusPropertyCore
 {
-    using Self = StatusProperty<Type>;
+    using Self = StatusProperty<_DataType>;
 
 public:
-    using ChangedSignal = Signal<Type>;
+    using DataType = _DataType;
+    using ChangedSignal = Signal<DataType>;
 
     /// Status property data provider type. Provides the data of the status property and an
     /// interface to update the property.
@@ -47,7 +48,7 @@ public:
         void update();
 
         /// Property data getter.
-        virtual Type get() const = 0;
+        virtual DataType get() const = 0;
     };
     /// The changed signal of the property.
     ChangedSignal changed;
@@ -57,7 +58,7 @@ public:
 
     /// Property getter.
     /// \return The value of the property.
-    operator Type() const;
+    operator DataType() const;
 
 private:
     Data& m_dataProvider;
@@ -65,24 +66,24 @@ private:
 
 /// The template class defines a read-write property with a change signal. Provides a default
 /// property data provider.
-template <class Type>
+template <class _DataType>
 class Property : public PropertyCore
 {
 public:
-    using ValueType = Type;
-    using ChangedSignal = Signal<Type>;
+    using DataType = _DataType;
+    using ChangedSignal = Signal<DataType>;
 
     /// The changed signal of the property.
     ChangedSignal changed;
 
     /// Constructs a property with the default property value provider.
-    explicit Property(Lockable& host, const Type& defaultValue = Type());
+    explicit Property(Lockable& host, const DataType& defaultValue = DataType());
 
     /// Property getter.
-    operator Type() const;
+    operator DataType() const;
 
     /// Property setter.
-    void operator=(const Type& value);
+    void operator=(const DataType& value);
 
     /// \name Bindings
     /// \{
@@ -94,7 +95,7 @@ public:
     /// \param polict The binding policy to use. The default policy is BindingPolicy::DetachOnWrite.
     /// \return The binding object created.
     template <class BindingSource>
-    std::enable_if_t<std::is_base_of_v<PropertyCore, BindingSource> || std::is_base_of_v<StatusProperty<Type>, BindingSource>, BindingPtr>
+    std::enable_if_t<std::is_base_of_v<PropertyCore, BindingSource> || std::is_base_of_v<StatusProperty<DataType>, BindingSource>, BindingPtr>
     bind(BindingSource& source, BindingPolicy policy = BindingPolicy::DetachOnWrite);
 
     /// Creates a binding on a property and an expression as source.
@@ -103,12 +104,12 @@ public:
     /// \param polict The binding policy to use. The default policy is BindingPolicy::DetachOnWrite.
     /// \return The binding object created. The binding takes the ownership over the expression.
     template <class ExpressionType>
-    std::enable_if_t<!std::is_base_of_v<PropertyCore, ExpressionType> && !std::is_base_of_v<StatusProperty<Type>, ExpressionType>, BindingPtr>
+    std::enable_if_t<!std::is_base_of_v<PropertyCore, ExpressionType> && !std::is_base_of_v<StatusProperty<DataType>, ExpressionType>, BindingPtr>
     bind(ExpressionType source, BindingPolicy policy = BindingPolicy::DetachOnWrite);
     /// \}
 
 private:
-    Type m_data;
+    DataType m_data;
 };
 
 /// Template class implementing bindings to a property and an other property type. The source
@@ -162,20 +163,20 @@ protected:
 /******************************************************************************
  * Implementations
  */
-template <class Type>
-void StatusProperty<Type>::Data::attach(Self& property)
+template <class DataType>
+void StatusProperty<DataType>::Data::attach(Self& property)
 {
     m_property = &property;
 }
 
-template <class Type>
-void StatusProperty<Type>::Data::update()
+template <class DataType>
+void StatusProperty<DataType>::Data::update()
 {
     m_property->changed(get());
 }
 
-template <class Type>
-StatusProperty<Type>::StatusProperty(Lockable& host, Data& dataProvider)
+template <class DataType>
+StatusProperty<DataType>::StatusProperty(Lockable& host, Data& dataProvider)
     : StatusPropertyCore(host)
     , changed(host)
     , m_dataProvider(dataProvider)
@@ -183,31 +184,31 @@ StatusProperty<Type>::StatusProperty(Lockable& host, Data& dataProvider)
     m_dataProvider.attach(*this);
 }
 
-template <class Type>
-StatusProperty<Type>::operator Type() const
+template <class DataType>
+StatusProperty<DataType>::operator DataType() const
 {
     notifyGet(const_cast<ChangedSignal&>(changed));
     return m_dataProvider.get();
 }
 
 
-template <class Type>
-Property<Type>::Property(Lockable& host, const Type& defaultValue)
+template <class DataType>
+Property<DataType>::Property(Lockable& host, const DataType& defaultValue)
     : PropertyCore(host)
     , changed(host)
     , m_data(defaultValue)
 {
 }
 
-template <class Type>
-Property<Type>::operator Type() const
+template <class DataType>
+Property<DataType>::operator DataType() const
 {
     notifyGet(const_cast<ChangedSignal&>(changed));
     return m_data;
 }
 
-template <class Type>
-void Property<Type>::operator=(const Type& value)
+template <class DataType>
+void Property<DataType>::operator=(const DataType& value)
 {
     notifySet();
     lock_guard lock(*this);
@@ -219,25 +220,25 @@ void Property<Type>::operator=(const Type& value)
     }
 }
 
-template <class Type>
+template <class DataType>
 template <class BindingSource>
-std::enable_if_t<std::is_base_of_v<PropertyCore, BindingSource> || std::is_base_of_v<StatusProperty<Type>, BindingSource>, BindingPtr>
-Property<Type>::bind(BindingSource& source, BindingPolicy policy)
+std::enable_if_t<std::is_base_of_v<PropertyCore, BindingSource> || std::is_base_of_v<StatusProperty<DataType>, BindingSource>, BindingPtr>
+Property<DataType>::bind(BindingSource& source, BindingPolicy policy)
 {
-    auto binding = PropertyTypeBinding<Type, BindingSource>::create(*this, source);
+    auto binding = PropertyTypeBinding<DataType, BindingSource>::create(*this, source);
     binding->attachToTarget(*this);
     binding->setPolicy(policy);
     binding->evaluate();
     return binding;
 }
 
-template <class Type>
+template <class DataType>
 template <class ExpressionType>
-std::enable_if_t<!std::is_base_of_v<PropertyCore, ExpressionType> && !std::is_base_of_v<StatusProperty<Type>, ExpressionType>, BindingPtr>
-Property<Type>::bind(ExpressionType source, BindingPolicy policy)
+std::enable_if_t<!std::is_base_of_v<PropertyCore, ExpressionType> && !std::is_base_of_v<StatusProperty<DataType>, ExpressionType>, BindingPtr>
+Property<DataType>::bind(ExpressionType source, BindingPolicy policy)
 {
     using ReturnType = typename function_traits<ExpressionType>::return_type;
-    static_assert(std::is_same_v<ReturnType, Type>, "Expression return type must be same as the target property type.");
+    static_assert(std::is_same_v<ReturnType, DataType>, "Expression return type must be same as the target property type.");
     auto binding = ExpressionBinding<ExpressionType>::create(*this, source);
     binding->attachToTarget(*this);
     binding->setPolicy(policy);

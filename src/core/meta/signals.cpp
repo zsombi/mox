@@ -122,9 +122,9 @@ void SlotHolder::disconnectAll()
  * SignalCore
  */
 SignalCore::SignalCore(Lockable& host, size_t argCount)
-    : SharedLock<Lockable>(host)
-    , m_argumentCount(argCount)
+    : m_argumentCount(argCount)
 {
+    UNUSED(host);
 }
 
 SignalCore::~SignalCore()
