@@ -22,6 +22,7 @@
 #include <mox/config/pimpl.hpp>
 
 #include <mox/core/meta/properties.hpp>
+#include <mox/core/meta/bindings.hpp>
 
 #include <unordered_set>
 

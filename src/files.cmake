@@ -44,7 +44,10 @@ set(HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signal_connection.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/signals.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/property_core.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/binding_core.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/binding_policy.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/properties.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/meta/bindings.hpp
 
     #event handling
     ${CMAKE_CURRENT_SOURCE_DIR}/../include/mox/core/event_handling/event.hpp
