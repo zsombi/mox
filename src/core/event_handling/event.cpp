@@ -98,26 +98,4 @@ int QuitEvent::getExitCode() const
     return m_exitCode;
 }
 
-/******************************************************************************
- * DeferredSignalEvent
- */
-DeferredSignalEvent::DeferredSignalEvent(ObjectSharedPtr target, Connection& connection, const PackedArguments& args)
-    : Event(target, EventType::DeferredSignal, Priority::Urgent)
-    , m_connection(connection.shared_from_this())
-    , m_arguments(args)
-{
-    FATAL(target, "Cannot post deferred call on a null target");
-}
-
-void DeferredSignalEvent::activate()
-{
-    CTRACE(event, "Asynchronously activate connection for target" << target());
-    if (target() && m_connection && m_connection->isConnected())
-    {
-        CTRACE(event, "Activate...");
-        m_connection->invoke(m_arguments);
-        CTRACE(event, "Activation completed");
-    }
-}
-
 } // mox

@@ -125,18 +125,6 @@ public:
     int getExitCode() const;
 };
 
-class MOX_API DeferredSignalEvent : public Event
-{
-    DISABLE_COPY(DeferredSignalEvent)
-    ConnectionPtr m_connection;
-    PackedArguments m_arguments;
-
-public:
-    explicit DeferredSignalEvent(ObjectSharedPtr target, Connection& connection, const PackedArguments& args);
-
-    void activate();
-};
-
 template <class EventClass, class TargetPtr, typename... Arguments>
 auto make_event(TargetPtr target, Arguments&&... arguments)
 {

@@ -246,15 +246,6 @@ void Object::dispatchEvent(Event& event)
         return;
     }
 
-    // Check default handlers.
-    if (event.type() == EventType::DeferredSignal)
-    {
-        DeferredSignalEvent& deferredSignal = dynamic_cast<DeferredSignalEvent&>(event);
-        deferredSignal.activate();
-        event.setHandled(true);
-        return;
-    }
-
     // Collect the objects
     EventDispatcher dispatcher(*this);
     if (!dispatcher.processEventFilters(event))
