@@ -44,7 +44,7 @@ public:
     }
 };
 
-class TestSocket : public Lockable, public SlotHolder, public SocketNotifierSource::Notifier
+class TestSocket : public SlotHolder, public SocketNotifierSource::Notifier
 {
 public:
     Signal<Modes> modeChanged{*this};

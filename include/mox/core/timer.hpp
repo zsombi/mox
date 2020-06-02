@@ -33,7 +33,7 @@ using TimerPtr = std::shared_ptr<Timer>;
 /// using createRepeating() or repeating() methods.
 ///
 /// When the timer expires, the expired signal is emitted.
-class MOX_API Timer : public Lockable, public SlotHolder, public TimerSource::TimerRecord
+class MOX_API Timer : public SlotHolder, public TimerSource::TimerRecord
 {
 public:
     /// Expired signal emitted when the timer expires.

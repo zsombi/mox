@@ -4,6 +4,7 @@
 #include <mox/config/platform_config.hpp>
 #include <mox/config/pimpl.hpp>
 #include <mox/core/meta/binding_policy.hpp>
+#include <mox/core/meta/lockable.hpp>
 
 namespace mox
 {
@@ -12,7 +13,7 @@ class PropertyCore;
 
 /// The BindingCore class provides core functionality of the bindings on properties.
 class BindingCorePrivate;
-class MOX_API BindingCore : public std::enable_shared_from_this<BindingCore>
+class MOX_API BindingCore : public Lockable, public std::enable_shared_from_this<BindingCore>
 {
     DECLARE_PRIVATE_PTR(BindingCore);
 

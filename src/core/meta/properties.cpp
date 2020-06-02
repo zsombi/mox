@@ -162,9 +162,11 @@ void BindingCore::setEnabled(bool enabled)
     d->isEnabled = enabled;
     if (changed)
     {
+        lock_guard lock(*this);
         setEnabledOverride();
         if (d->group)
         {
+            ScopeRelock re(*this);
             d->group->setEnabled(d->isEnabled);
         }
     }
@@ -172,28 +174,33 @@ void BindingCore::setEnabled(bool enabled)
 
 BindingPolicy BindingCore::getPolicy() const
 {
+    lock_guard lock(const_cast<BindingCore&>(*this));
     return d_func()->policy;
 }
 
 void BindingCore::setPolicy(BindingPolicy policy)
 {
+    lock_guard lock(*this);
     d_func()->policy = policy;
     setPolicyOverride();
 }
 
 void BindingCore::setGroup(BindingGroupPtr group)
 {
+    lock_guard lock(*this);
     d_func()->group = group;
 }
 
 bool BindingCore::isAttached() const
 {
+    lock_guard lock(const_cast<BindingCore&>(*this));
     D();
     return d->status == BindingCorePrivate::Status::Attaching || d->status == BindingCorePrivate::Status::Attached;
 }
 
 void BindingCore::attachToTarget(PropertyCore& property)
 {
+    lock_guard lock(*this);
     D();
     throwIf<ExceptionType::BindingAttached>(d->status == BindingCorePrivate::Status::Attached);
     if (d->status == BindingCorePrivate::Status::Attaching)
@@ -202,13 +209,17 @@ void BindingCore::attachToTarget(PropertyCore& property)
     }
     d->status = BindingCorePrivate::Status::Attaching;
     d->target = &property;
-    PropertyCorePrivate::get(*d->target)->addBinding(*this);
+    {
+        ScopeRelock re(*this);
+        PropertyCorePrivate::get(*d->target)->addBinding(*this);
+    }
     attachOverride();
     d->status = BindingCorePrivate::Status::Attached;
 }
 
 void BindingCore::detachFromTarget()
 {
+    lock_guard lock(*this);
     D();
     throwIf<ExceptionType::BindingDetached>(d->status == BindingCorePrivate::Status::Detached);
     if (d->status == BindingCorePrivate::Status::Detaching)
@@ -216,15 +227,19 @@ void BindingCore::detachFromTarget()
         return;
     }
     auto d_target = PropertyCorePrivate::get(*d->target);
-    lock_guard lock(d_target->bindings);
+    lock_guard scope(d_target->bindings);
     auto keepAlive = shared_from_this();
     d->status = BindingCorePrivate::Status::Detaching;
-    d_target->removeBinding(*this);
-    if (d->group)
     {
-        auto grp = d->group;
-        d->group->removeFromGroup(*this);
-        grp->discard();
+        ScopeRelock re(*this);
+        d_target->removeBinding(*this);
+        if (d->group)
+        {
+
+            auto grp = d->group;
+            d->group->removeFromGroup(*this);
+            grp->discard();
+        }
     }
     detachOverride();
     d->target = nullptr;

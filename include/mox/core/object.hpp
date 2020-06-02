@@ -39,7 +39,7 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 /// by deriving your classes from Object and adding those as children to each other.
 ///
 /// Provides event dispatching.
-class MOX_API Object : public Lockable, public SlotHolder, public EventSource::EventDispatcher, public std::enable_shared_from_this<Object>
+class MOX_API Object : public SlotHolder, public EventSource::EventDispatcher, public std::enable_shared_from_this<Object>
 {
 public:
     Property<std::string> objectName{*this};

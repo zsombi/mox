@@ -45,6 +45,7 @@ void Connection::invalidate()
         // Already invalidated.
         return;
     }
+    lock_guard lock(*this);
     m_sender = nullptr;
     invalidateOverride();
 }
@@ -96,22 +97,26 @@ SlotHolder::~SlotHolder()
 void SlotHolder::addConnection(ConnectionPtr connection)
 {
     FATAL(connection, "Invalid connection");
+    lock_guard lock(*this);
     m_slots.push_back(connection);
 }
 
 void SlotHolder::removeConnection(ConnectionPtr connection)
 {
     FATAL(connection, "Invalid connection");
+    lock_guard lock(*this);
     erase(m_slots, connection);
 }
 
 
 void SlotHolder::disconnectAll()
 {
-    auto disconnector = [](auto& connection)
+    lock_guard lock(*this);
+    auto disconnector = [self = this](auto& connection)
     {
         if (connection && connection->isConnected())
         {
+            ScopeRelock re(*self);
             connection->disconnect();
         }
     };

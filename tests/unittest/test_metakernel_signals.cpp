@@ -45,7 +45,7 @@ public:
     }
 };
 
-class TestDerived : public Lockable, public TestMethods
+class TestDerived : public TestMethods
 {
 public:
     Signal<> memberSignal{*this};

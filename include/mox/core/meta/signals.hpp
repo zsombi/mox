@@ -88,7 +88,7 @@ protected:
 ///
 /// Mox connections are invoked synchronously. If your slot resides in a different thread, it is
 /// your responsibility to lock the slot, or execute an asynchronous invocation.
-class MOX_API Connection : public std::enable_shared_from_this<Connection>
+class MOX_API Connection : public Lockable, public std::enable_shared_from_this<Connection>
 {
 public:
     /// Destructor.
@@ -136,7 +136,7 @@ protected:
 /// The SlotHolder class holds the connections created on a receiver object. Derive your class
 /// from SlotHolder if you want to automatically clean up the connections from a signal to the
 /// methods of a class.
-class MOX_API SlotHolder
+class MOX_API SlotHolder : public Lockable
 {
     DISABLE_COPY_OR_MOVE(SlotHolder)
 

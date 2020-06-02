@@ -90,7 +90,7 @@ public:
     BindingPolicy policy = BindingPolicy::DetachOnWrite;
     Status status = Status::Detached;
     AtomicRefCounted<byte> activationCount = 0;
-    bool isEnabled = true;
+    std::atomic_bool isEnabled = true;
 };
 
 }

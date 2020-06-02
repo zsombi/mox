@@ -28,7 +28,7 @@ namespace mox
 
 /// The SocketNotifier class provides notifications on events occurring on a socket descriptor.
 /// The socket descriptor is either a file handler or a normal socket handler.
-class MOX_API SocketNotifier : public Lockable, public SlotHolder, public SocketNotifierSource::Notifier
+class MOX_API SocketNotifier : public SlotHolder, public SocketNotifierSource::Notifier
 {
 public:
     /// Activation signal, emitted when the operation on the socket is notified.
