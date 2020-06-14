@@ -1,5 +1,7 @@
 // Copyright (C) 2020 bitWelder
 
+#include <private/property_p.hpp>
+
 #include <mox/core/meta/properties.hpp>
 #include <mox/core/meta/signals.hpp>
 #include <mox/core/meta/signal_connection.hpp>
@@ -9,7 +11,57 @@
 namespace mox
 {
 
-static ConnectionPtr s_currentConnection;
+static thread_local ConnectionPtr s_currentConnection;
+
+/******************************************************************************
+ * ConnectionStorage
+ */
+void ConnectionStorage::disconnectSlots()
+{
+    P();
+    p->m_isActivated = true;
+    p->m_isBlocked = true;
+
+    lock_guard lockSignal(*p);
+    lock_guard lockConnections(connections);
+
+    auto disconnector = [p](auto& connection)
+    {
+        if (!connection || !connection->isConnected())
+        {
+            return;
+        }
+
+        auto slot = connection->getDestination();
+        if (slot)
+        {
+            lock_guard lockSlot(*slot);
+            UNUSED(p);
+//            OrderedRelock<Lockable*> re(p, slot);
+            erase(slot->m_slots, connection);
+        }
+        connection->m_sender = nullptr;
+        connection->invalidateOverride();
+    };
+    for_each(connections, disconnector);
+}
+
+void ConnectionStorage::disconnectOne(ConnectionPtr connection)
+{
+    P();
+    lock_guard lockSignal(*p);
+
+    auto slot = connection->getDestination();
+    if (slot)
+    {
+        lock_guard lockSlot(*slot);
+//        OrderedRelock<Lockable*> re(p, slot);
+        erase(slot->m_slots, connection);
+    }
+    connection->m_sender = nullptr;
+    connection->invalidateOverride();
+    erase(connections, connection);
+}
 
 /******************************************************************************
  * Connection
@@ -35,19 +87,6 @@ bool Connection::isConnected() const
 void Connection::disconnect()
 {
     m_sender->disconnect(shared_from_this());
-    invalidate();
-}
-
-void Connection::invalidate()
-{
-    if (!m_sender)
-    {
-        // Already invalidated.
-        return;
-    }
-    lock_guard lock(*this);
-    m_sender = nullptr;
-    invalidateOverride();
 }
 
 void Connection::invoke(const PackedArguments& arguments)
@@ -79,19 +118,17 @@ SignalCore* Connection::getSignal() const
     return m_sender;
 }
 
+SlotHolder* Connection::getDestination() const
+{
+    return nullptr;
+}
+
 /******************************************************************************
  * SlotHolder
  */
 SlotHolder::~SlotHolder()
 {
-    auto invalidator = [](auto& connection)
-    {
-        if (connection && connection->isConnected())
-        {
-            connection->invalidate();
-        }
-    };
-    for_each(m_slots, invalidator);
+    disconnectSignals();
 }
 
 void SlotHolder::addConnection(ConnectionPtr connection)
@@ -109,16 +146,19 @@ void SlotHolder::removeConnection(ConnectionPtr connection)
 }
 
 
-void SlotHolder::disconnectAll()
+void SlotHolder::disconnectSignals()
 {
     lock_guard lock(*this);
     auto disconnector = [self = this](auto& connection)
     {
-        if (connection && connection->isConnected())
+        if (!connection || !connection->isConnected())
         {
-            ScopeRelock re(*self);
-            connection->disconnect();
+            return;
         }
+
+        auto sender = ConnectionStorage::get(*connection->getSignal());
+        ScopeRelock reLock(*self);
+        sender->disconnectOne(connection);
     };
     for_each(m_slots, disconnector);
 }
@@ -127,22 +167,15 @@ void SlotHolder::disconnectAll()
  * SignalCore
  */
 SignalCore::SignalCore(Lockable& host, size_t argCount)
-    : m_argumentCount(argCount)
+    : d_ptr(pimpl::make_d_ptr<ConnectionStorage>(*this))
+    , m_argumentCount(argCount)
 {
     UNUSED(host);
 }
 
 SignalCore::~SignalCore()
 {
-    lock_guard guard(m_connections);
-    auto disconnector = [self = this](auto& connection)
-    {
-        if (connection && connection->isConnected())
-        {
-            self->disconnect(connection);
-        }
-    };
-    for_each(m_connections, disconnector);
+    d_ptr->disconnectSlots();
 }
 
 size_t SignalCore::getArgumentCount() const
@@ -157,16 +190,16 @@ int SignalCore::activate(const PackedArguments &args)
         return 0;
     }
 
-    decltype(m_connections)::ContainerType connectionsCopy;
+    decltype(ConnectionStorage::connections)::ContainerType connectionsCopy;
     int activationCount = -1;
     {
         // Lock only till we copy the connections.
         lock_guard lock(*this);
-        if (m_connections.empty())
+        if (d_ptr->connections.empty())
         {
             return activationCount;
         }
-        connectionsCopy = m_connections;
+        connectionsCopy = d_ptr->connections;
     }
     ScopeValue triggerLock(m_isActivated, true);
 
@@ -208,9 +241,7 @@ void SignalCore::disconnect(ConnectionPtr connection)
     throwIf<ExceptionType::InvalidArgument>(!connection);
     throwIf<ExceptionType::Disconnected>(!connection->isConnected());
 
-    lock_guard lock(*this);
-    erase(m_connections, connection);
-    connection->invalidate();
+    d_ptr->disconnectOne(connection);
 }
 
 void SignalCore::addConnection(ConnectionPtr connection)
@@ -218,7 +249,7 @@ void SignalCore::addConnection(ConnectionPtr connection)
     FATAL(connection, "Attempt adding a null connection");
 
     lock_guard lock(*this);
-    m_connections.push_back(connection);
+    d_ptr->connections.push_back(connection);
 }
 
 bool SignalCore::isBlocked() const

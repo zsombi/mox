@@ -4,6 +4,7 @@
 #define SIGNALS_HPP
 
 #include <mox/config/deftypes.hpp>
+#include <mox/config/pimpl.hpp>
 #include <mox/config/platform_config.hpp>
 #include <mox/core/meta/argument_data.hpp>
 #include <mox/core/meta/lockable.hpp>
@@ -13,6 +14,7 @@ namespace mox
 {
 
 class BindingCore;
+class SlotHolder;
 class Connection;
 using ConnectionPtr = std::shared_ptr<Connection>;
 
@@ -23,8 +25,10 @@ using ConnectionPtr = std::shared_ptr<Connection>;
 /// A generic signal is activated using the activate() method. When a signal is activated, its
 /// connections are invoked. Connections created within connections are left out from the signal
 /// activation.
+class ConnectionStorage;
 class MOX_API SignalCore : public Lockable
 {
+    friend class SlotHolder;
 public:
     /// Destructor.
     ~SignalCore();
@@ -65,9 +69,9 @@ public:
 protected:
     explicit SignalCore(Lockable& host, size_t argCount);
 
-    using ConnectionContainer = SharedVector<ConnectionPtr>;
+    DECLARE_PRIVATE(ConnectionStorage);
 
-    ConnectionContainer m_connections;
+    pimpl::d_ptr_type<ConnectionStorage> d_ptr;
     const size_t m_argumentCount;
     std::atomic_bool m_isActivated {false};
     std::atomic_bool m_isBlocked {false};
@@ -88,8 +92,10 @@ protected:
 ///
 /// Mox connections are invoked synchronously. If your slot resides in a different thread, it is
 /// your responsibility to lock the slot, or execute an asynchronous invocation.
-class MOX_API Connection : public Lockable, public std::enable_shared_from_this<Connection>
+class MOX_API Connection : public std::enable_shared_from_this<Connection>
 {
+    friend class ConnectionStorage;
+
 public:
     /// Destructor.
     virtual ~Connection();
@@ -100,11 +106,6 @@ public:
 
     /// Disconnects the sender signal from this connection and invalidates the sconnection.
     void disconnect();
-
-    /// Invalidates the connection. When called, the connection will report being disconnected.
-    /// Similar to disconnect, except that it does not remove the connection from the sender
-    /// signal.
-    void invalidate();
 
     /// Activates a connection by calling the slot of the connection.
     /// \param arguments The packed arguments to pass to the slot.
@@ -118,6 +119,12 @@ public:
     /// Gets the signal of the connection.
     /// \return The signal of the connection, or \e nullptr if the connection is not connected.
     SignalCore* getSignal() const;
+
+    /// Gets the destination object, if the connection is connected to a SlotHolder.
+    /// \return The SlotHolder instance as destination of the connection, or \e nullptr if the
+    /// destination is not a SlotHolder derived object. The default implementation returns
+    /// \e nullptr.
+    virtual SlotHolder* getDestination() const;
 
 protected:
     /// Constructs a connection object with a \a sender signal.
@@ -139,6 +146,7 @@ protected:
 class MOX_API SlotHolder : public Lockable
 {
     DISABLE_COPY_OR_MOVE(SlotHolder)
+    friend class ConnectionStorage;
 
 public:
     /// Destructor.
@@ -151,7 +159,7 @@ public:
     void removeConnection(ConnectionPtr connection);
 
     /// Disconnects every connection to this slot and removes each from this slot holder.
-    void disconnectAll();
+    void disconnectSignals();
 
 protected:
     /// Constructor.

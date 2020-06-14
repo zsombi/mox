@@ -58,7 +58,7 @@ TEST_F(Applets, test_simple_applet)
         return true;
     };
     app.runOnce(onAppQuit);
-    EXPECT_EQ(Applet::Status::Stopped, Applet::Status(applet->status));
+    EXPECT_EQ(Applet::Status::InactiveOrJoined, Applet::Status(applet->status));
 }
 
 TEST_F(Applets, test_start_applet_twice)

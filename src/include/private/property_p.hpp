@@ -21,6 +21,7 @@
 
 #include <mox/config/pimpl.hpp>
 
+#include <mox/core/meta/signals.hpp>
 #include <mox/core/meta/properties.hpp>
 #include <mox/core/meta/bindings.hpp>
 
@@ -28,6 +29,28 @@
 
 namespace mox
 {
+
+class ConnectionStorage
+{
+public:
+    DECLARE_PUBLIC(SignalCore, ConnectionStorage);
+
+    explicit ConnectionStorage(SignalCore& pp)
+        : p_ptr(&pp)
+    {
+    }
+    using ConnectionContainer = SharedVector<ConnectionPtr>;
+
+    SignalCore* p_ptr = nullptr;
+    ConnectionContainer connections;
+
+    // Disconnect slots connected to this signal. Locks the signal, and loops through the connections
+    // and removes the slot holders from it.
+    void disconnectSlots();
+
+    // Disconnects a connection by removing the connection from both the signal and the slot holder.
+    void disconnectOne(ConnectionPtr connection);
+};
 
 class PropertyCorePrivate
 {

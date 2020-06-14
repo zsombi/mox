@@ -131,10 +131,7 @@ public:
     /// Returns the enabled state of the line logger. A line logger is disabled if the category
     /// is disabled. Category-less line loggers are always enabled.
     /// \return The enabled state of the line logger.
-    bool isEnabled() const
-    {
-        return m_category && m_category->hasTypes(m_logType);
-    }
+    bool isEnabled() const;
 
     /// Stream operators for default types.
     LogLine& operator<<(bool v);

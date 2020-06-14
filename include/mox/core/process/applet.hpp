@@ -44,7 +44,6 @@ protected:
     void initialize() override;
     RunLoopBasePtr createRunLoopOverride() override;
     void startOverride() override;
-    void joinOverride() override;
     void quitOverride() override;
 };
 

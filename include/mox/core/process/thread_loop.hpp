@@ -41,11 +41,6 @@ class MOX_API ThreadLoop : public ThreadInterface
 {
     DECLARE_PRIVATE(ThreadLoopPrivate);
 public:
-    /// Exit a running thread, and blocks the current thread till the other thread is completed.
-    /// You must call the method from outside of the thread you want to exit.
-    /// \param exitCode The exit code.
-    void exitAndJoin(int exitCode = 0);
-
     /// Creates a thread object. You can start the thread by calling start() method.
     /// \return The thread object.
     static ThreadLoopPtr create();
@@ -56,9 +51,10 @@ protected:
 
     RunLoopBasePtr createRunLoopOverride() final;
     void startOverride() final;
-    void joinOverride() final;
+    void joinOverride() override;
 };
 
+LogLine& operator<<(LogLine& logger, ThreadLoopPtr thread);
 }
 
 #endif // THREAD_LOOP_HPP

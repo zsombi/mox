@@ -29,6 +29,7 @@ enum class ExceptionType
 {
     InvalidArgument,
     Disconnected,
+    NotAChildOfObject,
     /// \name Thread exceptions
     /// \{
     InvalidThreadData,

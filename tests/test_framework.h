@@ -27,6 +27,11 @@
 #include <mox/config/error.hpp>
 #include <mox/utils/log/logger.hpp>
 
+#include <chrono>
+#include <thread>
+
+using namespace std::chrono_literals;
+
 class UnitTest : public ::testing::Test
 {
     struct LogData
@@ -112,6 +117,7 @@ class TestApp : public mox::Application
 {
 public:
     explicit TestApp() = default;
+
     int runOnce()
     {
         auto idleTask = []()
@@ -122,27 +128,40 @@ public:
         threadData()->thread()->addIdleTask(std::move(idleTask));
         return run();
     }
+
+
 };
 
 class TestThreadLoop : public mox::ThreadLoop
 {
-    mox::ThreadPromise m_deathNotifier;
-
 public:
     static inline std::atomic_int threadCount = 0;
 
-    static std::shared_ptr<TestThreadLoop> create(mox::ThreadPromise&& notifier);
-
-    ~TestThreadLoop() override;
+    static std::shared_ptr<TestThreadLoop> create();
 
 protected:
-    explicit TestThreadLoop(mox::ThreadPromise&& notifier);
+    explicit TestThreadLoop() = default;
 
     void initialize() override;
 
     void onStarted();
     void onStopped();
 };
+
+class TestThreadLoopWithDeathNotifier : public TestThreadLoop
+{
+    mox::ThreadPromise m_deathNotifier;
+
+public:
+    static std::shared_ptr<TestThreadLoopWithDeathNotifier> create(mox::ThreadPromise&& notifier);
+
+    ~TestThreadLoopWithDeathNotifier() override;
+
+protected:
+    explicit TestThreadLoopWithDeathNotifier(mox::ThreadPromise&& notifier);
+};
+
+void startThreadAndWait(mox::ThreadLoop& thread);
 
 #define SLEEP(msec)             std::this_thread::sleep_for(std::chrono::milliseconds(msec))
 #define EXPECT_NULL(ptr)        EXPECT_EQ(nullptr, ptr)

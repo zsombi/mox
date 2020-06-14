@@ -35,6 +35,8 @@ const char* Exception::what() const EXCEPTION_NOEXCEPT
             return "invalid argument type applied";
         case ExceptionType::Disconnected:
             return "Signal is already disconneced";
+        case ExceptionType::NotAChildOfObject:
+            return "Object has no child specified";
         case ExceptionType::InvalidThreadData:
             return "Invalid or null thread data.";
         case ExceptionType::InvalidThreadStatus:

@@ -16,17 +16,17 @@ Lockable::Lockable()
 Lockable::~Lockable()
 {
     FATAL(m_value.load() == 0, "Destroying unlocked object! LockCount is " << m_value.load());
-    m_value.store(-1);
+    m_value.store(-999);
 }
 
 void Lockable::lock()
 {
-    FATAL(m_value >= 0, "Invalid MetaBase");
+    FATAL(m_value >= 0, "Invalid Lockable");
 
     if (!try_lock())
     {
         // Is this the same owner?
-        FATAL(m_owner != std::this_thread::get_id(), "Deadlocked MetaBase! LockCount is " << m_value);
+        FATAL(m_owner != std::this_thread::get_id(), "Deadlocked Lockable! LockCount is " << m_value);
         m_mutex.lock();
         m_owner = std::this_thread::get_id();
         retain();
@@ -35,7 +35,7 @@ void Lockable::lock()
 
 void Lockable::unlock()
 {
-    FATAL(m_value > 0, "Cannot unlock MetaBase if not locked! LockCount is " << m_value);
+    FATAL(m_value > 0, "Cannot unlock Lockable if not locked! LockCount is " << m_value);
     release();
     m_owner = std::thread::id();
     m_mutex.unlock();
@@ -43,6 +43,7 @@ void Lockable::unlock()
 
 bool Lockable::try_lock()
 {
+    FATAL(m_value >= 0, "Corrupted Lockable! LockCount is " << m_value);
     auto result = m_mutex.try_lock();
     if (result)
     {

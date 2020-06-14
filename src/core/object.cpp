@@ -116,11 +116,16 @@ void Object::removeChildren()
 {
     lock_guard lock(*this);
 
-    while (!m_children.empty())
+    auto remover = [this](auto& child)
     {
+        if (!child)
+        {
+            return;
+        }
         ScopeRelock relock(*this);
-        removeChildAt(m_children.size() - 1);
-    }
+        this->removeChild(*child);
+    };
+    for_each(m_children, remover);
 }
 
 Object::~Object()
@@ -330,56 +335,19 @@ void Object::addChild(Object& child)
 
 void Object::removeChild(Object& child)
 {
-    size_t index = childIndex(child);
+    auto childShared = child.shared_from_this();
     OrderedLock lock(this, &child);
-    m_children.erase(m_children.begin() + int(index));
-    child.m_parent = nullptr;
-}
 
-void Object::removeChildAt(size_t index)
-{
-    FATAL(index < m_children.size(), "Child index out of range");
-    {
-        Object* child = m_children[index].get();
-        OrderedLock lock(this, child);
-        child->m_parent = nullptr;
-    }
-    m_children.erase(m_children.begin() + int(index));
+    throwIf<ExceptionType::InvalidArgument>(child.getParent() != this);
+    throwIf<ExceptionType::NotAChildOfObject>(find(m_children, childShared) == std::nullopt);
+
+    erase(m_children, childShared);
+    child.m_parent = nullptr;
 }
 
 size_t Object::childCount() const
 {
     return m_children.size();
-}
-
-size_t Object::childIndex(const Object& child)
-{
-    if (child.getParent() != this)
-    {
-        CTRACE(object, "Object is not a child of the object!");
-        throw Exception(ExceptionType::InvalidArgument);
-    }
-
-    OrderedLock lock(this, const_cast<Object*>(&child));
-    for (auto it = m_children.cbegin(); it != m_children.cend(); ++it)
-    {
-        if (it->get() == &child)
-        {
-            return static_cast<size_t>(std::distance(m_children.cbegin(), it));
-        }
-    }
-
-    throw Exception(ExceptionType::InvalidArgument);
-}
-
-ObjectSharedPtr Object::childAt(size_t index)
-{
-    lock_guard lock(*this);
-    if (index > m_children.size())
-    {
-        return nullptr;
-    }
-    return m_children[index];
 }
 
 Object::VisitResult Object::traverse(const VisitorFunction& visitor, TraverseOrder order)
@@ -416,7 +384,7 @@ Object::VisitResult Object::traverseChildren(const VisitorFunction& visitor, Tra
     VisitResult result = VisitResult::Continue;
     auto visit = [&visitor, &result, order](ObjectSharedPtr child)
     {
-        result = child->traverse(visitor, order);
+        result = child ? child->traverse(visitor, order) : VisitResult::Continue;
         return (result == VisitResult::Abort);
     };
 
@@ -425,13 +393,13 @@ Object::VisitResult Object::traverseChildren(const VisitorFunction& visitor, Tra
         case TraverseOrder::PreOrder:
         case TraverseOrder::PostOrder:
         {
-            std::find_if(m_children.begin(), m_children.end(), visit);
+            find_if(m_children, visit);
             break;
         }
         case TraverseOrder::InversePreOrder:
         case TraverseOrder::InversePostOrder:
         {
-            std::find_if(m_children.rbegin(), m_children.rend(), visit);
+            reverse_find_if(m_children, visit);
             break;
         }
     }

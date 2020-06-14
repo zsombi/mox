@@ -32,6 +32,11 @@ public:
         return make_polymorphic_shared_ptr<Connection>(new MethodConnection(sender, receiver, slot));
     }
 
+    SlotHolder* getDestination() const override
+    {
+        return dynamic_cast<SlotHolder*>(m_receiver);
+    }
+
 protected:
     void invokeOverride(const PackedArguments &arguments) override
     {
@@ -42,11 +47,6 @@ protected:
 
     void invalidateOverride() override
     {
-        auto slotHolder = dynamic_cast<SlotHolder*>(m_receiver);
-        if (slotHolder)
-        {
-            slotHolder->removeConnection(shared_from_this());
-        }
         m_receiver = nullptr;
     }
 };

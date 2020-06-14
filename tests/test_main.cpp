@@ -61,6 +61,20 @@ void UnitTest::testLogs()
     }
 }
 
+void startThreadAndWait(mox::ThreadLoop& thread)
+{
+    mox::ThreadPromise notifier;
+    mox::ThreadFuture gate = notifier.get_future();
+    auto onStarted = [&notifier]()
+    {
+        notifier.set_value();
+    };
+    thread.started.connect(onStarted);
+    thread.start();
+    gate.wait();
+}
+
+
 /******************************************************************************
  *
  */
@@ -90,21 +104,11 @@ void UnitTest::TearDown()
 }
 
 /******************************************************************************
- * TestThreadLoop
+ * TestThread
  */
-std::shared_ptr<TestThreadLoop> TestThreadLoop::create(mox::ThreadPromise&& notifier)
+std::shared_ptr<TestThreadLoop> TestThreadLoop::create()
 {
-    return make_thread(new TestThreadLoop(std::forward<mox::ThreadPromise>(notifier)));
-}
-
-TestThreadLoop::~TestThreadLoop()
-{
-    m_deathNotifier.set_value();
-}
-
-TestThreadLoop::TestThreadLoop(mox::ThreadPromise&& notifier)
-    : m_deathNotifier(std::move(notifier))
-{
+    return make_thread(new TestThreadLoop);
 }
 
 void TestThreadLoop::initialize()
@@ -121,6 +125,24 @@ void TestThreadLoop::onStarted()
 void TestThreadLoop::onStopped()
 {
     --threadCount;
+}
+
+/******************************************************************************
+ * TestThreadLoopWithDeathNotifier
+ */
+std::shared_ptr<TestThreadLoopWithDeathNotifier> TestThreadLoopWithDeathNotifier::create(mox::ThreadPromise&& notifier)
+{
+    return make_thread(new TestThreadLoopWithDeathNotifier(std::forward<mox::ThreadPromise>(notifier)));
+}
+
+TestThreadLoopWithDeathNotifier::~TestThreadLoopWithDeathNotifier()
+{
+    m_deathNotifier.set_value();
+}
+
+TestThreadLoopWithDeathNotifier::TestThreadLoopWithDeathNotifier(mox::ThreadPromise&& notifier)
+    : m_deathNotifier(std::move(notifier))
+{
 }
 
 /******************************************************************************

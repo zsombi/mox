@@ -8,11 +8,11 @@
 DECLARE_LOG_CATEGORY(signalTest)
 using namespace mox;
 
-class MetakernelSignals : public UnitTest
+class Signals : public UnitTest
 {
     ScopeLogType<mox::LogType::All> signalLogs{"signalTest"};
 public:
-    explicit MetakernelSignals() = default;
+    explicit Signals() = default;
 };
 
 namespace test_signals
@@ -42,6 +42,11 @@ public:
     virtual void virtual1()
     {
         CTRACE(signalTest, __FUNCTION__ << "base called");
+    }
+
+    void selfDestroy()
+    {
+        delete this;
     }
 };
 
@@ -96,28 +101,28 @@ protected:
 
 }
 
-TEST_F(MetakernelSignals, test_signal_api_no_arguments)
+TEST_F(Signals, test_signal_api_no_arguments)
 {
     Lockable host;
     Signal<> signal(host);
     EXPECT_EQ(-1, signal());
 }
 
-TEST_F(MetakernelSignals, test_signal_api_int_argument)
+TEST_F(Signals, test_signal_api_int_argument)
 {
     Lockable host;
     Signal<int> signal(host);
     EXPECT_EQ(-1, signal(10));
 }
 
-TEST_F(MetakernelSignals, test_signal_api_int_stringview_argument)
+TEST_F(Signals, test_signal_api_int_stringview_argument)
 {
     Lockable host;
     Signal<int, std::string_view> signal(host);
     EXPECT_EQ(-1, signal(10, "signal"sv));
 }
 
-TEST_F(MetakernelSignals, test_signal_no_args_connected_to_method)
+TEST_F(Signals, test_signal_no_args_connected_to_method)
 {
     EXPECT_TRACE(signalTest, "method1 called");
     Lockable host;
@@ -130,7 +135,7 @@ TEST_F(MetakernelSignals, test_signal_no_args_connected_to_method)
 //    signal.connect(receiver, &test_signals::TestMethods::method2);
 }
 
-TEST_F(MetakernelSignals, test_signal_int_arg_connected_to_method)
+TEST_F(Signals, test_signal_int_arg_connected_to_method)
 {
     EXPECT_TRACE(signalTest, "method1 called");
     EXPECT_TRACE(signalTest, "method2 called with 101");
@@ -142,7 +147,7 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connected_to_method)
     EXPECT_EQ(2, signal(101));
 }
 
-TEST_F(MetakernelSignals, test_signal_int_arg_connected_to_method_with_return_type)
+TEST_F(Signals, test_signal_int_arg_connected_to_method_with_return_type)
 {
     EXPECT_TRACE(signalTest, "method3 called with 101");
     Lockable host;
@@ -152,7 +157,7 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connected_to_method_with_return_ty
     EXPECT_EQ(1, signal(101));
 }
 
-TEST_F(MetakernelSignals, test_signal_no_arg_connect_to_function)
+TEST_F(Signals, test_signal_no_arg_connect_to_function)
 {
     EXPECT_TRACE(signalTest, "function1 called");
     Lockable host;
@@ -164,7 +169,7 @@ TEST_F(MetakernelSignals, test_signal_no_arg_connect_to_function)
 //    signal.connect(&test_signals::function2);
 }
 
-TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_function)
+TEST_F(Signals, test_signal_int_arg_connect_to_function)
 {
     EXPECT_TRACE(signalTest, "function1 called");
     EXPECT_TRACE(signalTest, "function2 called with 1002");
@@ -175,7 +180,7 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_function)
     EXPECT_EQ(2, signal(1002));
 }
 
-TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_function_with_return_type)
+TEST_F(Signals, test_signal_int_arg_connect_to_function_with_return_type)
 {
     EXPECT_TRACE(signalTest, "function3 called with 1001");
     Lockable host;
@@ -184,7 +189,7 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_function_with_return_ty
     EXPECT_EQ(1, signal(1001));
 }
 
-TEST_F(MetakernelSignals, test_signal_no_arg_connect_to_lambda)
+TEST_F(Signals, test_signal_no_arg_connect_to_lambda)
 {
     EXPECT_TRACE(signalTest, "lambda called");
     Lockable host;
@@ -201,7 +206,7 @@ TEST_F(MetakernelSignals, test_signal_no_arg_connect_to_lambda)
 //    signal.connect(lambda2);
 }
 
-TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_lambda)
+TEST_F(Signals, test_signal_int_arg_connect_to_lambda)
 {
     EXPECT_TRACE(signalTest, "lambda1 called");
     EXPECT_TRACE(signalTest, "lambda2 called with 1002");
@@ -220,7 +225,7 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_lambda)
     EXPECT_EQ(2, signal(1002));
 }
 
-TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_lambda_with_return_type)
+TEST_F(Signals, test_signal_int_arg_connect_to_lambda_with_return_type)
 {
     EXPECT_TRACE(signalTest, "lambda called with 1001");
     Lockable host;
@@ -235,7 +240,7 @@ TEST_F(MetakernelSignals, test_signal_int_arg_connect_to_lambda_with_return_type
 }
 
 
-TEST_F(MetakernelSignals, test_signal_connect_to_signal)
+TEST_F(Signals, test_signal_connect_to_signal)
 {
     EXPECT_TRACE(signalTest, "function1 called");
     Lockable host;
@@ -250,7 +255,7 @@ TEST_F(MetakernelSignals, test_signal_connect_to_signal)
 //    sender.connect(receiver2);
 }
 
-TEST_F(MetakernelSignals, test_signal_connect_to_signal_with_compatible_arguments)
+TEST_F(Signals, test_signal_connect_to_signal_with_compatible_arguments)
 {
     EXPECT_TRACE(signalTest, "function1 called");
     Lockable host;
@@ -261,7 +266,7 @@ TEST_F(MetakernelSignals, test_signal_connect_to_signal_with_compatible_argument
     EXPECT_EQ(1, sender(10));
 }
 
-TEST_F(MetakernelSignals, test_disconnect_connection_using_signal_api)
+TEST_F(Signals, test_disconnect_connection_using_signal_api)
 {
     Lockable host;
     Signal<> signal(host);
@@ -273,7 +278,7 @@ TEST_F(MetakernelSignals, test_disconnect_connection_using_signal_api)
     EXPECT_FALSE(connection->isConnected());
 }
 
-TEST_F(MetakernelSignals, test_disconnect_in_slot)
+TEST_F(Signals, test_disconnect_in_slot)
 {
     Lockable host;
     Signal<> signal(host);
@@ -289,7 +294,7 @@ TEST_F(MetakernelSignals, test_disconnect_in_slot)
     EXPECT_FALSE(connection->isConnected());
 }
 
-TEST_F(MetakernelSignals, test_new_connection_in_slot)
+TEST_F(Signals, test_new_connection_in_slot)
 {
     Lockable host;
     Signal<> signal(host);
@@ -309,7 +314,7 @@ TEST_F(MetakernelSignals, test_new_connection_in_slot)
     EXPECT_EQ(6, signal());
 }
 
-TEST_F(MetakernelSignals, test_custom_connection)
+TEST_F(Signals, test_custom_connection)
 {
     EXPECT_TRACE(signalTest, "CustomConnection invoked by a signal with 0 arguments");
     Lockable host;
@@ -320,7 +325,7 @@ TEST_F(MetakernelSignals, test_custom_connection)
     signal1();
 }
 
-TEST_F(MetakernelSignals, test_multipe_signals_connect_to_same_custom_connection)
+TEST_F(Signals, test_multipe_signals_connect_to_same_custom_connection)
 {
     EXPECT_TRACE(signalTest, "CustomConnection invoked by a signal with 0 arguments");
     EXPECT_TRACE(signalTest, "CustomConnection invoked by a signal with 1 arguments");
@@ -337,7 +342,7 @@ TEST_F(MetakernelSignals, test_multipe_signals_connect_to_same_custom_connection
     signal3(11, "custom"sv);
 }
 
-TEST_F(MetakernelSignals, test_receiver_destroyed_early)
+TEST_F(Signals, test_receiver_destroyed_early)
 {
     Lockable host;
     Signal<> signal(host);
@@ -346,11 +351,10 @@ TEST_F(MetakernelSignals, test_receiver_destroyed_early)
     EXPECT_TRUE(connection.lock()->isConnected());
 
     receiver.reset();
-    ASSERT_FALSE(connection.expired());
-    EXPECT_FALSE(connection.lock()->isConnected());
+    ASSERT_TRUE(connection.expired());
 }
 
-TEST_F(MetakernelSignals, test_sender_destroyed_early)
+TEST_F(Signals, test_sender_destroyed_early)
 {
     Lockable host;
     auto signal = std::make_shared<Signal<>>(host);
@@ -362,7 +366,7 @@ TEST_F(MetakernelSignals, test_sender_destroyed_early)
     EXPECT_TRUE(connection.expired());
 }
 
-TEST_F(MetakernelSignals, test_signal_connected_to_virtual_method)
+TEST_F(Signals, test_signal_connected_to_virtual_method)
 {
     EXPECT_TRACE(signalTest, "virtual1 base called");
     EXPECT_TRACE(signalTest, "virtual1 derived called");
@@ -375,7 +379,7 @@ TEST_F(MetakernelSignals, test_signal_connected_to_virtual_method)
     EXPECT_EQ(2, signal());
 }
 
-TEST_F(MetakernelSignals, test_signal_member_connect_to_method_in_other_object)
+TEST_F(Signals, test_signal_member_connect_to_method_in_other_object)
 {
     EXPECT_TRACE(signalTest, "method1 called");
     test_signals::TestDerived sender;
@@ -383,4 +387,32 @@ TEST_F(MetakernelSignals, test_signal_member_connect_to_method_in_other_object)
 
     sender.memberSignal.connect(receiver, &test_signals::TestMethods::method1);
     EXPECT_EQ(1, sender.memberSignal());
+}
+
+TEST_F(Signals, test_same_slot_conected_twice)
+{
+    expectLog(mox::Logger::findCategory(CATEGORY(signalTest)), mox::LogType::Debug, "method1 called", 2);
+    auto slots = std::make_unique<test_signals::TestMethods>();
+    Lockable host;
+    Signal<> signal(host);
+
+    signal.connect(*slots, &test_signals::TestMethods::method1);
+    signal.connect(*slots, &test_signals::TestMethods::method1);
+
+    EXPECT_EQ(2, signal());
+
+    slots.reset();
+    EXPECT_EQ(-1, signal());
+}
+
+TEST_F(Signals, test_same_slot_connected_twice_destroys_host_on_activation)
+{
+    auto slots = new test_signals::TestMethods();
+    Lockable host;
+    Signal<> signal(host);
+
+    signal.connect(*slots, &test_signals::TestMethods::selfDestroy);
+    signal.connect(*slots, &test_signals::TestMethods::selfDestroy);
+
+    EXPECT_EQ(1, signal());
 }

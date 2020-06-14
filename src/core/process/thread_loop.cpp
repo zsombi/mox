@@ -56,6 +56,7 @@ void ThreadLoopPrivate::threadMain(ThreadPromise threadDataReady)
         CTRACE(threads, "Thread not started due to status:" << int(status));
     }
 
+    loop.reset();
     p->stopped(p);
     p->tearDown();
 }
@@ -90,15 +91,27 @@ void ThreadLoop::joinOverride()
     d->thread.join();
 }
 
-void ThreadLoop::exitAndJoin(int exitCode)
-{
-    exit(exitCode);
-    join();
-}
-
 ThreadLoopPtr ThreadLoop::create()
 {
     return make_thread(new ThreadLoop);
+}
+
+/******************************************************************************
+ *
+ */
+LogLine& operator<<(LogLine& logger, ThreadLoopPtr thread)
+{
+    if (!logger.isEnabled())
+    {
+        return logger;
+    }
+
+    std::ostringstream ss;
+    auto d = ThreadLoopPrivate::get(*thread);
+
+    ss << "Thread(" << d->thread.native_handle() << ")";
+    logger << ss.str();
+    return logger;
 }
 
 }

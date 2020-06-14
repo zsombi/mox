@@ -81,7 +81,10 @@ public:
     RunLoopBasePtr runLoop;
 
     explicit ThreadInterfacePrivate(ThreadInterface* pp);
-    ~ThreadInterfacePrivate() = default;
+    virtual ~ThreadInterfacePrivate() = default;
+
+    void attachToParentThread();
+    void detachFromParentThread();
 };
 
 class ThreadLoopPrivate : public ThreadInterfacePrivate

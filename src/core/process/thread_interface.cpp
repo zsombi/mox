@@ -28,6 +28,42 @@ ThreadInterfacePrivate::ThreadInterfacePrivate(ThreadInterface* pp)
 {
 }
 
+void ThreadInterfacePrivate::attachToParentThread()
+{
+    P();
+    auto td = ThreadData::getThisThreadData();
+    if (!td)
+    {
+        CTRACE(threads, "Cannot attach to parent thread, when the thread data is not set!");
+        return;
+    }
+    auto parent = td->thread();
+    if (!parent || parent.get() == p)
+    {
+        return;
+    }
+
+    parent->addChild(*p);
+
+    lock_guard lock(*parent);
+    auto dParent = ThreadInterfacePrivate::get(*parent);
+    dParent->childThreads.push_back(as_shared<ThreadInterface>(p));
+}
+
+void ThreadInterfacePrivate::detachFromParentThread()
+{
+    P();
+//    lock_guard lock(*p);
+    if (!p->getParent())
+    {
+        return;
+    }
+
+    auto parent = as_shared<ThreadInterface>(p->getParent());
+    auto self = p->shared_from_this();
+    parent->removeChild(*p);
+}
+
 /******************************************************************************
  *
  */
@@ -60,56 +96,6 @@ void ThreadInterface::onQuit(Event& event)
     CTRACE(threads, "async exit");
     QuitEvent& evQuit = static_cast<QuitEvent&>(event);
     exit(evQuit.getExitCode());
-}
-
-void ThreadInterface::attachToParentThread()
-{
-    auto td = ThreadData::getThisThreadData();
-    if (!td)
-    {
-        return;
-    }
-    auto parent = td->thread();
-    if (!parent || parent.get() == this)
-    {
-        return;
-    }
-
-    parent->addChild(*this);
-
-    lock_guard lock(*parent);
-    auto dParent = ThreadInterfacePrivate::get(*parent);
-    dParent->childThreads.push_back(as_shared<ThreadInterface>(shared_from_this()));
-}
-
-void ThreadInterface::detachFromParentThread()
-{
-    if (!getParent())
-    {
-        return;
-    }
-
-    auto parent = as_shared<ThreadInterface>(getParent()->shared_from_this());
-    auto self = shared_from_this();
-    parent->removeChild(*this);
-
-    lock_guard lock(*parent);
-    auto dParent = ThreadInterfacePrivate::get(*parent);
-    mox::erase(dParent->childThreads, self);
-}
-
-void ThreadInterface::joinChildThreads()
-{
-    lock_guard lock(*this);
-
-    while (!d_ptr->childThreads.empty())
-    {
-        auto last = d_ptr->childThreads.back();
-
-        ScopeRelock relock(*this);
-        last->exit(0);
-        last->join();
-    }
 }
 
 Object::VisitResult ThreadInterface::moveToThread(ThreadDataSharedPtr)
@@ -156,20 +142,29 @@ void ThreadInterface::setUp()
 
 void ThreadInterface::tearDown()
 {
-    // Join child threads.
-    joinChildThreads();
+    d_ptr->detachFromParentThread();
 
     // The thread data is no longer valid, therefore reset it, and remove from all the objects owned by this thread loop.
     setThreadData(nullptr);
 
     // Proceed with teardown
-    lock_guard locker(*this);
+    {
+        lock_guard locker(*this);
 
-    td::detachFromThread();
+        td::detachFromThread();
 
-//    m_threadData.reset();
-    d_ptr->runLoop.reset();
-    CTRACE(threads, "Thread really stopped");
+        d_ptr->runLoop.reset();
+        CTRACE(threads, "Thread is joinable");
+        d_ptr->statusProperty = Status::InactiveOrJoined;
+    }
+    // Loop through the child threads and join them all. Once joined, clean the child threads.
+    auto joiner = [](auto& thread)
+    {
+        thread->joinOverride();
+    };
+    for_each(d_ptr->childThreads, joiner);
+
+    d_ptr->childThreads.clear();
 }
 
 void ThreadInterface::initialize()
@@ -208,14 +203,10 @@ void ThreadInterface::start()
         {
             // set the status to reflect startup preparation completion
             d_ptr->statusProperty = ThreadInterface::Status::StartingUp;
-
-            {
-                // execute thread implementation specific start routines
-                startOverride();
-
-                // attach this thread to the parent thread.
-                attachToParentThread();
-            }
+            // attach this thread to the parent thread.
+            d_ptr->attachToParentThread();
+            // execute thread implementation specific start routines
+            startOverride();
             break;
         }
         case Status::StartingUp:
@@ -229,6 +220,7 @@ void ThreadInterface::start()
 
 void ThreadInterface::exit(int exitCode)
 {
+    lock_guard lock(*this);
     D();
 
     switch (d->statusProperty)
@@ -250,6 +242,7 @@ void ThreadInterface::exit(int exitCode)
             quitOverride();
             if (d->runLoop)
             {
+                ScopeRelock re(*this);
                 d->runLoop->quit();
             }
             break;
@@ -259,30 +252,10 @@ void ThreadInterface::exit(int exitCode)
     // Exit child threads.
     auto childExit = [](auto& childThread)
     {
+        CTRACE(threads, "Exiting child" << as_shared<ThreadLoop>(childThread));
         childThread->exit(0);
     };
     for_each(d->childThreads, childExit);
-}
-
-void ThreadInterface::join()
-{
-    if (status == Status::InactiveOrJoined)
-    {
-        // The thread was already joined, exit.
-        return;
-    }
-    throwIf<ExceptionType::AttempThreadJoinWithin>(ThreadData::getThisThreadData() == threadData());
-
-    joinChildThreads();
-    CTRACE(threads, "Joining thread");
-    joinOverride();
-
-    auto keepAlive = shared_from_this();
-    detachFromParentThread();
-
-    auto d = ThreadInterfacePrivate::get(*this);
-    d->statusProperty = Status::InactiveOrJoined;
-    CTRACE(threads, "Thread joined with success");
 }
 
 /******************************************************************************

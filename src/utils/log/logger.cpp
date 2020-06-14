@@ -362,6 +362,11 @@ LogLine::~LogLine()
     }
 }
 
+bool LogLine::isEnabled() const
+{
+    return m_category && m_category->hasTypes(m_logType);
+}
+
 LogLine& LogLine::operator<<(bool v)
 {
     if (isEnabled())

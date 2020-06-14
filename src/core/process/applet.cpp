@@ -66,11 +66,6 @@ void Applet::startOverride()
     CTRACE(threads, "boot up applet");
 }
 
-void Applet::joinOverride()
-{
-    throwIf<ExceptionType::JoiningApplet>(true);
-}
-
 void Applet::quitOverride()
 {
     D();

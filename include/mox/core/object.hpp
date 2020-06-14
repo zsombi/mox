@@ -134,18 +134,9 @@ public:
     void addChild(Object& child);
     /// Removes the \a child object from this object's children.
     void removeChild(Object& child);
-    /// Removes the child object at \a index from this object's children.
-    void removeChildAt(size_t index);
     /// Returns the number of children in the object.
     /// \return The number of children of this object, 0 if the object has no children.
     size_t childCount() const;
-    /// Returns the child index of a given \a child object.
-    /// \return The index of the \a child object in the children list.
-    /// \throws ExceptionType::InvalidArgument if the \a child is not a child of this object.
-    size_t childIndex(const Object& child);
-    /// Returns the child object at \a index.
-    /// \return The child object at index, nullptr if there is no child at the specified index.
-    ObjectSharedPtr childAt(size_t index);
 
     /// Specifies the traverse order.
     enum class TraverseOrder
@@ -206,7 +197,7 @@ protected:
     }
 
 private:
-    using ChildContainer = std::vector<ObjectSharedPtr>;
+    using ChildContainer = SharedVector<ObjectSharedPtr>;
     using TokenList = SharedVector<EventTokenPtr>;
     using Container = FlatMap<EventType, TokenList>;
     struct EventDispatcher

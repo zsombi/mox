@@ -90,12 +90,6 @@ public:
     /// \param exitCode The exit code of the thread.
     void exit(int exitCode = 0);
 
-    /// Joins the thread, and detaches it from the parent thread. The call completes when the thread is
-    /// finished. Once a thread is completed, it cannot be restarted. All the references to the thread
-    /// are removed. You must call this function from outside of the running thread this thread object
-    /// handles. Calling this method from within the running thread throws ExceptionType::AttempThreadJoinWithin.
-    void join();
-
     /// Create and initialize a thread of \a DerivedThread, and initializes the thread.
     /// \tparam DerivedThread The thread type derived from ThreadInterface.
     /// \param threadInstance The thread instance to create.
@@ -113,13 +107,6 @@ protected:
     explicit ThreadInterface();
     /// Constructor with private override.
     explicit ThreadInterface(pimpl::d_ptr_type<ThreadInterfacePrivate> dd);
-
-    /// Attach this thread to the parent thread.
-    void attachToParentThread();
-    /// Detach this thread from parent thread.
-    void detachFromParentThread();
-    /// Detach all child threads.
-    void joinChildThreads();
 
     /// Override Object::moveToThread() to guard moving objects parented to this thread object
     /// to other thread.

@@ -89,7 +89,7 @@ void PropertyTypeBinding<Type, PropertyType>::evaluateOverride()
 template <class Type, class PropertyType>
 void PropertyTypeBinding<Type, PropertyType>::detachOverride()
 {
-    disconnectAll();
+    disconnectSignals();
 }
 
 
@@ -122,7 +122,7 @@ void ExpressionBinding<ExpressionType>::evaluateOverride()
 template <class ExpressionType>
 void ExpressionBinding<ExpressionType>::detachOverride()
 {
-    disconnectAll();
+    disconnectSignals();
 }
 
 } // mox

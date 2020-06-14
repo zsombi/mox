@@ -166,7 +166,7 @@ public:
     DISABLE_COPY(OrderedRelock)
 
 private:
-    LockType* m_lock = nullptr;
+    LockType m_lock = nullptr;
 };
 
 /// Flips the flag value for the time of the scope lifetime.
