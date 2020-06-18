@@ -16,14 +16,17 @@ template <class Method>
 class MethodConnection : public Connection
 {
     using Receiver = typename function_traits<Method>::object;
+    OrderedLock<Lockable> m_locker;
     Receiver* m_receiver = nullptr;
     Method m_slot;
 
     MethodConnection(SignalCore& sender, Receiver& receiver, Method slot)
         : Connection(sender)
+        , m_locker(&sender, &receiver)
         , m_receiver(&receiver)
         , m_slot(slot)
     {
+        m_locker.unlock();
     }
 
 public:
@@ -37,6 +40,15 @@ public:
         return dynamic_cast<SlotHolder*>(m_receiver);
     }
 
+    void lock() override
+    {
+        m_locker.lock();
+    }
+
+    void unlock() override
+    {
+        m_locker.unlock();
+    }
 protected:
     void invokeOverride(const PackedArguments &arguments) override
     {

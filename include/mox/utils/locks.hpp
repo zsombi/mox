@@ -110,11 +110,31 @@ public:
         : m_l1((l1 == l2) ?      l1 : (std::less<LockType*>()(l1, l2) ? l1 : l2))
         , m_l2((l1 == l2) ? nullptr : (std::less<LockType*>()(l1, l2) ? l2 : l1))
     {
-        if (m_l1) m_l1->lock();
-        if (m_l2) m_l2->lock();
+        lock();
     }
     ~OrderedLock()
     {
+        unlock();
+    }
+
+    void lock()
+    {
+        if (m_isLocked)
+        {
+            return;
+        }
+        if (m_l1) m_l1->lock();
+        if (m_l2) m_l2->lock();
+        m_isLocked = true;
+    }
+
+    void unlock()
+    {
+        if (!m_isLocked)
+        {
+            return;
+        }
+        m_isLocked = false;
         if (m_l1) m_l1->unlock();
         if (m_l2) m_l2->unlock();
     }
@@ -124,6 +144,7 @@ public:
 private:
     LockType* m_l1 = nullptr;
     LockType* m_l2 = nullptr;
+    bool m_isLocked = false;
 };
 
 /// The class locks two mutexes so that it avoids eventual deadlocks that occur
@@ -142,18 +163,17 @@ public:
             // Do nothing;
             m_lock = nullptr;
         }
-        else if (l1 < l2)
+        else if (std::less<LockType>()(l1, l2))
         {
             l2->lock();
-            m_lock = l2;
         }
         else if (!l2->try_lock())
         {
             l1->unlock();
             l2->lock();
             l1->lock();
-            m_lock = l2;
         }
+        m_lock = l2;
     }
     ~OrderedRelock()
     {

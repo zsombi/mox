@@ -95,7 +95,7 @@ public:
 protected:
     void invokeOverride(const PackedArguments&) override
     {
-        CTRACE(signalTest, "CustomConnection invoked by a signal with" << m_sender->getArgumentCount() << "arguments");
+        CTRACE(signalTest, "CustomConnection invoked by a signal with" << m_sender.getArgumentCount() << "arguments");
     }
 };
 

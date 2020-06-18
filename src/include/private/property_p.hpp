@@ -44,6 +44,8 @@ public:
     SignalCore* p_ptr = nullptr;
     ConnectionContainer connections;
 
+    void connect(ConnectionPtr connection);
+
     // Disconnect slots connected to this signal. Locks the signal, and loops through the connections
     // and removes the slot holders from it.
     void disconnectSlots();

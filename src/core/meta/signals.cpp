@@ -16,6 +16,12 @@ static thread_local ConnectionPtr s_currentConnection;
 /******************************************************************************
  * ConnectionStorage
  */
+void ConnectionStorage::connect(ConnectionPtr connection)
+{
+    connections.push_back(connection);
+    connection->m_isConnected = true;
+}
+
 void ConnectionStorage::disconnectSlots()
 {
     P();
@@ -35,30 +41,24 @@ void ConnectionStorage::disconnectSlots()
         auto slot = connection->getDestination();
         if (slot)
         {
-            lock_guard lockSlot(*slot);
-            UNUSED(p);
-//            OrderedRelock<Lockable*> re(p, slot);
+            OrderedRelock<Lockable*> re(p, slot);
             erase(slot->m_slots, connection);
         }
-        connection->m_sender = nullptr;
+        connection->m_isConnected = false;
         connection->invalidateOverride();
     };
     for_each(connections, disconnector);
 }
 
+// Signal and slot must be locked before calling this method.
 void ConnectionStorage::disconnectOne(ConnectionPtr connection)
 {
-    P();
-    lock_guard lockSignal(*p);
-
     auto slot = connection->getDestination();
     if (slot)
     {
-        lock_guard lockSlot(*slot);
-//        OrderedRelock<Lockable*> re(p, slot);
         erase(slot->m_slots, connection);
     }
-    connection->m_sender = nullptr;
+    connection->m_isConnected = false;
     connection->invalidateOverride();
     erase(connections, connection);
 }
@@ -67,7 +67,7 @@ void ConnectionStorage::disconnectOne(ConnectionPtr connection)
  * Connection
  */
 Connection::Connection(SignalCore& sender)
-    : m_sender(&sender)
+    : m_sender(sender)
 {
 }
 
@@ -81,12 +81,12 @@ Connection::~Connection()
 
 bool Connection::isConnected() const
 {
-    return m_sender != nullptr;
+    return m_isConnected;
 }
 
 void Connection::disconnect()
 {
-    m_sender->disconnect(shared_from_this());
+    m_sender.disconnect(shared_from_this());
 }
 
 void Connection::invoke(const PackedArguments& arguments)
@@ -115,12 +115,22 @@ ConnectionPtr Connection::getActiveConnection()
 
 SignalCore* Connection::getSignal() const
 {
-    return m_sender;
+    return &m_sender;
 }
 
 SlotHolder* Connection::getDestination() const
 {
     return nullptr;
+}
+
+void Connection::lock()
+{
+    m_sender.lock();
+}
+
+void Connection::unlock()
+{
+    m_sender.unlock();
 }
 
 /******************************************************************************
@@ -157,7 +167,8 @@ void SlotHolder::disconnectSignals()
         }
 
         auto sender = ConnectionStorage::get(*connection->getSignal());
-        ScopeRelock reLock(*self);
+//        ScopeRelock reLock(*self);
+        OrderedRelock<Lockable*> re(self, connection->getSignal());
         sender->disconnectOne(connection);
     };
     for_each(m_slots, disconnector);
@@ -241,6 +252,7 @@ void SignalCore::disconnect(ConnectionPtr connection)
     throwIf<ExceptionType::InvalidArgument>(!connection);
     throwIf<ExceptionType::Disconnected>(!connection->isConnected());
 
+    lock_guard lock(*connection);
     d_ptr->disconnectOne(connection);
 }
 
@@ -249,7 +261,7 @@ void SignalCore::addConnection(ConnectionPtr connection)
     FATAL(connection, "Attempt adding a null connection");
 
     lock_guard lock(*this);
-    d_ptr->connections.push_back(connection);
+    d_ptr->connect(connection);
 }
 
 bool SignalCore::isBlocked() const

@@ -126,6 +126,9 @@ public:
     /// \e nullptr.
     virtual SlotHolder* getDestination() const;
 
+    virtual void lock();
+    virtual void unlock();
+
 protected:
     /// Constructs a connection object with a \a sender signal.
     Connection(SignalCore& sender);
@@ -137,7 +140,8 @@ protected:
 
     /// The sender signal. Reset to \e nullptr when the connection is disconnected from the
     /// sender signal.
-    SignalCore* m_sender = nullptr;
+    SignalCore& m_sender;
+    std::atomic_bool m_isConnected = false;
 };
 
 /// The SlotHolder class holds the connections created on a receiver object. Derive your class
