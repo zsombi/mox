@@ -276,7 +276,7 @@ size_t Logger::addCategory(LogCategory category)
 
 LogCategory* Logger::findCategory(std::string_view category)
 {
-    auto loggerData = LoggerData::find();
+    auto loggerData = &LoggerData::get();
     return loggerData
             ? loggerData->findCategory(category)
             : nullptr;

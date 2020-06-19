@@ -232,6 +232,7 @@ void ThreadInterface::exit(int exitCode)
         case Status::StartingUp:
         {
             // post the quit event, execute a delayed exit
+            ScopeRelock re(*this);
             postEvent<QuitEvent>(shared_from_this(), exitCode);
             break;
         }
