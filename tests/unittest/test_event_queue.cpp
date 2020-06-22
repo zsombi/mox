@@ -22,11 +22,14 @@
 
 using namespace mox;
 
+constexpr EventType UserEvent = {EventId::UserType, EventPriority::Normal};
+constexpr EventType UserEventHi = {EventId::UserType, EventPriority::Urgent};
+
 class NoCompressEvent : public Event
 {
 public:
-    explicit NoCompressEvent(ObjectSharedPtr target, EventType type, Priority priority = Priority::Normal)
-        : Event(target, type, priority)
+    explicit NoCompressEvent(ObjectSharedPtr target, EventType type)
+        : Event(target, type)
     {}
     bool isCompressible() const override
     {
@@ -42,7 +45,7 @@ TEST(EventQueue, test_queue_api)
 
     ObjectSharedPtr handler = Object::create();
 
-    queue.push(make_event<Event>(handler, EventType::Base));
+    queue.push(make_event<Event>(handler, BaseEvent));
     EXPECT_EQ(1u, queue.size());
 
     queue.clear();
@@ -54,13 +57,12 @@ TEST(EventQueue, test_push_same_event_type_triggers_compression)
     EventQueue queue;
     auto target = Object::create();
 
-    queue.push(make_event<Event>(target, EventType::Base));
-    queue.push(make_event<Event>(target, EventType::Quit));
-    queue.push(make_event<Event>(target, EventType::DeferredSignal));
-    EXPECT_EQ(3u, queue.size());
+    queue.push(make_event<Event>(target, BaseEvent));
+    queue.push(make_event<Event>(target, QuitEvent));
+    EXPECT_EQ(2u, queue.size());
 
-    queue.push(make_event<Event>(target, EventType::Base));
-    EXPECT_EQ(3u, queue.size());
+    queue.push(make_event<Event>(target, BaseEvent));
+    EXPECT_EQ(2u, queue.size());
 }
 
 TEST(EventQueue, test_push_event_no_compress)
@@ -68,12 +70,11 @@ TEST(EventQueue, test_push_event_no_compress)
     EventQueue queue;
     auto target = Object::create();
 
-    queue.push(make_event<Event>(target, EventType::Base));
-    queue.push(make_event<Event>(target, EventType::Quit));
-    queue.push(make_event<Event>(target, EventType::DeferredSignal));
+    queue.push(make_event<Event>(target, BaseEvent));
+    queue.push(make_event<Event>(target, QuitEvent));
 
-    queue.push(make_event<NoCompressEvent>(target, EventType::Base));
-    EXPECT_EQ(4u, queue.size());
+    queue.push(make_event<NoCompressEvent>(target, BaseEvent));
+    EXPECT_EQ(3u, queue.size());
 }
 
 TEST(EventQueue, test_process_events_with_same_priority)
@@ -81,8 +82,8 @@ TEST(EventQueue, test_process_events_with_same_priority)
     EventQueue queue;
     ObjectSharedPtr handler = Object::create();
 
-    queue.push(make_event<Event>(handler, EventType::Base));
-    queue.push(make_event<Event>(handler, EventType::UserType));
+    queue.push(make_event<Event>(handler, BaseEvent));
+    queue.push(make_event<Event>(handler, UserEvent));
 
     EXPECT_EQ(2u, queue.size());
 
@@ -93,19 +94,19 @@ TEST(EventQueue, test_process_events_with_same_priority)
         {
             case 0:
             {
-                EXPECT_EQ(EventType::Base, event.type());
+                EXPECT_EQ(BaseEvent.first, event.type());
                 break;
             }
             case 1:
             {
-                EXPECT_EQ(EventType::UserType, event.type());
+                EXPECT_EQ(EventId::UserType, event.type());
                 break;
             }
         }
 
         return true;
     };
-    queue.process(checker);
+    queue.dispatch(checker);
 }
 
 TEST(EventQueue, test_process_event_priority_changes_order)
@@ -113,8 +114,8 @@ TEST(EventQueue, test_process_event_priority_changes_order)
     EventQueue queue;
     ObjectSharedPtr handler = Object::create();
 
-    queue.push(make_event<Event>(handler, EventType::Base));
-    queue.push(make_event<Event>(handler, EventType::UserType, Event::Priority::Urgent));
+    queue.push(make_event<Event>(handler, BaseEvent));
+    queue.push(make_event<Event>(handler, UserEventHi));
 
     EXPECT_EQ(2u, queue.size());
 
@@ -125,17 +126,17 @@ TEST(EventQueue, test_process_event_priority_changes_order)
         {
             case 1:
             {
-                EXPECT_EQ(EventType::Base, event.type());
+                EXPECT_EQ(BaseEvent.first, event.type());
                 break;
             }
             case 0:
             {
-                EXPECT_EQ(EventType::UserType, event.type());
+                EXPECT_EQ(EventId::UserType, event.type());
                 break;
             }
         }
 
         return true;
     };
-    queue.process(checker);
+    queue.dispatch(checker);
 }

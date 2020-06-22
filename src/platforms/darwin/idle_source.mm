@@ -21,27 +21,10 @@
 namespace mox
 {
 
-void CFIdleSource::addIdleTaskOverride(Task&& task)
+size_t FoundationConcept::runIdleTasks()
 {
-    tasks.push(std::forward<Task>(task));
-}
-
-void CFIdleSource::initialize(void*)
-{
-}
-
-void CFIdleSource::detachOverride()
-{
-}
-
-void CFIdleSource::wakeUp()
-{
-}
-
-size_t CFIdleSource::runTasks()
-{
-    auto taskCopy = TaskStack();
-    std::swap(taskCopy, tasks);
+    auto taskCopy = IdleStack();
+    std::swap(taskCopy, idles);
     while (!taskCopy.empty())
     {
         auto task = std::move(taskCopy.top());
@@ -49,18 +32,14 @@ size_t CFIdleSource::runTasks()
 
         if (!task())
         {
-            tasks.push(task);
+            idles.push(task);
         }
     }
-    return tasks.size();
+    return idles.size();
 }
 
 /******************************************************************************
  * Adaptation
  */
-IdleSourcePtr Adaptation::createIdleSource()
-{
-    return make_polymorphic_shared<IdleSource, CFIdleSource>();
-}
 
 } // mox

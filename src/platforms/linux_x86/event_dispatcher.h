@@ -151,43 +151,6 @@ public:
     GMainContext* context = nullptr;
 };
 
-class GIdleSource : public IdleSource
-{
-    struct TaskRec
-    {
-        std::weak_ptr<GIdleSource> self;
-        GSource* source = nullptr;
-        Task task;
-        TaskRec(std::shared_ptr<GIdleSource> self, GSource* source, Task&& task)
-            : self(self)
-            , source(source)
-            , task(std::forward<Task>(task))
-        {
-        }
-        ~TaskRec();
-    };
-    using TaskRecPtr = std::unique_ptr<TaskRec>;
-
-    SharedVector<TaskRecPtr> tasks;
-    GMainContext* context = nullptr;
-
-    static gboolean sourceFunc(gpointer userData);
-    static void sourceDestroy(gpointer userData);
-
-public:
-    explicit GIdleSource();
-    ~GIdleSource() final;
-
-    void wakeUp() final;
-    void initialize(void* data) final;
-    void detachOverride() final;
-
-    void removeTaskRec(TaskRec& record);
-
-protected:
-    void addIdleTaskOverride(Task&& task) override;
-};
-
 class GlibRunLoop : public RunLoop
 {
 public:
@@ -200,6 +163,7 @@ public:
     // From RunLoopBase
     bool isRunningOverride() const final;
     void scheduleSourcesOverride() final;
+    void onIdleOverride(IdleFunction idle) final;
     void stopRunLoop() final;
 
     // from RunLoop
@@ -222,6 +186,7 @@ protected:
         return running;
     }
     void scheduleSourcesOverride() final;
+    void onIdleOverride(IdleFunction idle) final;
     void stopRunLoop() final;
 
     GMainContext* context = nullptr;

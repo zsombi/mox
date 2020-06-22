@@ -36,6 +36,8 @@ void Lockable::lock()
 void Lockable::unlock()
 {
     FATAL(m_value > 0, "Cannot unlock Lockable if not locked! LockCount is " << m_value);
+    FATAL(m_owner == std::this_thread::get_id(), "About to unlock Lockable from a different thread!");
+
     release();
     m_owner = std::thread::id();
     m_mutex.unlock();

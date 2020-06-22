@@ -73,10 +73,6 @@ public:
     /// \return The thread object.
     static ThreadInterfacePtr getThisThread();
 
-    /// Adds an idle task to the current thread.
-    /// \param idleTask The idle task to add.
-    void addIdleTask(IdleSource::Task idleTask);
-
     /// Returns the running state of the thread.
     /// \return If the thread is running, returns \e true, otherwise \e false.
     bool isRunning() const;

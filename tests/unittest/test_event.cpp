@@ -24,19 +24,19 @@ using namespace mox;
 class CustomEvent : public Event
 {
 public:
-    static inline EventType const customEventType = Event::registerNewType();
+    static inline EventType const customEventType = Event::registerNewType(EventPriority::Urgent);
     explicit CustomEvent(ObjectSharedPtr handler)
-        : Event(handler, customEventType, Priority::Urgent)
+        : Event(handler, customEventType)
     {}
 };
 
 TEST(Event, test_event_api)
 {
     ObjectSharedPtr handler = Object::create();
-    Event event(handler, EventType::Base);
+    Event event(handler, BaseEvent);
 
-    EXPECT_EQ(EventType::Base, event.type());
-    EXPECT_EQ(Event::Priority::Normal, event.priority());
+    EXPECT_EQ(EventId::Base, event.type());
+    EXPECT_EQ(EventPriority::Normal, event.priority());
     EXPECT_EQ(handler, event.target());
     EXPECT_FALSE(event.isHandled());
 
@@ -50,19 +50,19 @@ TEST(Event, test_event_api)
 TEST(Event, test_event_priority)
 {
     ObjectSharedPtr handler = Object::create();
-    Event eventHi(handler, EventType::Base, Event::Priority::Urgent);
-    EXPECT_EQ(EventType::Base, eventHi.type());
-    EXPECT_EQ(Event::Priority::Urgent, eventHi.priority());
+    Event eventHi(handler, {EventId::Base, EventPriority::Urgent});
+    EXPECT_EQ(EventId::Base, eventHi.type());
+    EXPECT_EQ(EventPriority::Urgent, eventHi.priority());
 
-    Event eventLo(handler, EventType::Base, Event::Priority::Low);
-    EXPECT_EQ(EventType::Base, eventLo.type());
-    EXPECT_EQ(Event::Priority::Low, eventLo.priority());
+    Event eventLo(handler, {EventId::Base, EventPriority::Low});
+    EXPECT_EQ(EventId::Base, eventLo.type());
+    EXPECT_EQ(EventPriority::Low, eventLo.priority());
 }
 
 TEST(Event, test_register_custom_event_type)
 {
     EventType newType = Event::registerNewType();
-    EXPECT_GT(newType, EventType::UserType);
+    EXPECT_LT(EventId::UserType, newType.first);
 }
 
 TEST(Event, test_custom_event)
@@ -70,7 +70,7 @@ TEST(Event, test_custom_event)
     ObjectSharedPtr handler = Object::create();
     EventPtr event = make_event<CustomEvent>(handler);
 
-    EXPECT_GT(event->type(), EventType::UserType);
-    EXPECT_EQ(CustomEvent::customEventType, event->type());
-    EXPECT_EQ(Event::Priority::Urgent, event->priority());
+    EXPECT_LT(EventId::UserType, event->type());
+    EXPECT_EQ(CustomEvent::customEventType.first, event->type());
+    EXPECT_EQ(EventPriority::Urgent, event->priority());
 }

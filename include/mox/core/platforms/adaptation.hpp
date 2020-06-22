@@ -38,7 +38,6 @@ public:
     static TimerSourcePtr createTimerSource(std::string_view name);
     static EventSourcePtr createPostEventSource(std::string_view name);
     static SocketNotifierSourcePtr createSocketNotifierSource(std::string_view name);
-    static IdleSourcePtr createIdleSource();
 };
 
 } // namespace mox

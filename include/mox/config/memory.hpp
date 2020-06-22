@@ -46,7 +46,7 @@ std::shared_ptr<Type> make_polymorphic_shared_ptr(Type* type)
 template <class To, class From>
 std::shared_ptr<To> as_shared(From* from)
 {
-    return std::static_pointer_cast<To>(from->shared_from_this());
+    return from ? std::static_pointer_cast<To>(from->shared_from_this()) : nullptr;
 }
 
 template <class To, class From>

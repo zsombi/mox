@@ -35,7 +35,7 @@ class HandlerToken : public Object::EventToken
     Object::EventHandler m_handler;
 
 public:
-    explicit HandlerToken(EventType type, ObjectSharedPtr eventHandler, Object::EventHandler&& handler)
+    explicit HandlerToken(EventId type, ObjectSharedPtr eventHandler, Object::EventHandler&& handler)
         : EventToken(type, eventHandler)
         , m_handler(handler)
     {
@@ -54,7 +54,7 @@ class FilterToken : public Object::EventToken
 {
     Object::EventFilter m_filter;
 public:
-    explicit FilterToken(EventType type, ObjectSharedPtr eventHandler, Object::EventFilter&& filter)
+    explicit FilterToken(EventId type, ObjectSharedPtr eventHandler, Object::EventFilter&& filter)
         : EventToken(type, eventHandler)
         , m_filter(filter)
     {
@@ -71,7 +71,7 @@ public:
 /******************************************************************************
  * Object::EventToken
  */
-Object::EventToken::EventToken(EventType type, ObjectSharedPtr target)
+Object::EventToken::EventToken(EventId type, ObjectSharedPtr target)
     : m_target(target)
     , m_type(type)
 {
@@ -261,15 +261,15 @@ void Object::dispatchEvent(Event& event)
 
 Object::EventTokenPtr Object::addEventHandler(EventType type, EventHandler handler)
 {
-    auto token = make_polymorphic_shared<EventToken, HandlerToken>(type, shared_from_this(), std::move(handler));
+    auto token = make_polymorphic_shared<EventToken, HandlerToken>(type.first, shared_from_this(), std::move(handler));
 
     lock_guard lock(*this);
-    Container::Iterator it = m_handlers.find(type);
+    Container::Iterator it = m_handlers.find(type.first);
     if (it == m_handlers.end())
     {
         TokenList tokens;
         tokens.push_back(token);
-        m_handlers.insert(make_pair(type, std::move(tokens)));
+        m_handlers.insert(make_pair(type.first, std::move(tokens)));
     }
     else
     {
@@ -281,15 +281,15 @@ Object::EventTokenPtr Object::addEventHandler(EventType type, EventHandler handl
 
 Object::EventTokenPtr Object::addEventFilter(EventType type, EventFilter filter)
 {
-    auto token = make_polymorphic_shared<EventToken, FilterToken>(type, shared_from_this(), std::move(filter));
+    auto token = make_polymorphic_shared<EventToken, FilterToken>(type.first, shared_from_this(), std::move(filter));
 
     lock_guard lock(*this);
-    auto it = m_filters.find(type);
+    auto it = m_filters.find(type.first);
     if (it == m_filters.end())
     {
         TokenList tokens;
         tokens.push_back(token);
-        m_filters.insert(make_pair(type, std::move(tokens)));
+        m_filters.insert(make_pair(type.first, std::move(tokens)));
     }
     else
     {
@@ -302,35 +302,32 @@ Object::EventTokenPtr Object::addEventFilter(EventType type, EventFilter filter)
 
 
 void Object::addChild(Object& child)
-{
-    ObjectSharedPtr sharedChild = as_shared<Object>(&child);
-    OrderedLock lock(this, sharedChild->getParent());
+{    
+    OrderedLock lock(this, &child);
+    auto oldParent = child.getParent();
+    auto sharedChild = child.shared_from_this();
 
-    Object* oldParent = sharedChild->getParent();
-    if (oldParent == this)
+    if (child.getParent() && child.getParent() != this)
     {
-        return;
+        OrderedRelock re(&child, oldParent);
+        throwIf<ExceptionType::InvalidThreadOwnershipChange>(oldParent->threadData() != m_threadData);
+        throwIf<ExceptionType::NotAChildOfObject>(find(oldParent->m_children, sharedChild) == std::nullopt);
+        erase(oldParent->m_children, sharedChild);
+        child.m_parent = nullptr;
     }
 
-    if (oldParent)
-    {
-        if (oldParent->threadData() != m_threadData)
-        {
-            throw Exception(ExceptionType::InvalidThreadOwnershipChange);
-        }
-        ScopeRelock relock(*oldParent);
-        oldParent->removeChild(child);
-    }
-
-    auto threadMover = [this](Object& object)
-    {
-        lock_guard lock(object);
-        return object.moveToThread(m_threadData);
-    };
-    child.traverse(threadMover, TraverseOrder::PreOrder);
-
-    m_children.push_back(as_shared<Object>(&child));
+    m_children.push_back(sharedChild);
     child.m_parent = this;
+
+    {
+        auto threadMover = [this](Object& object)
+        {
+            lock_guard lock(object);
+            return object.moveToThread(m_threadData);
+        };
+        ScopeRelock re(child);
+        child.traverse(threadMover, TraverseOrder::PreOrder);
+    }
 }
 
 void Object::removeChild(Object& child)

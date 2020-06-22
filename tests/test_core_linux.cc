@@ -4,22 +4,44 @@
 #include <glib.h>
 
 
-class TestCoreApp::Private
+struct IdleBundle
 {
-    static gboolean defaultIdleFunc(gpointer userData)
+    GMainContext* context = nullptr;
+    mox::RunLoopBase::IdleFunction idle;
+    guint sourceId;
+
+    explicit IdleBundle(GMainContext* context, mox::RunLoopBase::IdleFunction&& idle)
+        : context(context)
+        , idle(std::forward<mox::RunLoopBase::IdleFunction>(idle))
     {
-        CTRACE(threads, "idle called for:" << userData);
-        Private* app = static_cast<Private*>(userData);
-        g_source_destroy(app->idleSource);
-        app->idleSource = nullptr;
-        return app->idle();
+        sourceId = g_idle_add(&IdleBundle::callback, gpointer(this));
     }
 
+    static gboolean callback(gpointer userData)
+    {
+        // sanity check, stop if the source is no longer part of the context!
+        auto bundle = static_cast<IdleBundle*>(userData);
+        if (!g_main_context_find_source_by_id(bundle->context, bundle->sourceId))
+        {
+            // The idle source is no longer in the context.
+            delete bundle;
+            return FALSE;
+        }
+        if (bundle->idle())
+        {
+            delete bundle;
+            return FALSE;
+        }
+        // Need to reschedule again.
+        return TRUE;
+    }
+};
+
+class TestCoreApp::Private
+{
 public:
     GMainContext* context = nullptr;
     GMainLoop* runLoop = nullptr;
-    GSource* idleSource = nullptr;
-    mox::IdleSource::Task idle;
 
     Private()
     {
@@ -33,11 +55,6 @@ public:
     }
     ~Private()
     {
-        if (idleSource)
-        {
-            g_source_unref(idleSource);
-            idleSource = nullptr;
-        }
         g_main_loop_unref(runLoop);
         g_main_context_pop_thread_default(context);
         g_main_context_unref(context);
@@ -45,23 +62,22 @@ public:
         CTRACE(threads, "app private died for" << (void*)this);
     }
 
-    void scheduleIdle(mox::IdleSource::Task task)
+    void scheduleIdle(mox::RunLoopBase::IdleFunction task)
     {
-        idle = std::move(task);
-        if (!idle)
+        if (!task)
         {
-            idle = [this]()
+            task = [this]()
             {
                 CTRACE(event, "Stopping TestCoreApp runloop");
                 g_main_loop_quit(runLoop);
                 return true;
             };
+            new IdleBundle(context, std::move(task));
         }
-        CTRACE(threads, "add idle source for" << (void*)this);
-        idleSource = g_idle_source_new();
-        g_source_set_callback(idleSource, &Private::defaultIdleFunc, this, nullptr);
-        g_source_attach(idleSource, context);
-        g_source_unref(idleSource);
+        else
+        {
+            new IdleBundle(context, std::move(task));
+        }
     }
 };
 
@@ -98,17 +114,18 @@ void TestCoreApp::runOnce()
     g_main_loop_run(d->runLoop);
 }
 
-void TestCoreApp::runOnce(mox::IdleSource::Task exitTask)
+void TestCoreApp::runOnce(mox::RunLoopBase::IdleFunction exitTask)
 {
-    d->scheduleIdle(exitTask);
+    d->scheduleIdle(std::move(exitTask));
     g_main_loop_run(d->runLoop);
 }
 
-void TestCoreApp::addIdleTask(mox::IdleSource::Task idle)
+void TestCoreApp::addIdleTask(mox::RunLoopBase::IdleFunction idle)
 {
     if (!d || !g_main_loop_is_running(d->runLoop))
     {
         return;
     }
-    d->scheduleIdle(idle);
+    d->scheduleIdle(std::move(idle));
+    g_main_context_wakeup(d->context);
 }

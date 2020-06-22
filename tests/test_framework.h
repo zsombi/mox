@@ -101,8 +101,8 @@ public:
     void exit();
     void run();
     void runOnce();
-    void runOnce(mox::IdleSource::Task exitTask);
-    void addIdleTask(mox::IdleSource::Task idle);
+    void runOnce(mox::RunLoopBase::IdleFunction exitTask);
+    void addIdleTask(mox::RunLoopBase::IdleFunction idle);
 
     static void onExit()
     {
@@ -113,23 +113,25 @@ public:
     std::unique_ptr<Private> d;
 };
 
-class TestApp : public mox::Application
+class QuitHandler : public mox::Object
 {
 public:
-    explicit TestApp() = default;
+    static std::shared_ptr<QuitHandler> create(mox::EventType typeToQuit, mox::Object* parent = nullptr);
 
-    int runOnce()
-    {
-        auto idleTask = []()
-        {
-            Application::instance().quit();
-            return true;
-        };
-        threadData()->thread()->addIdleTask(std::move(idleTask));
-        return run();
-    }
+protected:
+    explicit QuitHandler() = default;
 
+    void onEvent(mox::Event& event);
+};
 
+class TestApp : public mox::Application
+{
+    static inline mox::EventType testAppQuit = mox::Event::registerNewType();
+
+public:
+    explicit TestApp();
+
+    int runOnce();
 };
 
 class TestThreadLoop : public mox::ThreadLoop

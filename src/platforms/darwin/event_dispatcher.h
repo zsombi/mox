@@ -183,24 +183,6 @@ public:
     std::vector<std::unique_ptr<Socket>> sockets;
 };
 
-class CFIdleSource : public IdleSource
-{
-    using TaskStack = std::stack<Task>;
-    TaskStack tasks;
-
-public:
-    explicit CFIdleSource() = default;
-    void initialize(void*) final;
-    void detachOverride() final;
-    void wakeUp() final;
-
-    /// Run the idle tasks. Returns the number of re-scheduled idle tasks in the stack.
-    size_t runTasks();
-
-protected:
-    void addIdleTaskOverride(Task&& task) override;
-};
-
 class FoundationConcept
 {
 public:
@@ -212,6 +194,11 @@ public:
     void removeSource(CFRunLoopSourceRef source, CFRunLoopMode mode = kCFRunLoopCommonModes);
 
 protected:
+    using IdleStack = std::stack<RunLoopBase::IdleFunction>;
+
+    size_t runIdleTasks();
+
+    IdleStack idles;
     mac::CFType<CFRunLoopRef> runLoop;
     RunLoopModeTracker *modeTracker = nullptr;
     CFStringRef currentMode = nullptr;
@@ -225,8 +212,6 @@ class FoundationBase : public LoopType, public FoundationConcept
     {
         return static_cast<DerivedType*>(this);
     }
-
-    IdleSourceWeakPtr idleSource;
 
 public:
     explicit FoundationBase()
@@ -245,7 +230,11 @@ public:
         auto self = getThis();
         void* data = (void*)runLoop;
         self->template forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::initialize, data);
-        idleSource = self->getIdleSource();
+    }
+
+    void onIdleOverride(RunLoopBase::IdleFunction idle) final
+    {
+        idles.emplace(std::move(idle));
     }
 
 protected:
@@ -283,10 +272,9 @@ protected:
             {
                 CTRACE(event, "RunLoop is about to sleep, run idle tasks");
                 // Run idle tasks
-                if (self->isRunning() && !idleSource.expired())
+                if (self->isRunning())
                 {
-                    auto idle = std::dynamic_pointer_cast<CFIdleSource>(idleSource.lock());
-                    if (idle->runTasks() > 0u && !self->isExiting())
+                    if (self->runIdleTasks() > 0u && !self->isExiting())
                     {
                         self->scheduleSources();
                     }

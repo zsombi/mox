@@ -145,7 +145,7 @@ void EventSource::dispatchQueuedEvents()
     };
 
     CTRACE(event, "process queue with" << m_eventQueue->size() << "events");
-    m_eventQueue->process(dispatchEvent);
+    m_eventQueue->dispatch(dispatchEvent);
 }
 
 /******************************************************************************
@@ -182,25 +182,6 @@ void SocketNotifierSource::Notifier::detach()
 SocketNotifierSource::SocketNotifierSource(std::string_view name)
     : AbstractRunLoopSource(name)
 {
-}
-
-/******************************************************************************
- * IdleSource
- */
-IdleSource::IdleSource()
-    : AbstractRunLoopSource("idle")
-{
-}
-
-void IdleSource::addIdleTask(Task function)
-{
-    auto loop = getRunLoop();
-    if (!loop)
-    {
-        return;
-    }
-    addIdleTaskOverride(std::move(function));
-    loop->scheduleSources();
 }
 
 }

@@ -43,9 +43,6 @@ void RunLoopBase::setupSources()
 
     source = Adaptation::createSocketNotifierSource("default_socket_notifier");
     source->attach(*this);
-
-    source = Adaptation::createIdleSource();
-    source->attach(*this);
 }
 
 void RunLoopBase::addSource(AbstractRunLoopSourceSharedPtr source)
@@ -76,7 +73,7 @@ void RunLoopBase::notifyRunLoopDown()
 }
 
 
-void RunLoopBase::setRunLoopDownCallback(IdleSource::Task callback)
+void RunLoopBase::setRunLoopDownCallback(DownCallback callback)
 {
     m_closedCallback = callback;
 }
@@ -140,17 +137,6 @@ SocketNotifierSourcePtr RunLoopBase::getDefaultSocketNotifierSource()
     return source && source->isFunctional() ? source : nullptr;
 }
 
-IdleSourcePtr RunLoopBase::getIdleSource()
-{
-    if (isExiting())
-    {
-        return nullptr;
-    }
-    // The fourth source is the idle source.
-    auto source = std::static_pointer_cast<IdleSource>(m_runLoopSources[3]);
-    return source && source->isFunctional() ? source : nullptr;
-}
-
 void RunLoopBase::scheduleSources()
 {
     forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::wakeUp);
@@ -178,6 +164,15 @@ bool RunLoopBase::isExiting() const
 bool RunLoopBase::isRunning() const
 {
     return isRunningOverride();
+}
+
+void RunLoopBase::onIdle(IdleFunction idle)
+{
+    if (isExiting())
+    {
+        return;
+    }
+    onIdleOverride(std::move(idle));
 }
 
 /******************************************************************************

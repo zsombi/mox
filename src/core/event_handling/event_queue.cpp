@@ -33,10 +33,6 @@ bool EventQueueComparator::operator()(const EventPtr& lhs, const EventPtr& rhs) 
     return lhs->priority() > rhs->priority();
 }
 
-EventQueue::~EventQueue()
-{
-}
-
 void EventQueue::clear()
 {
     lock_guard lock(*this);
@@ -67,7 +63,8 @@ void EventQueue::push(EventPtr event)
         auto compress = std::find_if(c.rbegin(), c.rend(), testCompression);
         if (compress != c.rend())
         {
-            // Compression required, so bail out.
+            // Compression required, so bail out, but update the timestamp to have the latest push time.
+            event->markTimestamp();
             return;
         }
     }

@@ -94,7 +94,7 @@ void ThreadInterface::onQuit(Event& event)
     }
 
     CTRACE(threads, "async exit");
-    QuitEvent& evQuit = static_cast<QuitEvent&>(event);
+    QuitEventType& evQuit = static_cast<QuitEventType&>(event);
     exit(evQuit.getExitCode());
 }
 
@@ -160,6 +160,7 @@ void ThreadInterface::tearDown()
     // Loop through the child threads and join them all. Once joined, clean the child threads.
     auto joiner = [](auto& thread)
     {
+        CTRACE(threads, "Join child thread" << as_shared<ThreadLoop>(thread));
         thread->joinOverride();
     };
     for_each(d_ptr->childThreads, joiner);
@@ -170,21 +171,12 @@ void ThreadInterface::tearDown()
 void ThreadInterface::initialize()
 {
     setThreadData(ThreadData::create(*this));
-    addEventHandler(EventType::Quit, std::bind(&ThreadInterface::onQuit, this, std::placeholders::_1));
+    addEventHandler(QuitEvent, std::bind(&ThreadInterface::onQuit, this, std::placeholders::_1));
 }
 
 ThreadInterfacePtr ThreadInterface::getThisThread()
 {
     return ThreadData::getThisThreadData()->thread();
-}
-
-void ThreadInterface::addIdleTask(IdleSource::Task idleTask)
-{
-    lock_guard lock(*this);
-    if (!d_ptr->runLoop->isExiting())
-    {
-        d_ptr->runLoop->getIdleSource()->addIdleTask(std::move(idleTask));
-    }
 }
 
 bool ThreadInterface::isRunning() const
@@ -227,13 +219,16 @@ void ThreadInterface::exit(int exitCode)
     {
         case Status::InactiveOrJoined:
         case Status::Stopped:
+        {
             CTRACE(threads, "The thread is not running.");
             return;
+        }
         case Status::StartingUp:
         {
             // post the quit event, execute a delayed exit
             ScopeRelock re(*this);
-            postEvent<QuitEvent>(shared_from_this(), exitCode);
+            CTRACE(threads, "Post exit on a starting up thread.");
+            postEvent<QuitEventType>(shared_from_this(), exitCode);
             break;
         }
         case Status::Running:
@@ -281,6 +276,12 @@ bool postEvent(EventPtr event)
     }
     lock_guard lock(*thread);
     auto d = ThreadInterfacePrivate::get(*thread);
+    if (d->runLoop && !d->runLoop->isRunning() && d->runLoop->isExiting())
+    {
+        WARN("Destination thread runloop is exiting. Event" << int(event->type()) << "was not posted!");
+        return false;
+    }
+
     d->threadQueue.push(std::move(event));
 
     if (!d->runLoop)

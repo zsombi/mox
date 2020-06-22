@@ -32,7 +32,7 @@ public:
 
     mox::mac::CFType<CFRunLoopRef> runLoop = mox::mac::CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent());
     mox::RunLoopObserver<Private> activityWatcher{this, &Private::processIdle, kCFRunLoopBeforeWaiting};
-    mox::IdleSource::Task idle;
+    mox::RunLoopBase::IdleFunction idle;
 };
 
 TestCoreApp::TestCoreApp()
@@ -72,7 +72,7 @@ void TestCoreApp::runOnce()
     CFRunLoopRun();
 }
 
-void TestCoreApp::runOnce(mox::IdleSource::Task exiter)
+void TestCoreApp::runOnce(mox::RunLoopBase::IdleFunction exiter)
 {
     if (!exiter)
     {
@@ -85,7 +85,7 @@ void TestCoreApp::runOnce(mox::IdleSource::Task exiter)
     }
 }
 
-void TestCoreApp::addIdleTask(mox::IdleSource::Task idle)
+void TestCoreApp::addIdleTask(mox::RunLoopBase::IdleFunction idle)
 {
     if (!d)
     {

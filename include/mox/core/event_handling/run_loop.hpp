@@ -41,10 +41,19 @@ class SocketNotifier;
 class MOX_API RunLoopBase : public std::enable_shared_from_this<RunLoopBase>
 {
 public:
+    /// The idle function to call when idle.
+    /// \return If the idle task is complete, return \e true. If the task requires rescheduling, return \e false.
+    /// Runloops reschedule idle tasks automatically, unless the runloop is stopped meantime.
+    /// \note It is not recommended to have a function that always returns false, as that function
+    /// keeps the idle queue busy, which can cause always busy application loop.
+    using IdleFunction = std::function<bool()>;
+
+    using DownCallback = std::function<void()>;
+    /// Destructor.
     virtual ~RunLoopBase() = default;
 
-    /// Sets the callback invoked when teh runloop goes down.
-    void setRunLoopDownCallback(IdleSource::Task callback);
+    /// Sets the callback invoked when the runloop goes down.
+    void setRunLoopDownCallback(DownCallback callback);
 
     /// Runloop sources are modules which inject events from the application layer to the runloop.
     /// Mox defines specialized runloop sources that serve the desired functionality, and on application
@@ -87,8 +96,6 @@ public:
     EventSourcePtr getDefaultPostEventSource();
     /// Returns the default socket notifier source.
     SocketNotifierSourcePtr getDefaultSocketNotifierSource();
-    /// Returns the idle source of the runloop.
-    IdleSourcePtr getIdleSource();
 
     /// Wake up a suspended runloop, and if the runloop is running, notifies the
     /// run loop to re-schedule the sources.
@@ -103,6 +110,11 @@ public:
     /// Returns the running state of a runloop.
     bool isRunning() const;
 
+    /// Adds a function to call on idle.
+    /// \param idle The idle function to call.
+    /// \see IdleFunction
+    void onIdle(IdleFunction idle);
+
 protected:
     explicit RunLoopBase() = default;
 
@@ -116,6 +128,7 @@ protected:
     virtual bool isRunningOverride() const = 0;
     virtual void scheduleSourcesOverride() = 0;
     virtual void stopRunLoop() = 0;
+    virtual void onIdleOverride(IdleFunction idle) = 0;
 
     friend class AbstractRunLoopSource;
     friend class IdleSource;
@@ -128,7 +141,7 @@ private:
 
     /// Registered run loop sources.
     std::vector<AbstractRunLoopSourceSharedPtr> m_runLoopSources;
-    IdleSource::Task m_closedCallback;
+    DownCallback m_closedCallback;
     std::atomic_bool m_isExiting = false;
 };
 

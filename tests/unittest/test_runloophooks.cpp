@@ -60,7 +60,7 @@ TEST(TestRunLoopHooks, test_runloop_hook_stop_before_app_stops)
         hookStopped = true;
         return true;
     };
-    hook.runLoop->getIdleSource()->addIdleTask(onIdle);
+    hook.runLoop->onIdle(onIdle);
 
     auto onHookClosed = [&coreApp]()
     {
@@ -90,7 +90,7 @@ TEST(TestRunLoopHooks, test_runloop_hook_stops_with_app_stop)
         coreApp.exit();
         return true;
     };
-    hook.runLoop->getIdleSource()->addIdleTask(onIdle);
+    hook.runLoop->onIdle(onIdle);
     auto onHookClosed = [&hookStopped]()
     {
         hookStopped = true;
@@ -121,10 +121,10 @@ TEST(TestRunLoopHooks, test_runloop_hook_exiter_drops_all_queued_idles)
         hook.runLoop->quit();
         return true;
     };
-    hook.runLoop->getIdleSource()->addIdleTask(idle1);
-    hook.runLoop->getIdleSource()->addIdleTask(idle2);
-    hook.runLoop->getIdleSource()->addIdleTask(idle3);
-    hook.runLoop->getIdleSource()->addIdleTask(exiter);
+    hook.runLoop->onIdle(idle1);
+    hook.runLoop->onIdle(idle2);
+    hook.runLoop->onIdle(idle3);
+    hook.runLoop->onIdle(exiter);
 
     auto onHookClosed = [&coreApp]()
     {

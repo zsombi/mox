@@ -96,6 +96,7 @@ Application::Application(int argc, const char** argv)
 
 Application::~Application()
 {
+    m_rootObject.reset();
     m_threadData.reset();
 }
 

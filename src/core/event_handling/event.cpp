@@ -25,10 +25,9 @@ namespace mox
 /******************************************************************************
  * Event
  */
-Event::Event(ObjectSharedPtr target, EventType type, Priority priority)
+Event::Event(ObjectSharedPtr target, EventType type)
     : m_target(target)
-    , m_type(type)
-    , m_priority(priority)
+    , m_id(type)
 {
     FATAL(target, "Event created without a valid target");
 }
@@ -38,14 +37,14 @@ ObjectSharedPtr Event::target() const
     return m_target.lock();
 }
 
-EventType Event::type() const
+EventId Event::type() const
 {
-    return m_type;
+    return m_id.first;
 }
 
-Event::Priority Event::priority() const
+EventPriority Event::priority() const
 {
-    return m_priority;
+    return m_id.second;
 }
 
 bool Event::isHandled() const
@@ -68,10 +67,10 @@ Timestamp Event::timestamp() const
     return m_timeStamp;
 }
 
-EventType Event::registerNewType()
+EventType Event::registerNewType(EventPriority priority)
 {
-    static EventType userType = EventType::UserType;
-    return ++userType;
+    static EventId userType = EventId::UserType;
+    return std::make_pair(++userType, priority);
 }
 
 bool Event::isCompressible() const
@@ -81,19 +80,19 @@ bool Event::isCompressible() const
 
 bool Event::canCompress(const Event& other)
 {
-    return (m_type == other.m_type) && (m_target.lock() == other.m_target.lock());
+    return (m_id.first == other.m_id.first) && (m_target.lock() == other.m_target.lock());
 }
 
 /******************************************************************************
  * QuitEvent
  */
-QuitEvent::QuitEvent(ObjectSharedPtr target, int exitCode)
-    : Event(target, EventType::Quit, Priority::Normal)
+QuitEventType::QuitEventType(ObjectSharedPtr target, int exitCode)
+    : Event(target, QuitEvent)
     , m_exitCode(exitCode)
 {
 }
 
-int QuitEvent::getExitCode() const
+int QuitEventType::getExitCode() const
 {
     return m_exitCode;
 }

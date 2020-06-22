@@ -21,126 +21,50 @@
 namespace mox
 {
 
-GIdleSource::TaskRec::~TaskRec()
+struct IdleBundle
 {
-    if (source)
+    GMainContext* context = nullptr;
+    RunLoopBase::IdleFunction idle;
+    guint sourceId;
+
+    explicit IdleBundle(GMainContext* context, RunLoopBase::IdleFunction&& idle)
+        : context(context)
+        , idle(std::forward<RunLoopBase::IdleFunction>(idle))
     {
-        g_source_destroy(source);
-    }
-}
-
-GIdleSource::GIdleSource()
-{
-}
-
-GIdleSource::~GIdleSource()
-{
-    CTRACE(event, "idle runloop source destroyed" << (void*)this);
-}
-
-gboolean GIdleSource::sourceFunc(gpointer userData)
-{
-    TaskRec* record = static_cast<TaskRec*>(userData);
-    auto idle = record->self.lock();
-    if (!idle)
-    {
-        CWARN(event, "Orphan idle source invoked!");
-        return false;
+        sourceId = g_idle_add(&IdleBundle::callback, gpointer(this));
     }
 
-    CTRACE(event, "Idle source activated" << idle.get());
-
-    auto runLoop = idle->getRunLoop();
-    if (!runLoop || !runLoop->isRunning() || runLoop->isExiting())
+    static gboolean callback(gpointer userData)
     {
-        // returning false auto-destroyes the source
-        return false;
+        // sanity check, stop if the source is no longer part of the context!
+        auto bundle = static_cast<IdleBundle*>(userData);
+        if (!g_main_context_find_source_by_id(bundle->context, bundle->sourceId))
+        {
+            // The idle source is no longer in the context.
+            delete bundle;
+            return FALSE;
+        }
+        if (bundle->idle())
+        {
+            delete bundle;
+            return FALSE;
+        }
+        // Need to reschedule again.
+        return TRUE;
     }
-
-    // call the task
-    auto result = !record->task();
-    if (runLoop->isExiting())
-    {
-        // No matter of the result, return false to destroy idle source.
-        result = false;
-    }
-
-    if (result)
-    {
-        // re-schedule runloop
-        idle->getRunLoop()->scheduleSources();
-    }
-    return result;
-}
-
-void GIdleSource::sourceDestroy(gpointer userData)
-{
-    UNUSED(userData);
-    TaskRec* record = static_cast<TaskRec*>(userData);
-    auto idle = record->self.lock();
-    if (!idle)
-    {
-        CWARN(event, "Orphan idle source invoked!");
-        return;
-    }
-    CTRACE(event, "Idle source destroyed:" << idle.get() << "remove idle task record");
-
-//    record->source = nullptr;
-    idle->removeTaskRec(*record);
-}
-
-void GIdleSource::initialize(void* data)
-{
-    CTRACE(event, "initialize Idle runloop source");
-    context = reinterpret_cast<GMainContext*>(data);
-}
-
-void GIdleSource::detachOverride()
-{
-    CTRACE(event, "detach Idle runloop source");
-}
-
-void GIdleSource::addIdleTaskOverride(Task&& task)
-{
-    if (!isFunctional())
-    {
-        return;
-    }
-
-    CTRACE(event, "create Idle source for" << (void*)this);
-    tasks.emplace_back(std::make_unique<TaskRec>(as_shared<GIdleSource>(shared_from_this()), g_idle_source_new(), std::move(task)));
-    auto& record = tasks.back();
-
-    g_source_set_callback(record->source, &GIdleSource::sourceFunc, record.get(), &GIdleSource::sourceDestroy);
-    g_source_attach(record->source, context);
-    g_source_unref(record->source);
-}
-
-void GIdleSource::wakeUp()
-{
-    if (!isFunctional())
-    {
-        return;
-    }
-    CTRACE(event, "wake up Idle source for" << (void*)this);
-}
-
-void GIdleSource::removeTaskRec(TaskRec& record)
-{
-    auto removeRecord = [&record](auto& trec)
-    {
-        return trec.get() == &record;
-    };
-
-    erase_if(tasks, removeRecord);
-}
+};
 
 /******************************************************************************
- * Adaptation
+ * RunLoop idle handlers
  */
-IdleSourcePtr Adaptation::createIdleSource()
+void GlibRunLoop::onIdleOverride(IdleFunction idle)
 {
-    return make_polymorphic_shared<IdleSource, GIdleSource>();
+    new IdleBundle(context, std::move(idle));
+}
+
+void GlibRunLoopHook::onIdleOverride(IdleFunction idle)
+{
+    new IdleBundle(context, std::move(idle));
 }
 
 } // mox

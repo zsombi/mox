@@ -249,28 +249,6 @@ protected:
 };
 ENABLE_ENUM_OPERATORS(SocketNotifierSource::Notifier::Modes)
 
-/// IdleSource defines the idle task handling on a runloop. It is the fourth source created on a runloop.
-class MOX_API IdleSource : public AbstractRunLoopSource
-{
-public:
-    /// The idle task function which is run when the idle source is activated.
-    /// \return \e true if the task completed, \e false if not. Non-completed idle tasks are kept
-    /// in the idle queue and re-executed on next idle.
-    /// \note It is not recommended to have a function that always returns true, as that function
-    /// keeps the idle queue busy, which can cause always busy application loop.
-    using Task = std::function<bool()>;
-
-    /// Adds an idle task to the run loop.
-    /// \param function The idle task function.
-    /// \see Task
-    void addIdleTask(Task task);
-
-protected:
-    explicit IdleSource();
-
-    virtual void addIdleTaskOverride(Task&& task) = 0;
-};
-
 }
 
 #endif // EVENT_SOURCES_HPP

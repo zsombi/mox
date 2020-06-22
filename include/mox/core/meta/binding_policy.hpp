@@ -11,7 +11,7 @@ enum class BindingPolicy
     /// The binding is detached when you write on the target property, except if the write occurs
     /// due to a binding that is the current one. In this case the policy is ignored.
     DetachOnWrite,
-    /// The binding is kept on the property no matter what is teh cause of the property setter
+    /// The binding is kept on the property no matter what is the cause of the property setter
     /// call.
     KeepOnWrite
 };

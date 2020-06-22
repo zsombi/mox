@@ -36,40 +36,46 @@ using ObjectSharedPtr = std::shared_ptr<Object>;
 using ObjectWeakPtr = std::weak_ptr<Object>;
 
 /// The event type identifier.
-enum class EventType : int32_t
+enum class EventId : int32_t
 {
     Base,
     Quit,
-    DeferredSignal,
     UserType = 100
 };
-ENABLE_ENUM_OPERATORS(EventType)
+ENABLE_ENUM_OPERATORS(EventId)
+
+/// Specifies the event priority.
+enum class EventPriority : uint32_t
+{
+    Urgent = 0,
+    Normal = 1000,
+    Low = 5000
+};
+ENABLE_ENUM_OPERATORS(EventPriority);
+
+/// The event identifier.
+using EventType = std::pair<EventId, EventPriority>;
+
+constexpr EventType BaseEvent = {EventId::Base, EventPriority::Normal};
+constexpr EventType QuitEvent = {EventId::Quit, EventPriority::Urgent};
 
 /// This is the base class for all Mox events. The events are composed of a type, priority
 /// and a handler. The handler is the object which receives the event.
 class MOX_API Event
 {
 
-public:
-    /// Specifies the event priority.
-    enum class Priority : uint32_t
-    {
-        Urgent = 0,
-        Normal = 1000,
-        Low = 5000
-    };
-
-    /// Constructs an event with a \a type, a \a target and \a priority.
-    explicit Event(ObjectSharedPtr target, EventType type, Priority priority = Priority::Normal);
+public:    
+    /// Constructs an event with a \a type and a \a target.
+    explicit Event(ObjectSharedPtr target, EventType type);
     /// Descructor.
     virtual ~Event() = default;
 
     /// Returns the target of the event.
     ObjectSharedPtr target() const;
     /// Returns the type of the event.
-    EventType type() const;
+    EventId type() const;
     /// Returns the priority of the event.
-    Priority priority() const;
+    EventPriority priority() const;
     /// Returns \e true if the event is handled, \e false otherwise.
     bool isHandled() const;
     /// Sets the handled state of an event.
@@ -102,25 +108,24 @@ public:
     /// \}
 
     /// Registers a new event type. Returns the newly registered event type.
-    static EventType registerNewType();
+    static EventType registerNewType(EventPriority priority = EventPriority::Normal);
 
 private:
     DISABLE_COPY(Event)
 
     ObjectWeakPtr m_target;
     Timestamp m_timeStamp;
-    EventType m_type = EventType::Base;
-    Priority m_priority = Priority::Normal;
+    EventType m_id = {EventId::Base, EventPriority::Normal};
     bool m_isHandled = false;
 };
 
-class MOX_API QuitEvent : public Event
+class MOX_API QuitEventType : public Event
 {
-    DISABLE_COPY(QuitEvent)
+    DISABLE_COPY(QuitEventType)
     int m_exitCode = 0;
 
 public:
-    explicit QuitEvent(ObjectSharedPtr target, int exitCode = 0);
+    explicit QuitEventType(ObjectSharedPtr target, int exitCode = 0);
 
     int getExitCode() const;
 };

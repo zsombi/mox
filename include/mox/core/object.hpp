@@ -75,16 +75,16 @@ public:
     {
         friend class EventSource;
         ObjectWeakPtr m_target;
-        EventType m_type;
+        EventId m_type;
 
     public:
         /// Constructor.
-        explicit EventToken(EventType type, ObjectSharedPtr target);
+        explicit EventToken(EventId type, ObjectSharedPtr target);
         /// Destructor.
         virtual ~EventToken() = default;
 
         /// Returns the event type handled by the handler associated to the token.
-        EventType getEventType() const
+        EventId getEventType() const
         {
             return m_type;
         }
@@ -199,7 +199,7 @@ protected:
 private:
     using ChildContainer = SharedVector<ObjectSharedPtr>;
     using TokenList = SharedVector<EventTokenPtr>;
-    using Container = FlatMap<EventType, TokenList>;
+    using Container = FlatMap<EventId, TokenList>;
     struct EventDispatcher
     {
         std::vector<ObjectSharedPtr> objects;

@@ -104,6 +104,37 @@ void UnitTest::TearDown()
 }
 
 /******************************************************************************
+ * QuitHandler
+ */
+std::shared_ptr<QuitHandler> QuitHandler::create(mox::EventType typeToQuit, mox::Object* parent)
+{
+    auto handler = Object::createObject(new QuitHandler, parent);
+
+    handler->addEventHandler(typeToQuit, std::bind(&QuitHandler::onEvent, handler.get(), std::placeholders::_1));
+
+    return handler;
+}
+
+void QuitHandler::onEvent(mox::Event&)
+{
+    threadData()->thread()->exit();
+}
+
+/******************************************************************************
+ * TestApp
+ */
+TestApp::TestApp()
+{
+}
+
+int TestApp::runOnce()
+{
+    auto quitter = QuitHandler::create(testAppQuit);
+    mox::postEvent<mox::Event>(quitter, testAppQuit);
+    return run();
+}
+
+/******************************************************************************
  * TestThread
  */
 std::shared_ptr<TestThreadLoop> TestThreadLoop::create()

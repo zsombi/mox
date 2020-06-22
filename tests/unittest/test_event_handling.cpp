@@ -24,6 +24,8 @@
 
 using namespace mox;
 
+constexpr EventType UserEvent = {EventId::UserType, EventPriority::Normal};
+
 class TestTimer : public Lockable, public TimerSource::TimerRecord
 {
 public:
@@ -94,7 +96,7 @@ struct DispatcherWrapper
             runLoop->quit();
             return true;
         };
-        runLoop->getIdleSource()->addIdleTask(leave);
+        runLoop->onIdle(leave);
         runLoop->execute();
     }
 };
@@ -109,7 +111,7 @@ TEST(TestEventDispatcher, test_stop_from_idle_task)
         wrapper.exitCode = 100;
         return true;
     };
-    wrapper.runLoop->getIdleSource()->addIdleTask(idleFunc);
+    wrapper.runLoop->onIdle(idleFunc);
     wrapper.runLoop->execute();
     EXPECT_EQ(100, wrapper.exitCode);
 }
@@ -129,7 +131,7 @@ TEST(TestEventDispatcher, test_exit_after_several_idle_calls)
         }
         return false;
     };
-    wrapper.runLoop->getIdleSource()->addIdleTask(idleFunc);
+    wrapper.runLoop->onIdle(idleFunc);
     wrapper.runLoop->execute();
     EXPECT_EQ(100, wrapper.exitCode);
 }
@@ -197,7 +199,7 @@ class Filter : public Object
 
     bool filter(Event& event)
     {
-        eventFiltered = (event.type() == type);
+        eventFiltered = (event.type() == type.first);
         return eventFiltered;
     }
 public:
@@ -225,7 +227,7 @@ public:
     static std::shared_ptr<EventTarget> create(Object* parent = nullptr)
     {
         auto handler = createObject(new EventTarget, parent);
-        handler->addEventHandler(EventType::Base, std::bind(&EventTarget::process, handler.get(), std::placeholders::_1));
+        handler->addEventHandler(BaseEvent, std::bind(&EventTarget::process, handler.get(), std::placeholders::_1));
         return handler;
     }
 
@@ -238,13 +240,13 @@ TEST(TestEventDispatcher, test_stop_from_event_handler)
     auto host = Object::create();
     auto quitHandler = [&wrapper](Event& event)
     {
-        wrapper.exitCode = static_cast<QuitEvent&>(event).getExitCode();
+        wrapper.exitCode = static_cast<QuitEventType&>(event).getExitCode();
         wrapper.runLoop->quit();
     };
 
-    host->addEventHandler(EventType::Quit, quitHandler);
+    host->addEventHandler(QuitEvent, quitHandler);
 
-    wrapper.post(make_event<QuitEvent>(host, 111));
+    wrapper.post(make_event<QuitEventType>(host, 111));
     wrapper.runLoop->execute();
     EXPECT_EQ(111, wrapper.exitCode);
 }
@@ -255,17 +257,17 @@ TEST(TestEventDispatcher, test_post_event)
     auto host = Object::create();
     auto quitHandler = [&wrapper](Event& event)
     {
-        if (event.type() == EventType::Quit)
+        if (event.type() == EventId::Quit)
         {
-            wrapper.exitCode = static_cast<QuitEvent&>(event).getExitCode();
+            wrapper.exitCode = static_cast<QuitEventType&>(event).getExitCode();
             wrapper.runLoop->quit();
         }
     };
 
-    host->addEventHandler(EventType::Quit, quitHandler);
+    host->addEventHandler(QuitEvent, quitHandler);
 
-    wrapper.post(make_event<Event>(host, EventType::Base));
-    wrapper.runLoop->getIdleSource()->addIdleTask([host, &wrapper]() { wrapper.post(make_event<QuitEvent>(host, 111)); return true; });
+    wrapper.post(make_event<Event>(host, BaseEvent));
+    wrapper.runLoop->onIdle([host, &wrapper]() { wrapper.post(make_event<QuitEventType>(host, 111)); return true; });
     wrapper.runLoop->execute();
     EXPECT_EQ(111, wrapper.exitCode);
 }
@@ -277,7 +279,7 @@ TEST(TestEventDispatcher, test_filter_events)
 
     auto filter = [](Event& event)
     {
-        return (event.type() == Filter::type);
+        return (event.type() == Filter::type.first);
     };
     host->addEventFilter(Filter::type, filter);
     auto handler = [&wrapper](Event&)
@@ -297,15 +299,15 @@ TEST(TestEventDispatcher, test_pass_event_filter)
 
     auto filter = [](Event& event)
     {
-        return (event.type() == Filter::type);
+        return (event.type() == Filter::type.first);
     };
     host->addEventFilter(Filter::type, filter);
     auto handler = [&wrapper](Event&)
     {
         wrapper.exitCode = 101;
     };
-    host->addEventHandler(EventType::Base, handler);
-    wrapper.post(make_event<Event>(host, EventType::Base));
+    host->addEventHandler(BaseEvent, handler);
+    wrapper.post(make_event<Event>(host, BaseEvent));
     wrapper.runOnce();
     EXPECT_EQ(101, wrapper.exitCode);
 }
@@ -346,7 +348,7 @@ TEST(TestEventDispatcher, test_stdout_write_watch)
         std::cout << "Feed chars to stdout" << std::endl;
         return true;
     };
-    wrapper.runLoop->getIdleSource()->addIdleTask(idle);
+    wrapper.runLoop->onIdle(idle);
     wrapper.runLoop->execute();
     EXPECT_TRUE(notified);
 }
@@ -363,7 +365,7 @@ TEST(TestEventDispatcher, test_remove_handler_token_in_event_handling)
         ++count;
         event.setHandled(false);
     };
-    object->addEventHandler(EventType::UserType, handler);
+    object->addEventHandler(UserEvent, handler);
 
     auto token = Object::EventTokenPtr();
     auto autoDeleter = [&count, &token](auto& event)
@@ -372,14 +374,14 @@ TEST(TestEventDispatcher, test_remove_handler_token_in_event_handling)
         event.setHandled(false);
         token->erase();
     };
-    token = object->addEventHandler(EventType::UserType, autoDeleter);
+    token = object->addEventHandler(UserEvent, autoDeleter);
     EXPECT_EQ(object, std::static_pointer_cast<Object>(token->getTarget()));
 
     // add two more.
-    auto token2 = object->addEventHandler(EventType::UserType, handler);
-    auto token3 = object->addEventHandler(EventType::UserType, handler);
+    auto token2 = object->addEventHandler(UserEvent, handler);
+    auto token3 = object->addEventHandler(UserEvent, handler);
 
-    wrapper.post(make_event<Event>(object, EventType::UserType));
+    wrapper.post(make_event<Event>(object, UserEvent));
     wrapper.runOnce();
 
     EXPECT_EQ(4, count);
@@ -400,7 +402,7 @@ TEST(TestEventDispatcher, test_remove_filter_token_in_event_handling)
         event.setHandled(false);
         return false;
     };
-    object->addEventFilter(EventType::UserType, filter);
+    object->addEventFilter(UserEvent, filter);
 
     auto token = Object::EventTokenPtr();
     auto autoDeleter = [&count, &token](auto& event)
@@ -410,14 +412,14 @@ TEST(TestEventDispatcher, test_remove_filter_token_in_event_handling)
         token->erase();
         return false;
     };
-    token = object->addEventFilter(EventType::UserType, autoDeleter);
+    token = object->addEventFilter(UserEvent, autoDeleter);
     EXPECT_EQ(object, std::static_pointer_cast<Object>(token->getTarget()));
 
     // add two more.
-    auto token2 = object->addEventFilter(EventType::UserType, filter);
-    auto token3 = object->addEventFilter(EventType::UserType, filter);
+    auto token2 = object->addEventFilter(UserEvent, filter);
+    auto token3 = object->addEventFilter(UserEvent, filter);
 
-    wrapper.post(make_event<Event>(object, EventType::UserType));
+    wrapper.post(make_event<Event>(object, UserEvent));
     wrapper.runOnce();
 
     EXPECT_EQ(4, count);

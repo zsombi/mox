@@ -82,7 +82,7 @@ class MOX_API BindingScope
 public:
     /// Scope constructor, takes a scope object to set as the active binding.
     explicit BindingScope(BindingCore& currentBinding);
-    /// Scope destructor, restores teh previous binding as active.
+    /// Scope destructor, restores the previous binding as active.
     ~BindingScope();
 
     /// Returns the current active binding.

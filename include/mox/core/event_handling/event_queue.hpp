@@ -44,14 +44,15 @@ public:
     explicit EventQueue() = default;
 
     /// Descructor.
-    ~EventQueue();
+    ~EventQueue() = default;
 
     /// Clears the event queue.
     void clear();
-    /// Returns the size of the event queue.
+    /// Returns the size of the event queue. The method is not thread-safe.
     size_t size() const;
-    /// Returns \e true if the event queue is empty, \e false otherwise.
+    /// Returns \e true if the event queue is empty, \e false otherwise. The method is not thread-safe.
     bool empty() const;
+
     /// Pushes an \a event to the event queue. Updates the timestamp of the event pushed.
     void push(EventPtr event);
     /// Processes the event queue, popping each event from the queue and passing those
@@ -61,7 +62,7 @@ public:
     /// event queue.
     /// The function always returns with an empty event queue.
     template <typename DispatchFunction>
-    void process(DispatchFunction dispatcher)
+    void dispatch(DispatchFunction dispatcher)
     {
         lock_guard lock(*this);
         while (!empty())
@@ -69,8 +70,8 @@ public:
             EventPtr ev(std::move(c.front()));
             pop();
 
-            ScopeRelock relock(*this);
             CTRACE(event, "Processing event:" << int(ev->type()));
+            ScopeRelock relock(*this);
             dispatcher(*ev);
         }
     }
