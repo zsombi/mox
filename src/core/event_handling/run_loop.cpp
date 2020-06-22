@@ -166,13 +166,13 @@ bool RunLoopBase::isRunning() const
     return isRunningOverride();
 }
 
-void RunLoopBase::onIdle(IdleFunction idle)
+void RunLoopBase::onIdle(IdleFunction&& idle)
 {
     if (isExiting())
     {
         return;
     }
-    onIdleOverride(std::move(idle));
+    onIdleOverride(std::forward<IdleFunction>(idle));
 }
 
 /******************************************************************************

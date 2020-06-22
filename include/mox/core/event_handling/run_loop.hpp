@@ -41,13 +41,6 @@ class SocketNotifier;
 class MOX_API RunLoopBase : public std::enable_shared_from_this<RunLoopBase>
 {
 public:
-    /// The idle function to call when idle.
-    /// \return If the idle task is complete, return \e true. If the task requires rescheduling, return \e false.
-    /// Runloops reschedule idle tasks automatically, unless the runloop is stopped meantime.
-    /// \note It is not recommended to have a function that always returns false, as that function
-    /// keeps the idle queue busy, which can cause always busy application loop.
-    using IdleFunction = std::function<bool()>;
-
     using DownCallback = std::function<void()>;
     /// Destructor.
     virtual ~RunLoopBase() = default;
@@ -113,7 +106,7 @@ public:
     /// Adds a function to call on idle.
     /// \param idle The idle function to call.
     /// \see IdleFunction
-    void onIdle(IdleFunction idle);
+    void onIdle(IdleFunction&& idle);
 
 protected:
     explicit RunLoopBase() = default;
@@ -128,7 +121,7 @@ protected:
     virtual bool isRunningOverride() const = 0;
     virtual void scheduleSourcesOverride() = 0;
     virtual void stopRunLoop() = 0;
-    virtual void onIdleOverride(IdleFunction idle) = 0;
+    virtual void onIdleOverride(IdleFunction&& idle) = 0;
 
     friend class AbstractRunLoopSource;
     friend class IdleSource;

@@ -163,7 +163,7 @@ public:
     // From RunLoopBase
     bool isRunningOverride() const final;
     void scheduleSourcesOverride() final;
-    void onIdleOverride(IdleFunction idle) final;
+    void onIdleOverride(IdleFunction&& idle) final;
     void stopRunLoop() final;
 
     // from RunLoop
@@ -186,7 +186,7 @@ protected:
         return running;
     }
     void scheduleSourcesOverride() final;
-    void onIdleOverride(IdleFunction idle) final;
+    void onIdleOverride(IdleFunction&& idle) final;
     void stopRunLoop() final;
 
     GMainContext* context = nullptr;

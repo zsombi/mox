@@ -24,12 +24,12 @@ namespace mox
 struct IdleBundle
 {
     GMainContext* context = nullptr;
-    RunLoopBase::IdleFunction idle;
+    IdleFunction idle;
     guint sourceId;
 
-    explicit IdleBundle(GMainContext* context, RunLoopBase::IdleFunction&& idle)
+    explicit IdleBundle(GMainContext* context, IdleFunction&& idle)
         : context(context)
-        , idle(std::forward<RunLoopBase::IdleFunction>(idle))
+        , idle(std::forward<IdleFunction>(idle))
     {
         sourceId = g_idle_add(&IdleBundle::callback, gpointer(this));
     }
@@ -57,14 +57,14 @@ struct IdleBundle
 /******************************************************************************
  * RunLoop idle handlers
  */
-void GlibRunLoop::onIdleOverride(IdleFunction idle)
+void GlibRunLoop::onIdleOverride(IdleFunction&& idle)
 {
-    new IdleBundle(context, std::move(idle));
+    new IdleBundle(context, std::forward<IdleFunction>(idle));
 }
 
-void GlibRunLoopHook::onIdleOverride(IdleFunction idle)
+void GlibRunLoopHook::onIdleOverride(IdleFunction&& idle)
 {
-    new IdleBundle(context, std::move(idle));
+    new IdleBundle(context, std::forward<IdleFunction>(idle));
 }
 
 } // mox

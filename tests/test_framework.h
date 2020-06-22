@@ -101,8 +101,8 @@ public:
     void exit();
     void run();
     void runOnce();
-    void runOnce(mox::RunLoopBase::IdleFunction exitTask);
-    void addIdleTask(mox::RunLoopBase::IdleFunction idle);
+    void runOnce(mox::IdleFunction exitTask);
+    void addIdleTask(mox::IdleFunction idle);
 
     static void onExit()
     {

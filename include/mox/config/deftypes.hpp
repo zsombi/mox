@@ -23,6 +23,7 @@
 // Standard integer types
 #include <inttypes.h>
 #include <chrono>
+#include <functional>
 #include <string>
 #include <string_view>
 
@@ -46,6 +47,13 @@ namespace mox
 using Timestamp = std::chrono::system_clock::time_point;
 
 typedef int64_t TUuid;
+
+/// The %IdleFunction declares the function object called on runloop idle.
+/// \return If the idle task completes, return \e true. If the task requires rescheduling, return \e false.
+/// Runloops reschedule idle tasks automatically, unless the runloop is stopped meantime.
+/// \note It is not recommended to have a function that always returns false, as that function
+/// keeps the idle queue busy, which can cause always busy application loop.
+using IdleFunction = std::function<bool()>;
 
 }
 

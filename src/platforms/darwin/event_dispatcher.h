@@ -194,7 +194,7 @@ public:
     void removeSource(CFRunLoopSourceRef source, CFRunLoopMode mode = kCFRunLoopCommonModes);
 
 protected:
-    using IdleStack = std::stack<RunLoopBase::IdleFunction>;
+    using IdleStack = std::stack<IdleFunction>;
 
     size_t runIdleTasks();
 
@@ -232,9 +232,9 @@ public:
         self->template forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::initialize, data);
     }
 
-    void onIdleOverride(RunLoopBase::IdleFunction idle) final
+    void onIdleOverride(IdleFunction&& idle) final
     {
-        idles.emplace(std::move(idle));
+        idles.emplace(std::forward<IdleFunction>(idle));
     }
 
 protected:

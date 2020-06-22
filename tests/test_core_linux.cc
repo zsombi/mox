@@ -7,12 +7,12 @@
 struct IdleBundle
 {
     GMainContext* context = nullptr;
-    mox::RunLoopBase::IdleFunction idle;
+    mox::IdleFunction idle;
     guint sourceId;
 
-    explicit IdleBundle(GMainContext* context, mox::RunLoopBase::IdleFunction&& idle)
+    explicit IdleBundle(GMainContext* context, mox::IdleFunction&& idle)
         : context(context)
-        , idle(std::forward<mox::RunLoopBase::IdleFunction>(idle))
+        , idle(std::forward<mox::IdleFunction>(idle))
     {
         sourceId = g_idle_add(&IdleBundle::callback, gpointer(this));
     }
@@ -62,7 +62,7 @@ public:
         CTRACE(threads, "app private died for" << (void*)this);
     }
 
-    void scheduleIdle(mox::RunLoopBase::IdleFunction task)
+    void scheduleIdle(mox::IdleFunction task)
     {
         if (!task)
         {
@@ -114,13 +114,13 @@ void TestCoreApp::runOnce()
     g_main_loop_run(d->runLoop);
 }
 
-void TestCoreApp::runOnce(mox::RunLoopBase::IdleFunction exitTask)
+void TestCoreApp::runOnce(mox::IdleFunction exitTask)
 {
     d->scheduleIdle(std::move(exitTask));
     g_main_loop_run(d->runLoop);
 }
 
-void TestCoreApp::addIdleTask(mox::RunLoopBase::IdleFunction idle)
+void TestCoreApp::addIdleTask(mox::IdleFunction idle)
 {
     if (!d || !g_main_loop_is_running(d->runLoop))
     {

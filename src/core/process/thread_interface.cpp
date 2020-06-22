@@ -179,6 +179,16 @@ ThreadInterfacePtr ThreadInterface::getThisThread()
     return ThreadData::getThisThreadData()->thread();
 }
 
+void ThreadInterface::onIdle(IdleFunction&& idle)
+{
+    FATAL(d_ptr->runLoop, "Invalid runloop");
+    if (d_ptr->runLoop->isExiting())
+    {
+        return;
+    }
+    d_ptr->runLoop->onIdle(std::forward<IdleFunction>(idle));
+}
+
 bool ThreadInterface::isRunning() const
 {
     lock_guard lock(const_cast<ThreadInterface&>(*this));

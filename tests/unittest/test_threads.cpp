@@ -124,7 +124,6 @@ TEST(Threads, test_stopped_signal_received)
 
 TEST(Threads, test_quit_application_from_thread_kills_thread)
 {
-    GTEST_SKIP();
     TestApp app;
     mox::ThreadPromise notifyDeath;
     mox::ThreadFuture watchDeath = notifyDeath.get_future();
@@ -145,8 +144,7 @@ TEST(Threads, test_quit_application_from_thread_kills_thread)
             }
             return true;
         };
-        // REDO THIS
-//        app.threadData()->thread()->addIdleTask(onIdle);
+        app.threadData()->thread()->onIdle(onIdle);
 
         thread->start();
     }
@@ -157,8 +155,7 @@ TEST(Threads, test_quit_application_from_thread_kills_thread)
 
 TEST(Threads, test_threads)
 {
-    GTEST_SKIP();
-    mox::Application getMainThreadData;
+    mox::Application testApp;
 
     mox::ThreadPromise notifyDeath;
     mox::ThreadFuture watchDeath = notifyDeath.get_future();
@@ -197,18 +194,17 @@ TEST(Threads, test_threads)
             }
             return true;
         };
-//        getMainThreadData.threadData()->thread()->addIdleTask(onIdle);
+        testApp.threadData()->thread()->onIdle(onIdle);
     }
 
     EXPECT_EQ(1, TestThreadLoopWithDeathNotifier::threadCount);
-    EXPECT_EQ(101, getMainThreadData.run());
+    EXPECT_EQ(101, testApp.run());
     EXPECT_EQ(0, TestThreadLoopWithDeathNotifier::threadCount);
     watchDeath.wait();
 }
 
 TEST(Threads, test_signal_connected_to_different_thread)
 {
-    GTEST_SKIP();
     mox::Application app;
     auto newRoot = Quitter::create();
     app.setRootObject(*newRoot);
@@ -241,7 +237,7 @@ TEST(Threads, test_signal_connected_to_different_thread)
             }
             return true;
         };
-//        app.threadData()->thread()->addIdleTask(onIdle);
+        app.threadData()->thread()->onIdle(onIdle);
     }
 
     EXPECT_EQ(10, app.run());
@@ -278,7 +274,6 @@ TEST(Threads, test_signal_synced_quit_threads_when_app_quits)
 
 TEST(Threads, test_signal_synced_quit_app_when_thread_quits)
 {
-    GTEST_SKIP();
     mox::Application app;
     mox::ThreadPromise death1;
     mox::ThreadFuture wait1= death1.get_future();
@@ -304,7 +299,7 @@ TEST(Threads, test_signal_synced_quit_app_when_thread_quits)
         mox::postEvent<mox::Event>(locked, evQuit);
         return true;
     };
-//    app.threadData()->thread()->addIdleTask(idle);
+    app.threadData()->thread()->onIdle(idle);
     app.run();
     EXPECT_EQ(0, TestThreadLoopWithDeathNotifier::threadCount);
     wait1.wait();

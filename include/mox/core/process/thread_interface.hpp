@@ -73,6 +73,10 @@ public:
     /// \return The thread object.
     static ThreadInterfacePtr getThisThread();
 
+    /// Adds an idle task to the application run loop.
+    /// \param idle The idle function. The run loop takes the ownership over the idle function.
+    void onIdle(IdleFunction&& idle);
+
     /// Returns the running state of the thread.
     /// \return If the thread is running, returns \e true, otherwise \e false.
     bool isRunning() const;
