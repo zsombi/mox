@@ -31,7 +31,13 @@ struct IdleBundle
         : context(context)
         , idle(std::forward<IdleFunction>(idle))
     {
-        sourceId = g_idle_add(&IdleBundle::callback, gpointer(this));
+        auto source = g_idle_source_new();
+        g_source_set_callback(source, &IdleBundle::callback, gpointer(this), NULL);
+        sourceId = g_source_attach(source, context);
+        if (source->ref_count > 1)
+        {
+            g_source_unref(source);
+        }
     }
 
     static gboolean callback(gpointer userData)

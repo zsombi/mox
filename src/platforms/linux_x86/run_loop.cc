@@ -41,7 +41,6 @@ GlibRunLoop::GlibRunLoop(GMainContext& mainContext)
 
 void GlibRunLoop::initialize()
 {
-    g_main_context_push_thread_default(context);
     forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::initialize, context);
     evLoop = g_main_loop_new(context, false);
 }
@@ -51,7 +50,6 @@ GlibRunLoop::~GlibRunLoop()
     CTRACE(event, "closing glib runloop");
     g_main_loop_unref(evLoop);
 
-    g_main_context_pop_thread_default(context);
     g_main_context_unref(context);
     CTRACE(event, "runloop down");
 }
@@ -68,7 +66,7 @@ void GlibRunLoop::execute(ProcessFlags flags)
         g_main_loop_run(evLoop);
     }
 
-    CTRACE(event, "FINALIZE");
+    CTRACE(event, "Final context iteration");
     // run one more non-blocking context loop round
     g_main_context_iteration(context, false);
 
