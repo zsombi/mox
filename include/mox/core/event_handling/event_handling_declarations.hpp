@@ -30,18 +30,14 @@ class Event;
 using EventPtr = std::unique_ptr<Event>;
 
 class EventQueue;
-using EventQueueSharedPtr = std::shared_ptr<EventQueue>;
-
-class EventHandlingProvider;
-using EventHandlerSharedPtr = std::shared_ptr<EventHandlingProvider>;
-using EventHandlerWeakPtr = std::weak_ptr<EventHandlingProvider>;
+using EventQueuePtr = std::shared_ptr<EventQueue>;
 
 class RunLoopBase;
 using RunLoopBasePtr = std::shared_ptr<RunLoopBase>;
 using RunLoopBaseWeakPtr = std::weak_ptr<RunLoopBase>;
 
 class RunLoop;
-using RunLoopSharedPtr = std::shared_ptr<RunLoop>;
+using RunLoopPtr = std::shared_ptr<RunLoop>;
 using RunLoopWeakPtr = std::weak_ptr<RunLoop>;
 
 class RunLoopHook;
@@ -49,27 +45,8 @@ using RunLoopHookPtr = std::shared_ptr<RunLoopHook>;
 using RunLoopHookWeakPtr = std::weak_ptr<RunLoopHook>;
 
 class SocketNotifier;
-using SocketNotifierSharedPtr = std::shared_ptr<SocketNotifier>;
+using SocketNotifierPtr = std::shared_ptr<SocketNotifier>;
 using SocketNotifierWeakPtr = std::weak_ptr<SocketNotifier>;
-
-class AbstractRunLoopSource;
-using AbstractRunLoopSourceSharedPtr = std::shared_ptr<AbstractRunLoopSource>;
-
-class TimerSource;
-using TimerSourcePtr = std::shared_ptr<TimerSource>;
-using TimerSourceWeakPtr = std::weak_ptr<TimerSource>;
-
-class EventSource;
-using EventSourcePtr = std::shared_ptr<EventSource>;
-using EventSourceWeakPtr = std::weak_ptr<EventSource>;
-
-class SocketNotifierSource;
-using SocketNotifierSourcePtr = std::shared_ptr<SocketNotifierSource>;
-using SocketNotifierSourceWeakPtr = std::weak_ptr<SocketNotifierSource>;
-
-class IdleSource;
-using IdleSourcePtr = std::shared_ptr<IdleSource>;
-using IdleSourceWeakPtr = std::weak_ptr<IdleSource>;
 
 /// The event processing flags.
 enum class ProcessFlags

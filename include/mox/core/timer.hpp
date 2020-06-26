@@ -33,7 +33,7 @@ using TimerPtr = std::shared_ptr<Timer>;
 /// using createRepeating() or repeating() methods.
 ///
 /// When the timer expires, the expired signal is emitted.
-class MOX_API Timer : public SlotHolder, public TimerSource::TimerRecord
+class MOX_API Timer : public SlotHolder, public TimerCore
 {
 public:
     /// Expired signal emitted when the timer expires.
@@ -101,19 +101,13 @@ public:
         return m_interval;
     }
 
-    /// Returns the timer event source this timer uses to track the timeout
-    TimerSourcePtr getSource() const
-    {
-        return m_source;
-    }
-
 private:
     /// Constructor.
     explicit Timer(Type type, std::chrono::milliseconds interval);
     DISABLE_COPY(Timer)
     DISABLE_MOVE(Timer)
 
-    void signal() override;
+    void signal() final;
 };
 
 } // mox

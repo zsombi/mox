@@ -22,30 +22,20 @@ namespace mox
 {
 
 /******************************************************************************
- * GTimerSource::Source
+ * GLibRunLoopBase::TimerSource
  */
-static GSourceFuncs glibTimerSourceFuncs =
+gboolean GlibRunLoopBase::TimerSource::prepare(GSource* src, gint* timeout)
 {
-    GTimerSource::Source::prepare,
-    nullptr,
-    GTimerSource::Source::dispatch,
-    nullptr,
-    nullptr,
-    nullptr
-};
-
-gboolean GTimerSource::Source::prepare(GSource *src, gint *timeout)
-{
-    Source *source = reinterpret_cast<Source*>(src);
-    if (!source || !source->timer)
+    auto source = static_cast<TimerSource*>(src);
+    if (!source || !source->m_timer)
     {
         // Not yet ready for dispatch.
         return false;
     }
 
-    std::chrono::duration<double> duration = std::chrono::system_clock::now() - source->lastUpdateTime;
+    std::chrono::duration<double> duration = std::chrono::system_clock::now() - source->m_lastUpdateTime;
     std::chrono::milliseconds nextHitInMsec = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
-    long nextTimeout = source->timer->getInterval().count() - nextHitInMsec.count();
+    long nextTimeout = source->m_timer->getInterval().count() - nextHitInMsec.count();
     if (nextTimeout < 0)
     {
         nextTimeout = 0;
@@ -53,139 +43,65 @@ gboolean GTimerSource::Source::prepare(GSource *src, gint *timeout)
     *timeout = (nextTimeout > G_MAXINT)
             ? G_MAXINT
             : static_cast<gint>(nextTimeout);
-    CTRACE(platform, "Timer " << source->timer->id() << " to kick in " << nextTimeout << " msecs");
+    CTRACE(platform, "Timer " << source->m_timer->id() << " to kick in " << nextTimeout << " msecs");
 
     return (nextTimeout == 0);
 }
 
-gboolean GTimerSource::Source::dispatch(GSource *src, GSourceFunc, gpointer)
+gboolean GlibRunLoopBase::TimerSource::dispatch(GSource* src, GSourceFunc, gpointer)
 {
-    Source *source = reinterpret_cast<Source*>(src);
-    if (!source || !source->timer || !source->active)
+    auto source = static_cast<TimerSource*>(src);
+    if (!source || !source->m_timer || !source->m_active)
     {
         return true;
     }
 
     // Trigger the timer signal. Hold the timer object so it is not deleted!
-    CTRACE(platform, "Timer " << source->timer->id() << " kicked");
+    CTRACE(platform, "Timer " << source->m_timer->id() << " kicked");
 
-    if (!source->timer->isSingleShot())
+    if (!source->m_timer->isSingleShot())
     {
         // Refresh the update time before we signal the Mox event source.
-        source->lastUpdateTime = Timer::TimerClass::now();
+        source->m_lastUpdateTime = Timer::TimerClass::now();
     }
     else
     {
         // Deactivate the timer source, to avoid re-emission.
-        source->active = false;
+        source->m_active = false;
     }
-    source->timer->signal();
+    source->m_timer->signal();
 
     return true;
 }
 
-GTimerSource::Source* GTimerSource::Source::create(TimerRecord& timer)
+GlibRunLoopBase::TimerSource* GlibRunLoopBase::TimerSource::create(TimerCore& timer, GMainContext* context)
 {
-    Source *src = reinterpret_cast<Source*>(g_source_new(&glibTimerSourceFuncs, sizeof(*src)));
-    src->timer = timer.shared_from_this();
-    src->lastUpdateTime = Timer::TimerClass::now();
-    src->active = true;
-
-//    g_source_set_can_recurse(src, true);
-
-    return src;
-}
-
-void GTimerSource::Source::destroy(Source*& src)
-{
-    src->timer.reset();
-    g_source_destroy(static_cast<GSource*>(src));
-    g_source_unref(static_cast<GSource*>(src));
-    src = nullptr;
-    CTRACE(event, "timer source destroyed");
-}
-
-/******************************************************************************
- * GTimerSource
- */
-
-GTimerSource::GTimerSource(std::string_view name)
-    : TimerSource(name)
-{
-}
-GTimerSource::~GTimerSource()
-{
-    CTRACE(event, "timer runloop source deleted");
-}
-
-void GTimerSource::addTimer(TimerRecord& timer)
-{
-    if (!isFunctional())
+    static GSourceFuncs funcs =
     {
-        return;
-    }
-    // Make sure the timer is registered once.
-    auto finder = [tmr = timer.shared_from_this()](const Source* source)
-    {
-        return source->timer == tmr;
+        TimerSource::prepare,
+        nullptr,
+        TimerSource::dispatch,
+        nullptr,
+        nullptr,
+        nullptr
     };
-    Source* gtimer = Source::create(timer);
-    if (!timers.push_back_if(gtimer, finder))
-    {
-        Source::destroy(gtimer);
-        CWARN(platform, "The timer is already registered");
-        return;
-    }
 
-    g_source_attach(static_cast<GSource*>(gtimer), context);
+    auto self = reinterpret_cast<TimerSource*>(g_source_new(&funcs, sizeof(TimerSource)));
+    self->m_timer = timer.shared_from_this();
+    self->m_lastUpdateTime = Timer::TimerClass::now();
+    self->m_active = true;
+
+    g_source_attach(static_cast<GSource*>(self), context);
+
+    return self;
 }
 
-void GTimerSource::removeTimer(TimerRecord& timer)
+void GlibRunLoopBase::TimerSource::destroy(TimerSource*& source)
 {
-    auto eraser = [tmr = timer.shared_from_this()](Source* source)
-    {
-        if (source->timer == tmr)
-        {
-            Source::destroy(source);
-            return true;
-        }
-        return false;
-    };
-    erase_if(timers, eraser);
-}
-
-size_t GTimerSource::timerCount() const
-{
-    return timers.size();
-}
-
-void GTimerSource::initialize(void* data)
-{
-    CTRACE(event, "initialize Timer runloop source");
-    context = reinterpret_cast<GMainContext*>(data);
-}
-
-void GTimerSource::detachOverride()
-{
-    CTRACE(event, "detach Timer runloop source");
-    // Stop running timers.
-    auto cleanup = [](Source* source)
-    {
-        if (source && source->timer)
-        {
-            source->timer->stop();
-        }
-    };
-    for_each(timers, cleanup);
-}
-
-/******************************************************************************
- * TimerSource factory
- */
-
-TimerSourcePtr Adaptation::createTimerSource(std::string_view name)
-{
-    return TimerSourcePtr(new GTimerSource(name));
+    auto src = static_cast<GSource*>(source);
+    g_source_destroy(src);
+    g_source_unref(src);
+    source = nullptr;
 }
 
 }

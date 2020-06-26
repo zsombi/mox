@@ -26,13 +26,13 @@ using namespace mox;
 
 constexpr EventType UserEvent = {EventId::UserType, EventPriority::Normal};
 
-class TestTimer : public Lockable, public TimerSource::TimerRecord
+class TestTimer : public Lockable, public TimerCore
 {
 public:
     Signal<> expired{*this};
 
     explicit TestTimer(std::chrono::milliseconds interval, bool singleShot)
-        : TimerSource::TimerRecord(interval, singleShot)
+        : TimerCore(interval, singleShot)
     {
     }
 
@@ -46,13 +46,13 @@ public:
     }
 };
 
-class TestSocket : public SlotHolder, public SocketNotifierSource::Notifier
+class TestSocket : public SlotHolder, public SocketNotifierCore
 {
 public:
     Signal<Modes> modeChanged{*this};
 
     explicit TestSocket(EventTarget handler, Modes modes)
-        : SocketNotifierSource::Notifier(handler, modes)
+        : SocketNotifierCore(handler, modes)
     {
     }
 
@@ -65,19 +65,29 @@ public:
 struct DispatcherWrapper
 {
     EventQueue queue;
-    RunLoopSharedPtr runLoop;
-    TimerSourcePtr timerSource;
-    EventSourcePtr postSource;
-    SocketNotifierSourcePtr socketSource;
+    RunLoopPtr runLoop;
     int exitCode = 0;
 
     explicit DispatcherWrapper()
         : runLoop(RunLoop::create(true))
-        , timerSource(runLoop->getDefaultTimerSource())
-        , postSource(runLoop->getDefaultPostEventSource())
-        , socketSource(runLoop->getDefaultSocketNotifierSource())
     {
-        postSource->attachQueue(queue);
+        auto dispatcher = [this]()
+        {
+            auto dispatchEvent = [](auto& event)
+            {
+                auto dispatcher = std::static_pointer_cast<EventDispatchCore>(event.target());
+
+                if (!dispatcher)
+                {
+                    return;
+                }
+
+                dispatcher->dispatchEvent(event);
+            };
+
+            queue.dispatch(dispatchEvent);
+        };
+        runLoop->setEventProcessingCallback(dispatcher);
     }
     ~DispatcherWrapper()
     {
@@ -139,7 +149,7 @@ TEST(TestEventDispatcher, test_exit_after_several_idle_calls)
 TEST(TestEventDispatcher, test_single_shot_timer_quits_loop)
 {
     auto wrapper = DispatcherWrapper();
-    auto timer = make_polymorphic_shared<TimerSource::TimerRecord, TestTimer>(std::chrono::milliseconds(100), true);
+    auto timer = make_polymorphic_shared<TimerCore, TestTimer>(std::chrono::milliseconds(100), true);
 
     auto handler = [&wrapper]()
     {
@@ -147,7 +157,7 @@ TEST(TestEventDispatcher, test_single_shot_timer_quits_loop)
         wrapper.runLoop->quit();
     };
     timer->expired.connect(handler);
-    timer->start(*wrapper.timerSource);
+    timer->start(*wrapper.runLoop);
     wrapper.runLoop->execute();
     EXPECT_EQ(1, wrapper.exitCode);
 }
@@ -155,7 +165,7 @@ TEST(TestEventDispatcher, test_single_shot_timer_quits_loop)
 TEST(TestEventDispatcher, test_repeating_timer_quits_loop)
 {
     auto wrapper = DispatcherWrapper();
-    auto timer = make_polymorphic_shared<TimerSource::TimerRecord, TestTimer>(std::chrono::milliseconds(100), false);
+    auto timer = make_polymorphic_shared<TimerCore, TestTimer>(std::chrono::milliseconds(100), false);
 
     int repeatCount = 10;
     auto handler = [&repeatCount, &wrapper]()
@@ -167,7 +177,7 @@ TEST(TestEventDispatcher, test_repeating_timer_quits_loop)
         }
     };
     timer->expired.connect(handler);
-    timer->start(*wrapper.timerSource);
+    timer->start(*wrapper.runLoop);
     wrapper.runLoop->execute();
     EXPECT_EQ(1, wrapper.exitCode);
 }
@@ -175,7 +185,7 @@ TEST(TestEventDispatcher, test_repeating_timer_quits_loop)
 TEST(TestEventDispatcher, test_ping_timer_idle_task)
 {
     auto wrapper = DispatcherWrapper();
-    auto ping = make_polymorphic_shared<TimerSource::TimerRecord, TestTimer>(std::chrono::milliseconds(100), false);
+    auto ping = make_polymorphic_shared<TimerCore, TestTimer>(std::chrono::milliseconds(100), false);
 
     int countDown = 3;
     auto pingHandler = [&countDown, &wrapper]()
@@ -188,7 +198,7 @@ TEST(TestEventDispatcher, test_ping_timer_idle_task)
         wrapper.runLoop->scheduleSources();
     };
     ping->expired.connect(pingHandler);
-    ping->start(*wrapper.timerSource);
+    ping->start(*wrapper.runLoop);
     wrapper.runLoop->execute();
     EXPECT_EQ(0, countDown);
 }
@@ -331,7 +341,7 @@ TEST(TestEventDispatcher, test_filter_events_from_filter)
 TEST(TestEventDispatcher, test_stdout_write_watch)
 {
     auto wrapper = DispatcherWrapper();
-    auto notifier = make_polymorphic_shared<SocketNotifierSource::Notifier, TestSocket>(fileno(stdout), SocketNotifierSource::Notifier::Modes::Write);
+    auto notifier = make_polymorphic_shared<SocketNotifierCore, TestSocket>(fileno(stdout), SocketNotifierCore::Modes::Write);
 
     bool notified = false;
     auto onWrite = [&notified, &wrapper]()
@@ -340,7 +350,7 @@ TEST(TestEventDispatcher, test_stdout_write_watch)
         wrapper.runLoop->quit();
     };
     notifier->modeChanged.connect(onWrite);
-    notifier->attach(*wrapper.socketSource);
+    notifier->attach(*wrapper.runLoop);
 
     // idle task to hit the stdin
     auto idle = []()

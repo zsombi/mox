@@ -32,166 +32,209 @@ namespace mox
 
 class GlibRunLoop;
 
-class GPostEventSource : public EventSource
-{
-public:
-    explicit GPostEventSource(std::string_view name);
-    ~GPostEventSource() final;
-
-    void initialize(void* data) final;
-
-    void wakeUp() final;
-
-    void detachOverride() final;
-
-    struct Source : GSource
-    {
-        std::weak_ptr<GPostEventSource> eventSource;
-
-        static gboolean prepare(GSource* src, gint *timeout);
-        static gboolean dispatch(GSource* source, GSourceFunc, gpointer);
-        static void finalize(GSource*);
-
-        static Source* create(GPostEventSource& eventSource, GMainContext* context);
-        static void destroy(Source*& source);
-    };
-
-    Source* source = nullptr;
-    atomic<bool> wakeUpCalled;
-};
-
 struct GPollHandler
 {
     GPollFD fd;
-    SocketNotifierSource::NotifierPtr notifier;
-    explicit GPollHandler(SocketNotifierSource::Notifier& notifier);
+    SocketNotifierCorePtr notifier;
+    explicit GPollHandler(SocketNotifierCore& notifier);
     void reset();
 };
 
-class GSocketNotifierSource : public SocketNotifierSource
+class GlibRunLoopBase
 {
 public:
-    struct Source : GSource
+    explicit GlibRunLoopBase(GMainContext* mainContext);
+    virtual ~GlibRunLoopBase();
+
+    struct PostEventSource : GSource
     {
-        std::weak_ptr<GSocketNotifierSource> self;
+        GlibRunLoopBase* m_runLoop = nullptr;
+        std::atomic_bool m_wakeUpCalled;
 
-        static gboolean prepare(GSource* src, gint *timeout);
-        static gboolean check(GSource* source);
-        static gboolean dispatch(GSource* source, GSourceFunc, gpointer);
+        static gboolean prepare(GSource *src, gint* timeout);
+        static gboolean dispatch(GSource* src, GSourceFunc, gpointer);
 
-        static Source* create(GSocketNotifierSource& socketSource, GMainContext* context);
-        static void destroy(Source*& source);
+        static PostEventSource* create(GlibRunLoopBase* context);
+        static void destroy(PostEventSource*& source);
     };
 
-    struct NullPollHandler
+    struct TimerSource : GSource
     {
-        bool operator()(const GPollHandler& handler) const
-        {
-            return handler.notifier == nullptr;
-        }
-    };
-
-    struct PollInvalidator
-    {
-        void operator()(GPollHandler& handler)
-        {
-            handler.notifier.reset();
-        }
-    };
-
-    Source* source = nullptr;
-    SharedVector<GPollHandler, NullPollHandler, PollInvalidator> pollHandlers;
-
-    explicit GSocketNotifierSource(std::string_view name);
-    ~GSocketNotifierSource() final;
-
-    void initialize(void* data) final;
-    void detachOverride() final;
-    void addNotifier(Notifier& notifier) final;
-    void removeNotifier(Notifier& notifier) final;
-};
-
-class GTimerSource : public TimerSource
-{
-public:
-    struct Source : GSource
-    {
-        TimerSource::TimerPtr timer;
-        Timestamp lastUpdateTime;
-        bool active = true;
+        TimerCorePtr m_timer;
+        Timestamp m_lastUpdateTime;
+        bool m_active = true;
 
         static gboolean prepare(GSource* src, gint* timeout);
         static gboolean dispatch(GSource* source, GSourceFunc, gpointer);
 
-        static Source *create(TimerRecord& timer);
-        static void destroy(Source*& src);
+        static TimerSource* create(TimerCore& timer, GMainContext* context);
+        static void destroy(TimerSource*& src);
     };
 
-    explicit GTimerSource(std::string_view name);
-    ~GTimerSource() final;
+    struct SocketNotifierSource : GSource
+    {
+        static gboolean prepare(GSource* src, gint *timeout);
+        static gboolean check(GSource* src);
+        static gboolean dispatch(GSource* src, GSourceFunc, gpointer);
 
-    // From TimerSource
-    void addTimer(TimerRecord& timer) final;
-    void removeTimer(TimerRecord& timer) final;
-    size_t timerCount() const final;
+        static SocketNotifierSource* create(GlibRunLoopBase& self, GMainContext* context);
+        static void destroy(SocketNotifierSource*& source);
 
-    // from AbstractRunLoopSource
-    void initialize(void* data) final;
-    void detachOverride() final;
+        struct NullPollHandler
+        {
+            bool operator()(const GPollHandler& handler) const
+            {
+                return handler.notifier == nullptr;
+            }
+        };
+
+        struct PollInvalidator
+        {
+            void operator()(GPollHandler& handler)
+            {
+                handler.notifier.reset();
+            }
+        };
+
+        GlibRunLoopBase* m_self = nullptr;
+        SharedVector<GPollHandler, NullPollHandler, PollInvalidator> m_pollHandlers;
+    };
+
+    struct IdleBundle
+    {
+        GMainContext* context = nullptr;
+        IdleFunction idle;
+        guint sourceId;
+
+        explicit IdleBundle(GMainContext* context, IdleFunction&& idle);
+        static gboolean callback(gpointer userData);
+    };
+
+protected:
+    virtual void dispatchEvents() = 0;
 
     struct ZeroTimer
     {
-        bool operator()(Source* const& source) const
+        bool operator()(TimerSource* const& source) const
         {
-            return !source || source->timer == nullptr;
+            return !source || !source->m_timer;
         }
     };
 
-    SharedVector<Source*, ZeroTimer> timers;
+    SharedVector<TimerSource*, ZeroTimer> timerSources;
+    PostEventSource* postEventSource = nullptr;
+    SocketNotifierSource* socketNotifierSource = nullptr;
     GMainContext* context = nullptr;
 };
 
-class GlibRunLoop : public RunLoop
+template <typename TDerived, typename TBase>
+class GlibRunLoopImpl : public GlibRunLoopBase, public TBase
 {
+    TDerived* getThis()
+    {
+        return static_cast<TDerived*>(this);
+    }
+    TDerived* getThis() const
+    {
+        return static_cast<const TDerived*>(this);
+    }
+
+public:
+    explicit GlibRunLoopImpl(GMainContext* mainContext)
+        : GlibRunLoopBase(mainContext)
+    {        
+    }
+
+    void startTimerOverride(TimerCore& timer) override
+    {
+        // Make sure the timer is registered once.
+        auto finder = [&timer](const auto* source)
+        {
+            return source->m_timer.get() == &timer;
+        };
+        auto gtimer = TimerSource::create(timer, getThis()->context);
+        if (!getThis()->timerSources.push_back_if(gtimer, finder))
+        {
+            TimerSource::destroy(gtimer);
+            CWARN(platform, "The timer is already registered");
+            return;
+        }    
+    }
+
+    void removeTimerOverride(TimerCore& timer) override
+    {
+        auto eraser = [&timer](auto* source)
+        {
+            if (source->m_timer.get() == &timer)
+            {
+                TimerSource::destroy(source);
+                return true;
+            }
+            return false;
+        };
+        erase_if(getThis()->timerSources, eraser);
+    }
+
+    void attachSocketNotifierOverride(SocketNotifierCore& notifier) override
+    {
+        socketNotifierSource->m_pollHandlers.emplace_back(GPollHandler(notifier));
+        g_source_add_poll(static_cast<GSource*>(socketNotifierSource), &socketNotifierSource->m_pollHandlers.back().fd);
+    }
+
+    void detachSocketNotifierOverride(SocketNotifierCore& notifier) override
+    {
+        auto predicate = [&notifier, this](GPollHandler& poll)
+        {
+            if (poll.notifier.get() == &notifier)
+            {
+                g_source_remove_poll(static_cast<GSource*>(this->socketNotifierSource), &poll.fd);
+                return true;
+            }
+            return false;
+        };
+        erase_if(socketNotifierSource->m_pollHandlers, predicate);
+    }
+
+    void onIdleOverride(IdleFunction&& idle) override
+    {
+        new IdleBundle(context, std::forward<IdleFunction>(idle));
+    }
+
+protected:
+    void dispatchEvents() override
+    {
+        getThis()->m_processEventsCallback();
+    }
+};
+
+class GlibRunLoop : public GlibRunLoopImpl<GlibRunLoop, RunLoop>
+{
+    using BaseClass = GlibRunLoopImpl<GlibRunLoop, RunLoop>;
 public:
     explicit GlibRunLoop();
     explicit GlibRunLoop(GMainContext& mainContext);
     ~GlibRunLoop() final;
 
-    void initialize() final;
-
     // From RunLoopBase
-    bool isRunningOverride() const final;
     void scheduleSourcesOverride() final;
-    void onIdleOverride(IdleFunction&& idle) final;
     void stopRunLoop() final;
 
     // from RunLoop
     void execute(ProcessFlags flags) final;
 
     GMainLoop* evLoop = nullptr;
-    GMainContext* context = nullptr;
 };
 
-class GlibRunLoopHook : public RunLoopHook
+class GlibRunLoopHook : public GlibRunLoopImpl<GlibRunLoopHook, RunLoopHook>
 {
+    using BaseClass = GlibRunLoopImpl<GlibRunLoopHook, RunLoopHook>;
 public:
     explicit GlibRunLoopHook();
     ~GlibRunLoopHook() final;
 
 protected:
-    void initialize() final;
-    bool isRunningOverride() const final
-    {
-        return running;
-    }
     void scheduleSourcesOverride() final;
-    void onIdleOverride(IdleFunction&& idle) final;
     void stopRunLoop() final;
-
-    GMainContext* context = nullptr;
-    std::atomic_bool running = false;
-
 };
 
 }

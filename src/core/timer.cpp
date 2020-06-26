@@ -24,7 +24,7 @@ namespace mox
 {
 
 Timer::Timer(Type type, std::chrono::milliseconds interval)
-    : TimerSource::TimerRecord(interval, type == Type::SingleShot)
+    : TimerCore(interval, type == Type::SingleShot)
 {
 }
 
@@ -45,8 +45,7 @@ void Timer::start()
     stop();
     auto thread = ThreadData::getThisThreadData()->thread();
     auto d = ThreadInterfacePrivate::get(*thread);
-    auto source = d->runLoop->getDefaultTimerSource();
-    TimerSource::TimerRecord::start(*source);
+    TimerCore::start(*d->runLoop);
 }
 
 void Timer::signal()

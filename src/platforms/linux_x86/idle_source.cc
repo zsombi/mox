@@ -21,56 +21,36 @@
 namespace mox
 {
 
-struct IdleBundle
+GlibRunLoopBase::IdleBundle::IdleBundle(GMainContext* context, IdleFunction&& idle)
+    : context(context)
+    , idle(std::forward<IdleFunction>(idle))
 {
-    GMainContext* context = nullptr;
-    IdleFunction idle;
-    guint sourceId;
-
-    explicit IdleBundle(GMainContext* context, IdleFunction&& idle)
-        : context(context)
-        , idle(std::forward<IdleFunction>(idle))
+    auto source = g_idle_source_new();
+    g_source_set_callback(source, &IdleBundle::callback, gpointer(this), NULL);
+    sourceId = g_source_attach(source, context);
+    if (source->ref_count > 1)
     {
-        auto source = g_idle_source_new();
-        g_source_set_callback(source, &IdleBundle::callback, gpointer(this), NULL);
-        sourceId = g_source_attach(source, context);
-        if (source->ref_count > 1)
-        {
-            g_source_unref(source);
-        }
+        g_source_unref(source);
     }
-
-    static gboolean callback(gpointer userData)
-    {
-        // sanity check, stop if the source is no longer part of the context!
-        auto bundle = static_cast<IdleBundle*>(userData);
-        if (!g_main_context_find_source_by_id(bundle->context, bundle->sourceId))
-        {
-            // The idle source is no longer in the context.
-            delete bundle;
-            return FALSE;
-        }
-        if (bundle->idle())
-        {
-            delete bundle;
-            return FALSE;
-        }
-        // Need to reschedule again.
-        return TRUE;
-    }
-};
-
-/******************************************************************************
- * RunLoop idle handlers
- */
-void GlibRunLoop::onIdleOverride(IdleFunction&& idle)
-{
-    new IdleBundle(context, std::forward<IdleFunction>(idle));
 }
 
-void GlibRunLoopHook::onIdleOverride(IdleFunction&& idle)
+gboolean GlibRunLoopBase::IdleBundle::callback(gpointer userData)
 {
-    new IdleBundle(context, std::forward<IdleFunction>(idle));
+    // sanity check, stop if the source is no longer part of the context!
+    auto bundle = static_cast<IdleBundle*>(userData);
+    if (!g_main_context_find_source_by_id(bundle->context, bundle->sourceId))
+    {
+        // The idle source is no longer in the context.
+        delete bundle;
+        return FALSE;
+    }
+    if (bundle->idle())
+    {
+        delete bundle;
+        return FALSE;
+    }
+    // Need to reschedule again.
+    return TRUE;
 }
 
 } // mox

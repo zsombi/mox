@@ -39,7 +39,7 @@ using ObjectWeakPtr = std::weak_ptr<Object>;
 /// by deriving your classes from Object and adding those as children to each other.
 ///
 /// Provides event dispatching.
-class MOX_API Object : public SlotHolder, public EventSource::EventDispatcher, public std::enable_shared_from_this<Object>
+class MOX_API Object : public SlotHolder, public EventDispatchCore, public std::enable_shared_from_this<Object>
 {
 public:
     Property<std::string> objectName{*this};
@@ -180,7 +180,7 @@ protected:
     /// \return The visit result.
     virtual VisitResult moveToThread(ThreadDataSharedPtr threadData);
 
-    /// From EventSource::EventDispatcher
+    /// From EventDispatchCore
     void dispatchEvent(Event &event) override;
 
     /// Convenience template function, creates an object derived from Object, and adds it to the
@@ -207,6 +207,7 @@ private:
         bool processEventFilters(Event& event);
         void processEventHandlers(Event& event);
     };
+
 
     Container m_handlers;
     Container m_filters;

@@ -28,18 +28,28 @@ struct HookWrapper
 {
     EventQueue queue;
     RunLoopHookPtr runLoop;
-    TimerSourceWeakPtr timerSource;
-    EventSourceWeakPtr postSource;
-    SocketNotifierSourceWeakPtr socketSource;
     int exitCode = 0;
 
     explicit HookWrapper()
         : runLoop(RunLoopHook::create())
-        , timerSource(runLoop->getDefaultTimerSource())
-        , postSource(runLoop->getDefaultPostEventSource())
-        , socketSource(runLoop->getDefaultSocketNotifierSource())
     {
-        postSource.lock()->attachQueue(queue);
+        auto dispatcher = [this]()
+        {
+            auto dispatchEvent = [](auto& event)
+            {
+                auto dispatcher = std::static_pointer_cast<EventDispatchCore>(event.target());
+
+                if (!dispatcher)
+                {
+                    return;
+                }
+
+                dispatcher->dispatchEvent(event);
+            };
+
+            queue.dispatch(dispatchEvent);
+        };
+        runLoop->setEventProcessingCallback(dispatcher);
     }
     ~HookWrapper()
     {
@@ -71,10 +81,6 @@ TEST(TestRunLoopHooks, test_runloop_hook_stop_before_app_stops)
 
     coreApp.run();
     EXPECT_TRUE(hookStopped);
-
-    EXPECT_TRUE(hook.timerSource.expired());
-    EXPECT_TRUE(hook.postSource.expired());
-    EXPECT_TRUE(hook.socketSource.expired());
 }
 
 TEST(TestRunLoopHooks, test_runloop_hook_stops_with_app_stop)
@@ -100,10 +106,6 @@ TEST(TestRunLoopHooks, test_runloop_hook_stops_with_app_stop)
 
     coreApp.run();
     EXPECT_TRUE(hookStopped);
-
-    EXPECT_TRUE(hook.timerSource.expired());
-    EXPECT_TRUE(hook.postSource.expired());
-    EXPECT_TRUE(hook.socketSource.expired());
 }
 
 TEST(TestRunLoopHooks, test_runloop_hook_exiter_drops_all_queued_idles)

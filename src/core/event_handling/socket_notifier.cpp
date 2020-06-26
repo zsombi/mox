@@ -25,7 +25,7 @@ namespace mox
 {
 
 SocketNotifier::SocketNotifier(EventTarget handler, Modes modes)
-    : SocketNotifierSource::Notifier(handler, modes)
+    : SocketNotifierCore(handler, modes)
 {
 }
 
@@ -40,29 +40,32 @@ void SocketNotifier::signal(Modes mode)
     activated(self, mode);
 }
 
-SocketNotifierSharedPtr SocketNotifier::create(EventTarget socket, Modes modes)
+SocketNotifierPtr SocketNotifier::create(EventTarget socket, Modes modes)
 {
-    SocketNotifierSharedPtr notifier(new SocketNotifier(socket, modes));
+    auto notifier = SocketNotifierPtr(new SocketNotifier(socket, modes));
     notifier->setEnabled(true);
     return notifier;
 }
 
 bool SocketNotifier::isEnabled() const
 {
-    return !m_source.expired();
+    return !m_runLoop.expired();
 }
 
 void SocketNotifier::setEnabled(bool enabled)
 {
-    auto source = m_source.lock();
-    if (!source && enabled)
+    if (isEnabled() == enabled)
+    {
+        return;
+    }
+
+    if (enabled)
     {
         auto thread = ThreadData::getThisThreadData()->thread();
         auto d = ThreadInterfacePrivate::get(*thread);
-        source = d->runLoop->getDefaultSocketNotifierSource();
-        attach(*source);
+        attach(*d->runLoop);
     }
-    else if (source && !enabled)
+    else
     {
         detach();
     }

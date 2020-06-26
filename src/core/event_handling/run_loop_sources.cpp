@@ -19,6 +19,7 @@
 #include <mox/core/event_handling/run_loop.hpp>
 #include <mox/core/event_handling/run_loop_sources.hpp>
 #include <mox/core/event_handling/event.hpp>
+#include <mox/core/platforms/adaptation.hpp>
 #include <mox/core/object.hpp>
 #include <mox/core/timer.hpp>
 
@@ -26,55 +27,11 @@ namespace mox
 {
 
 /******************************************************************************
- *
+ * TimerCore
  */
-AbstractRunLoopSource::AbstractRunLoopSource(std::string_view name)
-    : m_name(name)
-{
-}
-
-void AbstractRunLoopSource::attach(RunLoopBase& runLoop)
-{
-    FATAL(m_runLoop.expired(), "source already attached to a runloop");
-    m_runLoop = runLoop.shared_from_this();
-    runLoop.addSource(shared_from_this());
-}
-
-void AbstractRunLoopSource::detach()
-{
-    detachOverride();
-
-    auto loop = m_runLoop.lock();
-    if (loop)
-    {
-        loop->removeSource(*this);
-        m_runLoop.reset();
-    }
-}
-
-bool AbstractRunLoopSource::isFunctional() const
-{
-    auto loop = m_runLoop.lock();
-    return (loop && !loop->isExiting());
-}
-
-std::string AbstractRunLoopSource::name() const
-{
-    return std::string(m_name);
-}
-
-RunLoopBasePtr AbstractRunLoopSource::getRunLoop() const
-{
-    return m_runLoop.lock();
-}
-
-/******************************************************************************
- * TimerSource
- */
-
 static int32_t timerUId = 0;
 
-TimerSource::TimerRecord::TimerRecord(std::chrono::milliseconds interval, bool singleShot)
+TimerCore::TimerCore(std::chrono::milliseconds interval, bool singleShot)
     : m_interval(interval)
     , m_id(++timerUId)
     , m_singleShot(singleShot)
@@ -82,106 +39,58 @@ TimerSource::TimerRecord::TimerRecord(std::chrono::milliseconds interval, bool s
 {
 }
 
-TimerSource::TimerRecord::~TimerRecord()
+TimerCore::~TimerCore()
 {
     stop();
 }
 
-void TimerSource::TimerRecord::start(TimerSource& timerSource)
+void TimerCore::start(RunLoopBase& runLoop)
 {
-    FATAL(!m_source || m_source.get() == &timerSource, "Invalid or different source applied");
-    m_source = std::static_pointer_cast<TimerSource>(timerSource.shared_from_this());
-    m_source->addTimer(*this);
+    m_runLoop = runLoop.shared_from_this();
+    runLoop.startTimer(*this);
 }
 
-void TimerSource::TimerRecord::stop()
+void TimerCore::stop()
 {
-    if (m_source)
+    auto loop = m_runLoop.lock();
+    if (loop)
     {
-        auto source = m_source;
-        m_source.reset();
-        source->removeTimer(*this);
+        loop->removeTimer(*this);
+        m_runLoop.reset();
     }
 }
 
-TimerSource::TimerSource(std::string_view name)
-    : AbstractRunLoopSource(name)
-{
-}
-
 /******************************************************************************
- * EventSource
+ * SocketNotifierCore
  */
-EventSource::EventSource(std::string_view name)
-    : AbstractRunLoopSource(name)
-{
-}
-
-void EventSource::attachQueue(EventQueue &queue)
-{
-    m_eventQueue = &queue;
-}
-
-void EventSource::dispatchQueuedEvents()
-{
-    FATAL(m_eventQueue, "No event queue attached.");
-    FATAL(getRunLoop(), "Orphan event source?");
-    if (!getRunLoop()->isRunning())
-    {
-        WARN("source attempting processing posted events when the event loop is not running.");
-        return;
-    }
-
-    auto dispatchEvent = [](auto& event)
-    {
-        auto dispatcher = std::static_pointer_cast<EventDispatcher>(event.target());
-
-        if (!dispatcher)
-        {
-            return;
-        }
-
-        dispatcher->dispatchEvent(event);
-    };
-
-    CTRACE(event, "process queue with" << m_eventQueue->size() << "events");
-    m_eventQueue->dispatch(dispatchEvent);
-}
-
-/******************************************************************************
- * SocketNotifierSource
- */
-SocketNotifierSource::Notifier::Notifier(EventTarget handler, Modes modes)
+SocketNotifierCore::SocketNotifierCore(EventTarget handler, Modes modes)
     : m_handler(handler)
-    , m_modes(modes & SocketNotifierSource::supportedModes())
+    , m_modes(modes & Adaptation::supportedModes())
 {
 }
 
-SocketNotifierSource::Notifier::~Notifier()
+SocketNotifierCore::~SocketNotifierCore()
 {
     detach();
 }
 
-void SocketNotifierSource::Notifier::attach(SocketNotifierSource& source)
+void SocketNotifierCore::attach(RunLoopBase& runLoop)
 {
-    m_source = std::static_pointer_cast<SocketNotifierSource>(source.shared_from_this());
-    source.addNotifier(*this);
+    if (runLoop.attachSocketNotifier(*this))
+    {
+        m_runLoop = runLoop.shared_from_this();
+    }
 }
 
-void SocketNotifierSource::Notifier::detach()
+void SocketNotifierCore::detach()
 {
-    auto source = m_source.lock();
-    if (!source)
+    auto loop = m_runLoop.lock();
+    if (!loop)
     {
         return;
     }
-    m_source.reset();
-    source->removeNotifier(*this);
-}
-
-SocketNotifierSource::SocketNotifierSource(std::string_view name)
-    : AbstractRunLoopSource(name)
-{
+    loop->detachSocketNotifier(*this);
+    m_runLoop.reset();
 }
 
 }

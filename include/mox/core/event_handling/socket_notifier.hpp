@@ -28,16 +28,16 @@ namespace mox
 
 /// The SocketNotifier class provides notifications on events occurring on a socket descriptor.
 /// The socket descriptor is either a file handler or a normal socket handler.
-class MOX_API SocketNotifier : public SlotHolder, public SocketNotifierSource::Notifier
+class MOX_API SocketNotifier : public SlotHolder, public SocketNotifierCore
 {
 public:
     /// Activation signal, emitted when the operation on the socket is notified.
-    Signal<SocketNotifierSharedPtr, Modes> activated{*this};
+    Signal<SocketNotifierPtr, Modes> activated{*this};
 
     /// Creates a socket notifier on a \a socket with notification \a modes.
-    static SocketNotifierSharedPtr create(EventTarget socket, Modes modes);
+    static SocketNotifierPtr create(EventTarget socket, Modes modes);
     /// Destructor.
-    ~SocketNotifier();
+    ~SocketNotifier() override;
 
     /// Enables or disables the socket notifier.
     void setEnabled(bool enabled);

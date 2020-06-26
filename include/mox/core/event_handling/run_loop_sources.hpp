@@ -27,227 +27,131 @@ namespace mox
 {
 
 class Timer;
+class TimerCore;
+using TimerCorePtr = std::shared_ptr<TimerCore>;
+using TimerCoreWeakPtr = std::weak_ptr<TimerCore>;
 
-/// Base class for run loop sources.
-class MOX_API AbstractRunLoopSource : public std::enable_shared_from_this<AbstractRunLoopSource>
+/// The TimerCore provides support for single shot and periodic timers in Mox.
+/// A run loop can have many timer sources.
+class MOX_API TimerCore : public std::enable_shared_from_this<TimerCore>
 {
 public:
-    /// Destructor.
-    virtual ~AbstractRunLoopSource() = default;
-    /// Returns the name of the event source.
-    std::string name() const;
-    /// Returns the run loop the source is attached to.
-    RunLoopBasePtr getRunLoop() const;
+    /// Destructor
+    virtual ~TimerCore();
 
-    /// Set the run loop to which this event source is attached.
-    void attach(RunLoopBase& runLoop);
+    /// Signals a timer. You must implement this method to handle timers. If the timer is single-shot,
+    /// you must explicitly stop the timer.
+    virtual void signal() = 0;
 
-    /// Detaches the run loop source from the runloop. Resets the source.
-    void detach();
+    /// Starts the timer by assigning it to a \a timerSource.
+    /// \param timerSource The timer source to own the timer record.
+    void start(RunLoopBase& runLoop);
 
-    /// The method is called when the run loop event processing starts.
-    virtual void initialize(void* data) = 0;
+    /// Stops a timer, and removes it from the timer source.
+    void stop();
 
-    /// Returns whether the source is functional, meaning it is attached to a runloop and this runloop
-    /// is in running state and not exiting.
-    bool isFunctional() const;
-
-    /// Notifies the runloop source to re-schedule.
-    virtual void wakeUp() {}
-
+    /// Returns the type of a timer record.
+    bool isSingleShot() const
+    {
+        return m_singleShot;
+    }
+    /// Returns the running state of a timer record.
+    bool isRunning() const
+    {
+        return m_isRunning;
+    }
+    /// Returns the interval of a timer record.
+    std::chrono::milliseconds getInterval() const
+    {
+        return m_interval;
+    }
+    /// Returns the identifier of the timer.
+    int32_t id() const
+    {
+        return m_id;
+    }
 protected:
-    /// Constructor.
-    explicit AbstractRunLoopSource(std::string_view name);
-
-    virtual void detachOverride() = 0;
+    /// Constructs a timer record with \a interval.
+    /// \param interval The interval of the timer.
+    /// \param singleShot If the timer is single-shot, \e true. If the timer is repeating, \e false.
+    explicit TimerCore(std::chrono::milliseconds interval, bool singleShot);
 
     RunLoopBaseWeakPtr m_runLoop;
-    std::string m_name;
+    /// The timer interval in milliseconds.
+    std::chrono::milliseconds m_interval;
+    /// The identifier of the timer.
+    int32_t m_id = 0;
+    /// The type of the timer.
+    bool m_singleShot = true;
+    /// The running state of the timer.
+    bool m_isRunning = false;
 };
 
-/// The TimerSource provides support for single shot and periodic timers in Mox.
-/// A run loop can have many timer event sources.
-class MOX_API TimerSource : public AbstractRunLoopSource
+class MOX_API SocketNotifierCore : public std::enable_shared_from_this<SocketNotifierCore>
 {
 public:
-    /// The class defines a timer record. Do not use the class to track timers, but use Timer
-    /// class instead.
-    class MOX_API TimerRecord : public std::enable_shared_from_this<TimerRecord>
+    /// The type of the handler.
+    typedef int EventTarget;
+    /// The event modes.
+    enum class Modes
     {
-        friend class TimerSource;
-
-    protected:
-        /// The event source owning the timer.
-        TimerSourcePtr m_source;
-        /// The timer interval in milliseconds.
-        std::chrono::milliseconds m_interval;
-        /// The identifier of the timer.
-        int32_t m_id = 0;
-        /// The type of the timer.
-        bool m_singleShot = true;
-        /// The running state of the timer.
-        bool m_isRunning = false;
-
-        /// Constructs a timer record with \a interval.
-        /// \param interval The interval of the timer.
-        /// \param singleShot If the timer is single-shot, \e true. If the timer is repeating, \e false.
-        explicit TimerRecord(std::chrono::milliseconds interval, bool singleShot);
-
-    public:
-        /// Destructor
-        virtual ~TimerRecord();
-
-        /// Signals a timer. You must implement this method to handle timers. If the timer is single-shot,
-        /// you must explicitly stop the timer.
-        virtual void signal() = 0;
-        /// Starts the timer by assigning it to a \a timerSource.
-        /// \param timerSource The timer source to own the timer record.
-        void start(TimerSource& timerSource);
-
-        /// Stops a timer, and removes it from the timer source.
-        void stop();
-
-        /// Returns the type of a timer record.
-        bool isSingleShot() const
-        {
-            return m_singleShot;
-        }
-        /// Returns the running state of a timer record.
-        bool isRunning() const
-        {
-            return m_isRunning;
-        }
-        /// Returns the interval of a timer record.
-        std::chrono::milliseconds getInterval() const
-        {
-            return m_interval;
-        }
-        /// Returns the identifier of the timer.
-        int32_t id() const
-        {
-            return m_id;
-        }
-    };
-    /// The pointer type of a timer record.
-    using TimerPtr = std::shared_ptr<TimerRecord>;
-
-    /// Returns the running timer count in the source,
-    virtual size_t timerCount() const = 0;
-
-protected:
-    /// Constructs the event source.
-    explicit TimerSource(std::string_view name);
-
-    /// Adds a timer object to the source.
-    virtual void addTimer(TimerRecord& timer) = 0;
-    /// Removes a timer object from the source.
-    virtual void removeTimer(TimerRecord& timer) = 0;
-};
-
-/// This class defines the interface for the event sources. Each event source has an event queue of its own.
-class MOX_API EventSource : public AbstractRunLoopSource
-{
-public:
-
-    /// This is the base class for event dispatchers.
-    class MOX_API EventDispatcher
-    {
-    public:
-        /// Destructor.
-        virtual ~EventDispatcher() = default;
-        /// Dispatches the event.
-        virtual void dispatchEvent(Event& event) = 0;
+        /// Inactive.
+        Inactive = 0,
+        /// Notify on read-ability.
+        Read = 0x01,
+        /// Notify on write-ability.
+        Write = 0x02,
+        /// Notify on exception.
+        Exception = 0x04,
+        /// Notify on error.
+        Error = 0x08
     };
 
-    /// Attaches the event \e queue to the runloop source.
-    /// \param queue The event queue to attach.
-    void attachQueue(EventQueue& queue);
+    /// Destructor.
+    virtual ~SocketNotifierCore();
 
-    /// Dispatches the queued events.
-    void dispatchQueuedEvents();
+    /// Attaches the notifier to a socket notifier source.
+    void attach(RunLoopBase& runLoop);
+    /// Detaches the notifier from the source.
+    void detach();
+
+    /// Returns the event modes of this notifier.
+    Modes getModes() const
+    {
+        return m_modes;
+    }
+    /// Returns the handler watched.
+    EventTarget handler() const
+    {
+        return m_handler;
+    }
+
+    /// Signals the notifier about mode change.
+    virtual void signal(Modes mode) = 0;
 
 protected:
     /// Constructor.
-    explicit EventSource(std::string_view name);
+    explicit SocketNotifierCore(EventTarget handler, Modes modes);
 
-    /// The event queue to process.
-    EventQueue* m_eventQueue = nullptr;
+    /// The socket notifier event source this notifier connects.
+    RunLoopBaseWeakPtr m_runLoop;
+    /// The socket handler.
+    EventTarget m_handler = -1;
+    /// The notification modes.
+    Modes m_modes = Modes::Read;
 };
+ENABLE_ENUM_OPERATORS(SocketNotifierCore::Modes)
+using SocketNotifierCorePtr = std::shared_ptr<SocketNotifierCore>;
 
-/// This class defines the interface for the socket notifier event sources.
-class MOX_API SocketNotifierSource : public AbstractRunLoopSource
+
+
+class MOX_API EventDispatchCore
 {
 public:
-    /// This is the notifier class you can use to capture mode changes on a socket handler.
-    class MOX_API Notifier : public std::enable_shared_from_this<Notifier>
-    {
-        friend class SocketNotifierSource;
+    virtual ~EventDispatchCore() = default;
 
-    public:
-        /// The type of the handler.
-        typedef int EventTarget;
-        /// The event modes.
-        enum class Modes
-        {
-            /// Inactive.
-            Inactiv = 0,
-            /// Notify on read-ability.
-            Read = 0x01,
-            /// Notify on write-ability.
-            Write = 0x02,
-            /// Notify on exception.
-            Exception = 0x04,
-            /// Notify on error.
-            Error = 0x08
-        };
-
-        /// Destructor.
-        virtual ~Notifier();
-
-        /// Attaches the notifier to a socket notifier source.
-        void attach(SocketNotifierSource& source);
-        /// Detaches the notifier from the source.
-        void detach();
-
-        /// Returns the event modes of this notifier.
-        Modes getModes() const
-        {
-            return m_modes;
-        }
-        /// Returns the handler watched.
-        EventTarget handler() const
-        {
-            return m_handler;
-        }
-
-        /// Signals the notifier about mode change.
-        virtual void signal(Modes mode) = 0;
-
-    protected:
-        /// Constructor.
-        explicit Notifier(EventTarget handler, Modes modes);
-
-        /// The socket notifier event source this notifier connects.
-        SocketNotifierSourceWeakPtr m_source;
-        /// The socket handler.
-        EventTarget m_handler = -1;
-        /// The notification modes.
-        Modes m_modes = Modes::Read;
-    };
-    using NotifierPtr = std::shared_ptr<Notifier>;
-
-    /// Returns the notification modes the platform is supporting.
-    static Notifier::Modes supportedModes();
-
-protected:
-    explicit SocketNotifierSource(std::string_view name);
-
-    /// Add a socket notifier to the event source.
-    virtual void addNotifier(Notifier& notifier) = 0;
-    /// Remove a socket notifier from the event source.
-    virtual void removeNotifier(Notifier& notifier) = 0;
+    virtual void dispatchEvent(Event &event) = 0;
 };
-ENABLE_ENUM_OPERATORS(SocketNotifierSource::Notifier::Modes)
 
 }
 

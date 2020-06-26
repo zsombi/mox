@@ -22,26 +22,59 @@ namespace mox
 {
 
 /******************************************************************************
+ * GlibRunLoopBase
+ */
+GlibRunLoopBase::GlibRunLoopBase(GMainContext* mainContext)
+{
+    context = mainContext;
+    if (!context)
+    {
+        context = g_main_context_get_thread_default();
+        FATAL(!context, "There should not be any main context at this point!!!");
+        context = g_main_context_new();
+        CTRACE(event, "runloop for main");
+    }
+    else
+    {
+        g_main_context_ref(context);
+        CTRACE(event, "runloop for thread");
+    }
+
+    postEventSource = PostEventSource::create(this);
+    socketNotifierSource = SocketNotifierSource::create(*this, context);
+}
+
+GlibRunLoopBase::~GlibRunLoopBase()
+{
+    auto deleteTimers = [](auto& timer)
+    {
+        if (!timer || !timer->m_timer)
+        {
+            return;
+        }
+        timer->m_timer->stop();
+    };
+    for_each(timerSources, deleteTimers);
+
+    SocketNotifierSource::destroy(socketNotifierSource);
+    PostEventSource::destroy(postEventSource);
+
+    g_main_context_unref(context);
+    CTRACE(event, "runloop down");
+}
+/******************************************************************************
  * GlibRunLoop
  */
 // Constructor for the main loop
 GlibRunLoop::GlibRunLoop()
+    : BaseClass(nullptr)
 {
-    context = g_main_context_get_thread_default();
-    FATAL(!context, "There should not be any main context at this point!!!");
-    context = g_main_context_new();
 }
 
 // constructor for the threads
 GlibRunLoop::GlibRunLoop(GMainContext& mainContext)
-    : context(&mainContext)
+    : BaseClass(&mainContext)
 {
-    g_main_context_ref(context);
-}
-
-void GlibRunLoop::initialize()
-{
-    forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::initialize, context);
     evLoop = g_main_loop_new(context, false);
 }
 
@@ -49,26 +82,19 @@ GlibRunLoop::~GlibRunLoop()
 {
     CTRACE(event, "closing glib runloop");
     g_main_loop_unref(evLoop);
-
-    g_main_context_unref(context);
-    CTRACE(event, "runloop down");
-}
-
-bool GlibRunLoop::isRunningOverride() const
-{
-    return g_main_loop_is_running(evLoop) == TRUE;
 }
 
 void GlibRunLoop::execute(ProcessFlags flags)
 {
+    m_status = Status::Running;
     if (flags != ProcessFlags::SingleLoop)
     {
         g_main_loop_run(evLoop);
     }
 
-    CTRACE(event, "Final context iteration");
-    // run one more non-blocking context loop round
-    g_main_context_iteration(context, false);
+    // CTRACE(event, "Final context iteration");
+    // // run one more non-blocking context loop round
+    // g_main_context_iteration(context, false);
 
     // Idle-function based shutdown may not always kick. Make sure we do.
     CTRACE(event, "notify close");
@@ -80,6 +106,7 @@ void GlibRunLoop::stopRunLoop()
     // Stop the loop;
     CTRACE(event, "glib runloop stop");
     g_main_loop_quit(evLoop);
+    m_status = Status::Exiting;
 }
 
 void GlibRunLoop::scheduleSourcesOverride()
@@ -92,26 +119,22 @@ void GlibRunLoop::scheduleSourcesOverride()
  * GlibRunLoopHook
  */
 GlibRunLoopHook::GlibRunLoopHook()
+    : BaseClass([]() -> GMainContext*
+    { 
+        auto ctxt = g_main_context_get_thread_default();
+        if (!ctxt)
+        {
+            ctxt = g_main_context_default();
+        }
+        FATAL(ctxt, "No context to attach!");
+        return ctxt;
+    }())
 {
-    context = g_main_context_get_thread_default();
-    if (!context)
-    {
-        context = g_main_context_default();
-    }
-    FATAL(context, "No context to attach");
-    g_main_context_ref(context);
+    m_status = Status::Running;
 }
 
 GlibRunLoopHook::~GlibRunLoopHook()
 {
-    g_main_context_unref(context);
-    CTRACE(event, "runloop hook down");
-}
-
-void GlibRunLoopHook::initialize()
-{
-    forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::initialize, context);
-    running = true;
 }
 
 void GlibRunLoopHook::scheduleSourcesOverride()
@@ -122,14 +145,14 @@ void GlibRunLoopHook::scheduleSourcesOverride()
 
 void GlibRunLoopHook::stopRunLoop()
 {
-    running = false;
+    m_status = Status::Exiting;
     notifyRunLoopDown();
 }
 
 /******************************************************************************
  * EventDispatcher factory function
  */
-RunLoopSharedPtr Adaptation::createRunLoop(bool main)
+RunLoopPtr Adaptation::createRunLoop(bool main)
 {
     auto runLoop = std::shared_ptr<GlibRunLoop>();
     if (main)

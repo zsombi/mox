@@ -32,120 +32,63 @@ namespace mox
 /******************************************************************************
  * RunLoopBase
  */
-void RunLoopBase::setupSources()
-{
-    AbstractRunLoopSourceSharedPtr source;
-    source = Adaptation::createPostEventSource("default_post_event");
-    source->attach(*this);
-
-    source = Adaptation::createTimerSource("default_timer");
-    source->attach(*this);
-
-    source = Adaptation::createSocketNotifierSource("default_socket_notifier");
-    source->attach(*this);
-}
-
-void RunLoopBase::addSource(AbstractRunLoopSourceSharedPtr source)
-{
-    m_runLoopSources.push_back(source);
-}
-
-void RunLoopBase::removeSource(AbstractRunLoopSource& source)
-{
-    auto finder = [&source](auto& src)
-    {
-        return &source == src.get();
-    };
-    auto it = std::find_if(m_runLoopSources.begin(), m_runLoopSources.end(), finder);
-    if (it != m_runLoopSources.end())
-    {
-        (*it).reset();
-    }
-}
-
 void RunLoopBase::notifyRunLoopDown()
 {
-    forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::detach);
+    m_status = Status::Stopped;
     if (m_closedCallback)
     {
         m_closedCallback();
     }
 }
 
+void RunLoopBase::setEventProcessingCallback(EventProcessingCallback callback)
+{
+    m_processEventsCallback = callback;
+}
 
 void RunLoopBase::setRunLoopDownCallback(DownCallback callback)
 {
     m_closedCallback = callback;
 }
 
-AbstractRunLoopSourceSharedPtr RunLoopBase::findSource(std::string_view name)
+bool RunLoopBase::startTimer(TimerCore& timer)
 {
-    for (auto source : m_runLoopSources)
+    if (m_status >= Status::Exiting)
     {
-        if (source->name() == name)
-        {
-            return source;
-        }
+        return false;
     }
-
-    return nullptr;
+    startTimerOverride(timer);
+    return true;
 }
 
-AbstractRunLoopSourceSharedPtr RunLoopBase::findSource(std::string_view name) const
+void RunLoopBase::removeTimer(TimerCore& timer)
 {
-    for (auto source : m_runLoopSources)
-    {
-        if (source->name() == name)
-        {
-            return source;
-        }
-    }
-
-    return nullptr;
+    removeTimerOverride(timer);
 }
 
-TimerSourcePtr RunLoopBase::getDefaultTimerSource()
+bool RunLoopBase::attachSocketNotifier(SocketNotifierCore& notifier)
 {
-    if (isExiting())
+    if (m_status >= Status::Exiting)
     {
-        return nullptr;
+        return false;
     }
-    // the first source is the timer source.
-    auto source = std::static_pointer_cast<TimerSource>(m_runLoopSources[1]);
-    return source && source->isFunctional() ? source : nullptr;
+    attachSocketNotifierOverride(notifier);
+    return true;
 }
 
-EventSourcePtr RunLoopBase::getDefaultPostEventSource()
+void RunLoopBase::detachSocketNotifier(SocketNotifierCore& notifier)
 {
-    if (isExiting())
-    {
-        return nullptr;
-    }
-    // the secont source is the event source.
-    auto source = std::static_pointer_cast<EventSource>(m_runLoopSources[0]);
-    return source && source->isFunctional() ? source : nullptr;
-}
-
-SocketNotifierSourcePtr RunLoopBase::getDefaultSocketNotifierSource()
-{
-    if (isExiting())
-    {
-        return nullptr;
-    }
-    // the third source is the socket notifier source.
-    auto source = std::static_pointer_cast<SocketNotifierSource>(m_runLoopSources[2]);
-    return source && source->isFunctional() ? source : nullptr;
+    detachSocketNotifierOverride(notifier);
 }
 
 void RunLoopBase::scheduleSources()
 {
-    forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::wakeUp);
     scheduleSourcesOverride();
 }
 
 void RunLoopBase::quit()
 {
-    if (m_isExiting)
+    if (m_status == Status::Exiting)
     {
         CTRACE(event, "The runloop is already exiting.");
 //        return;
@@ -153,22 +96,17 @@ void RunLoopBase::quit()
 
     stopRunLoop();
 
-    m_isExiting = true;
+    m_status = Status::Exiting;
 }
 
-bool RunLoopBase::isExiting() const
+RunLoopBase::Status RunLoopBase::getStatus() const
 {
-    return m_isExiting;
-}
-
-bool RunLoopBase::isRunning() const
-{
-    return isRunningOverride();
+    return m_status;
 }
 
 void RunLoopBase::onIdle(IdleFunction&& idle)
 {
-    if (isExiting())
+    if (m_status > Status::Running)
     {
         return;
     }
@@ -183,12 +121,9 @@ RunLoop::~RunLoop()
     CTRACE(event, "RunLoop died");
 }
 
-RunLoopSharedPtr RunLoop::create(bool main)
+RunLoopPtr RunLoop::create(bool main)
 {
     auto evLoop = Adaptation::createRunLoop(main);
-
-    evLoop->setupSources();
-    evLoop->initialize();
 
     return evLoop;
 }
@@ -200,9 +135,6 @@ RunLoopSharedPtr RunLoop::create(bool main)
 RunLoopHookPtr RunLoopHook::create()
 {
     auto evLoop = Adaptation::createRunLoopHook();
-
-    evLoop->setupSources();
-    evLoop->initialize();
 
     return evLoop;
 }

@@ -133,7 +133,26 @@ void ThreadInterface::setUp()
     // Create runloop for the thread.
     CTRACE(threads, "Create runloop for the thread");
     d->runLoop = createRunLoopOverride();
-    d->runLoop->getDefaultPostEventSource()->attachQueue(d->threadQueue);
+
+    // The event dispatcher
+    auto dispatcher = [d]()
+    {
+        auto dispatchEvent = [](auto& event)
+        {
+            auto dispatcher = std::static_pointer_cast<EventDispatchCore>(event.target());
+
+            if (!dispatcher)
+            {
+                return;
+            }
+
+            dispatcher->dispatchEvent(event);
+        };
+
+        CTRACE(event, "process queue with" << d->threadQueue.size() << "events");
+        d->threadQueue.dispatch(dispatchEvent);
+    };
+    d->runLoop->setEventProcessingCallback(dispatcher);
 
     // make sure the thread objects are set to use the thread data
     ScopeRelock re(*this);
@@ -182,7 +201,7 @@ ThreadInterfacePtr ThreadInterface::getThisThread()
 void ThreadInterface::onIdle(IdleFunction&& idle)
 {
     FATAL(d_ptr->runLoop, "Invalid runloop");
-    if (d_ptr->runLoop->isExiting())
+    if (d_ptr->runLoop->getStatus() >= RunLoopBase::Status::Exiting)
     {
         return;
     }
@@ -286,7 +305,7 @@ bool postEvent(EventPtr event)
     }
     lock_guard lock(*thread);
     auto d = ThreadInterfacePrivate::get(*thread);
-    if (d->runLoop && !d->runLoop->isRunning() && d->runLoop->isExiting())
+    if (d->runLoop && d->runLoop->getStatus() >= RunLoopBase::Status::Exiting)
     {
         WARN("Destination thread runloop is exiting. Event" << int(event->type()) << "was not posted!");
         return false;
