@@ -22,6 +22,7 @@
 
 #include <string_view>
 #include <mox/core/event_handling/event_handling_declarations.hpp>
+#include <mox/core/event_handling/run_loop_sources.hpp>
 #include <mox/utils/log/logger.hpp>
 
 namespace mox

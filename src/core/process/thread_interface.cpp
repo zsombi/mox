@@ -43,25 +43,27 @@ void ThreadInterfacePrivate::attachToParentThread()
         return;
     }
 
-    parent->addChild(*p);
-
     lock_guard lock(*parent);
     auto dParent = ThreadInterfacePrivate::get(*parent);
     dParent->childThreads.push_back(as_shared<ThreadInterface>(p));
 }
 
-void ThreadInterfacePrivate::detachFromParentThread()
+void ThreadInterfacePrivate::exit(int code)
 {
-    P();
-//    lock_guard lock(*p);
-    if (!p->getParent())
+    CTRACE(threads, "Exiting thread" << as_shared<ThreadLoop>(p_ptr));
+    exitCodeProperty = code;
+    if (runLoop)
     {
-        return;
+        runLoop->quit();
     }
 
-    auto parent = as_shared<ThreadInterface>(p->getParent());
-    auto self = p->shared_from_this();
-    parent->removeChild(*p);
+    // Exit child threads.
+    auto childExit = [](auto& childThread)
+    {
+        CTRACE(threads, "Exiting child" << as_shared<ThreadLoop>(childThread));
+        childThread->exit(0);
+    };
+    for_each(childThreads, childExit);
 }
 
 /******************************************************************************
@@ -95,7 +97,7 @@ void ThreadInterface::onQuit(Event& event)
 
     CTRACE(threads, "async exit");
     QuitEventType& evQuit = static_cast<QuitEventType&>(event);
-    exit(evQuit.getExitCode());
+    d_ptr->exit(evQuit.getExitCode());
 }
 
 Object::VisitResult ThreadInterface::moveToThread(ThreadDataSharedPtr)
@@ -161,8 +163,6 @@ void ThreadInterface::setUp()
 
 void ThreadInterface::tearDown()
 {
-    d_ptr->detachFromParentThread();
-
     // The thread data is no longer valid, therefore reset it, and remove from all the objects owned by this thread loop.
     setThreadData(nullptr);
 
@@ -262,25 +262,21 @@ void ThreadInterface::exit(int exitCode)
         }
         case Status::Running:
         {
-            CTRACE(threads, "The thread is running. Stop its runloop.");
-            d->exitCodeProperty = exitCode;
-            quitOverride();
-            if (d->runLoop)
+            if (ThreadData::getThisThreadData() == threadData())
             {
+                CTRACE(threads, "Exit called in thread, stopping.");
                 ScopeRelock re(*this);
-                d->runLoop->quit();
+                d_ptr->exit(exitCode);
+            }
+            else
+            {
+                CTRACE(threads, "Exit called from different thread.");
+                ScopeRelock re(*this);
+                postEvent<QuitEventType>(shared_from_this(), exitCode);
             }
             break;
         }
     }
-
-    // Exit child threads.
-    auto childExit = [](auto& childThread)
-    {
-        CTRACE(threads, "Exiting child" << as_shared<ThreadLoop>(childThread));
-        childThread->exit(0);
-    };
-    for_each(d->childThreads, childExit);
 }
 
 /******************************************************************************

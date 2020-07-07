@@ -56,7 +56,6 @@ void ThreadLoopPrivate::threadMain(ThreadPromise threadDataReady)
         CTRACE(threads, "Thread not started due to status:" << int(status));
     }
 
-    loop.reset();
     p->stopped(p);
     p->tearDown();
 }

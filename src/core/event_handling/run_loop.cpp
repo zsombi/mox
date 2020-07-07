@@ -91,7 +91,7 @@ void RunLoopBase::quit()
     if (m_status == Status::Exiting)
     {
         CTRACE(event, "The runloop is already exiting.");
-//        return;
+        return;
     }
 
     stopRunLoop();

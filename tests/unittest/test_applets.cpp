@@ -80,7 +80,7 @@ TEST_F(Applets, test_exit_without_start)
 {
 #if defined(MOX_ENABLE_LOGS)
     ScopeLogType<mox::LogType::All> scopeLogs("threads");
-    EXPECT_TRACE(threads, " The thread is not running.");
+    EXPECT_TRACE(threads, "The thread is not running.");
 #endif
     TestCoreApp app;
     applet = Applet::create();

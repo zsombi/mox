@@ -24,7 +24,7 @@ namespace mox
 namespace
 {
 
-bool hasMode(const SocketNotifierSource::Notifier& notifier, SocketNotifierSource::Notifier::Modes mode)
+bool hasMode(const SocketNotifierCore& notifier, SocketNotifierCore::Modes mode)
 {
     return (notifier.getModes() & mode) == mode;
 }
@@ -34,23 +34,25 @@ bool hasMode(const SocketNotifierSource::Notifier& notifier, SocketNotifierSourc
 /******************************************************************************
  *
  */
-SocketNotifierSource::Notifier::Modes SocketNotifierSource::supportedModes()
+SocketNotifierCore::Modes Adaptation::supportedModes()
 {
-    return SocketNotifierSource::Notifier::Modes::Read | SocketNotifierSource::Notifier::Modes::Write | SocketNotifierSource::Notifier::Modes::Error;
+    return SocketNotifierCore::Modes::Read
+            | SocketNotifierCore::Modes::Write
+            | SocketNotifierCore::Modes::Error;
 }
 
 /******************************************************************************
  * CFSocketNotifiers::Socket
  */
-CFSocketNotifierSource::Socket::Socket(CFSocketNotifierSource& socketSource, Notifier& notifier)
-    : socketSource(socketSource)
+FoundationConcept::SocketRecord::SocketRecord(FoundationConcept& concept, SocketNotifierCore& notifier)
+    : concept(concept)
     , cfSource(nullptr)
     , handler(notifier.handler())
 {
     // Create a CFSocket with both read and write, no matter if only one type is needed.
     constexpr int callbackTypes = kCFSocketReadCallBack | kCFSocketWriteCallBack;
     CFSocketContext context = {0, this, nullptr, nullptr, nullptr};
-    cfSocket = CFSocketCreateWithNative(kCFAllocatorDefault, handler, callbackTypes, &Socket::callback, &context);
+    cfSocket = CFSocketCreateWithNative(kCFAllocatorDefault, handler, callbackTypes, &SocketRecord::callback, &context);
     FATAL(CFSocketIsValid(cfSocket), "Native socket creation failed");
 
     CFOptionFlags flags = CFSocketGetSocketFlags(cfSocket);
@@ -60,12 +62,11 @@ CFSocketNotifierSource::Socket::Socket(CFSocketNotifierSource& socketSource, Not
     addNotifier(notifier);
 }
 
-CFSocketNotifierSource::Socket::~Socket()
+FoundationConcept::SocketRecord::~SocketRecord()
 {
     if (CFSocketIsValid(cfSocket))
     {
-        auto loop = std::dynamic_pointer_cast<FoundationConcept>(socketSource.getRunLoop());
-        loop->removeSource(cfSource);
+        CFRunLoopRemoveSource(concept.runLoop, cfSource, concept.currentMode /*kCFRunLoopCommonModes*/);
         CFSocketDisableCallBacks(cfSocket, kCFSocketReadCallBack);
         CFSocketDisableCallBacks(cfSocket, kCFSocketWriteCallBack);
     }
@@ -76,10 +77,10 @@ CFSocketNotifierSource::Socket::~Socket()
     CFRelease(cfSocket);
 }
 
-void CFSocketNotifierSource::Socket::addNotifier(Notifier& notifier)
+void FoundationConcept::SocketRecord::addNotifier(SocketNotifierCore& notifier)
 {
     notifiers.push_back(notifier.shared_from_this());
-    if (hasMode(notifier, SocketNotifierSource::Notifier::Modes::Read))
+    if (hasMode(notifier, SocketNotifierCore::Modes::Read))
     {
         if (!readNotifierCount)
         {
@@ -88,7 +89,7 @@ void CFSocketNotifierSource::Socket::addNotifier(Notifier& notifier)
         }
         ++readNotifierCount;
     }
-    if (hasMode(notifier, SocketNotifierSource::Notifier::Modes::Write))
+    if (hasMode(notifier, SocketNotifierCore::Modes::Write))
     {
         if (!writeNotifierCount)
         {
@@ -99,9 +100,9 @@ void CFSocketNotifierSource::Socket::addNotifier(Notifier& notifier)
     }
 }
 
-bool CFSocketNotifierSource::Socket::removeNotifier(Notifier& notifier)
+bool FoundationConcept::SocketRecord::removeNotifier(SocketNotifierCore& notifier)
 {
-    auto remover = [&notifier](SocketNotifierSource::NotifierPtr n)
+    auto remover = [&notifier](SocketNotifierCorePtr n)
     {
         return n.get() == &notifier;
     };
@@ -110,8 +111,8 @@ bool CFSocketNotifierSource::Socket::removeNotifier(Notifier& notifier)
         return false;
     }
 
-    bool isRead = hasMode(notifier, SocketNotifierSource::Notifier::Modes::Read);
-    bool isWrite = hasMode(notifier, SocketNotifierSource::Notifier::Modes::Write);
+    bool isRead = hasMode(notifier, SocketNotifierCore::Modes::Read);
+    bool isWrite = hasMode(notifier, SocketNotifierCore::Modes::Write);
 
     if (isRead && (readNotifierCount > 0))
     {
@@ -135,10 +136,10 @@ bool CFSocketNotifierSource::Socket::removeNotifier(Notifier& notifier)
 }
 
 
-void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackType callbackType, CFDataRef, const void *, void *info)
+void FoundationConcept::SocketRecord::callback(CFSocketRef s, CFSocketCallBackType callbackType, CFDataRef, const void *, void *info)
 {
     CTRACE(event, "Socket notified, dispatch");
-    Socket* socket = static_cast<Socket*>(info);
+    auto socket = static_cast<SocketRecord*>(info);
     int nativeHandler = CFSocketGetNative(s);
 
     if (!socket || (socket->handler != nativeHandler))
@@ -146,7 +147,7 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
         return;
     }
 
-    auto process = [&callbackType](SocketNotifierSource::NotifierPtr notifier)
+    auto process = [&callbackType](SocketNotifierCorePtr notifier)
     {
         if (!notifier)
         {
@@ -156,17 +157,17 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
         {
             case kCFSocketReadCallBack:
             {
-                if (hasMode(*notifier, SocketNotifierSource::Notifier::Modes::Read))
+                if (hasMode(*notifier, SocketNotifierCore::Modes::Read))
                 {
-                    notifier->signal(SocketNotifierSource::Notifier::Modes::Read);
+                    notifier->signal(SocketNotifierCore::Modes::Read);
                 }
                 break;
             }
             case kCFSocketWriteCallBack:
             {
-                if (hasMode(*notifier, SocketNotifierSource::Notifier::Modes::Write))
+                if (hasMode(*notifier, SocketNotifierCore::Modes::Write))
                 {
-                    notifier->signal(SocketNotifierSource::Notifier::Modes::Write);
+                    notifier->signal(SocketNotifierCore::Modes::Write);
                 }
                 break;
             }
@@ -179,22 +180,15 @@ void CFSocketNotifierSource::Socket::callback(CFSocketRef s, CFSocketCallBackTyp
 /******************************************************************************
  *
  */
-CFSocketNotifierSource::CFSocketNotifierSource(std::string_view name)
-    : SocketNotifierSource(name)
-{
-}
 
-CFSocketNotifierSource::~CFSocketNotifierSource()
+void FoundationConcept::enableSocketNotifiers()
 {
-}
-
-void CFSocketNotifierSource::enableSockets()
-{
-    for (auto& socket : sockets)
+    lock_guard lock(*this);
+    auto enabler = [this](auto& socket)
     {
         if (!socket || !CFSocketIsValid(socket->cfSocket))
         {
-            continue;
+            return;
         }
 
         if (!socket->cfSource)
@@ -202,9 +196,7 @@ void CFSocketNotifierSource::enableSockets()
             socket->cfSource = CFSocketCreateRunLoopSource(kCFAllocatorDefault, socket->cfSocket, 0);
             if (socket->cfSource)
             {
-                auto loop = std::dynamic_pointer_cast<FoundationConcept>(m_runLoop.lock());
-                FATAL(loop, "The event loop is destroyed!");
-                loop->addSource(socket->cfSource);
+                CFRunLoopAddSource(runLoop, socket->cfSource, currentMode);
             }
             else
             {
@@ -212,60 +204,16 @@ void CFSocketNotifierSource::enableSockets()
                 CFSocketInvalidate(socket->cfSocket);
             }
         }
-    }
-}
-
-void CFSocketNotifierSource::addNotifier(Notifier& notifier)
-{
-    auto lookup = [fd = notifier.handler()](const SocketPtr& socket)
-    {
-        return socket->handler == fd;
     };
-    auto socket = std::find_if(sockets.begin(), sockets.end(), lookup);
-    if (socket == sockets.end())
-    {
-        sockets.emplace_back(std::make_unique<Socket>(*this, notifier));
-        CTRACE(event, "Socket::" << sockets.back().get());
-    }
-    else
-    {
-        // Add this notifier
-        (*socket)->addNotifier(notifier);
-    }
+    for_each(sockets, enabler);
 }
 
-void CFSocketNotifierSource::removeNotifier(Notifier& notifier)
+void FoundationConcept::clearSocketNotifiers()
 {
-    auto lookup = [fd = notifier.handler()](const SocketPtr& socket)
-    {
-        return socket->handler == fd;
-    };
-    auto socket = std::find_if(sockets.begin(), sockets.end(), lookup);
-    if (socket == sockets.end())
-    {
-        return;
-    }
-
-    if ((*socket)->removeNotifier(notifier))
-    {
-        // remove the socket from the pool
-        sockets.erase(socket);
-    }
-}
-
-void CFSocketNotifierSource::detachOverride()
-{
+    lock_guard lock(*this);
     CTRACE(event, "Shutting down sockets");
     sockets.clear();
     CTRACE(event, "SocketNotifiers down");
-}
-
-/******************************************************************************
- *
- */
-SocketNotifierSourcePtr Adaptation::createSocketNotifierSource(std::string_view name)
-{
-    return make_polymorphic_shared<SocketNotifierSource, CFSocketNotifierSource>(name);
 }
 
 }

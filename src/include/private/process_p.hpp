@@ -84,7 +84,7 @@ public:
     virtual ~ThreadInterfacePrivate() = default;
 
     void attachToParentThread();
-    void detachFromParentThread();
+    void exit(int code);
 };
 
 class ThreadLoopPrivate : public ThreadInterfacePrivate

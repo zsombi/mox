@@ -40,7 +40,7 @@ struct GPollHandler
     void reset();
 };
 
-class GlibRunLoopBase
+class GlibRunLoopBase : public Lockable
 {
 public:
     explicit GlibRunLoopBase(GMainContext* mainContext);
@@ -49,7 +49,11 @@ public:
     struct PostEventSource : GSource
     {
         GlibRunLoopBase* m_runLoop = nullptr;
-        std::atomic_bool m_wakeUpCalled;
+        std::mutex m_lock;
+        int m_serialNumber = 0;
+        int m_lastSerialNumber = 0;
+
+        void wakeUp();
 
         static gboolean prepare(GSource *src, gint* timeout);
         static gboolean dispatch(GSource* src, GSourceFunc, gpointer);
@@ -147,6 +151,7 @@ public:
 
     void startTimerOverride(TimerCore& timer) override
     {
+        std::unique_lock locker(*this);
         // Make sure the timer is registered once.
         auto finder = [&timer](const auto* source)
         {
@@ -163,6 +168,7 @@ public:
 
     void removeTimerOverride(TimerCore& timer) override
     {
+        std::unique_lock locker(*this);
         auto eraser = [&timer](auto* source)
         {
             if (source->m_timer.get() == &timer)
@@ -177,12 +183,14 @@ public:
 
     void attachSocketNotifierOverride(SocketNotifierCore& notifier) override
     {
+        std::unique_lock locker(*this);
         socketNotifierSource->m_pollHandlers.emplace_back(GPollHandler(notifier));
         g_source_add_poll(static_cast<GSource*>(socketNotifierSource), &socketNotifierSource->m_pollHandlers.back().fd);
     }
 
     void detachSocketNotifierOverride(SocketNotifierCore& notifier) override
     {
+        std::unique_lock locker(*this);
         auto predicate = [&notifier, this](GPollHandler& poll)
         {
             if (poll.notifier.get() == &notifier)
@@ -197,6 +205,7 @@ public:
 
     void onIdleOverride(IdleFunction&& idle) override
     {
+        std::unique_lock locker(*this);
         new IdleBundle(context, std::forward<IdleFunction>(idle));
     }
 
@@ -205,6 +214,15 @@ protected:
     {
         getThis()->m_processEventsCallback();
     }
+
+    void scheduleSourcesOverride() final
+    {
+        std::unique_lock locker(*this);
+        CTRACE(event, "glib runloop context wakeup");
+        g_main_context_wakeup(context);
+        postEventSource->wakeUp();
+    }
+
 };
 
 class GlibRunLoop : public GlibRunLoopImpl<GlibRunLoop, RunLoop>
@@ -216,7 +234,6 @@ public:
     ~GlibRunLoop() final;
 
     // From RunLoopBase
-    void scheduleSourcesOverride() final;
     void stopRunLoop() final;
 
     // from RunLoop
@@ -233,7 +250,6 @@ public:
     ~GlibRunLoopHook() final;
 
 protected:
-    void scheduleSourcesOverride() final;
     void stopRunLoop() final;
 };
 

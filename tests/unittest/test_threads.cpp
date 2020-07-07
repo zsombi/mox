@@ -131,6 +131,7 @@ TEST(Threads, test_quit_application_from_thread_kills_thread)
         auto thread = TestThreadLoopWithDeathNotifier::create(std::move(notifyDeath));
         auto onEvQuit = [](auto&)
         {
+            CTRACE(event, "QUIT APP");
             mox::Application::instance().quit();
         };
         thread->addEventHandler(evQuit, onEvQuit);

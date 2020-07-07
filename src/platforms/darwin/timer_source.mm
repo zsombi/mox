@@ -22,27 +22,24 @@
 namespace mox
 {
 
-CFTimerSource::CFTimerRecord::CFTimerRecord(TimerRecord& handler)
-    : timerHandler(handler.shared_from_this())
+/******************************************************************************
+ * TimerRecord
+ */
+
+FoundationConcept::TimerRecord::TimerRecord(TimerCore& timer)
+    : timer(timer.shared_from_this())
 {
 }
 
-CFTimerSource::CFTimerRecord::~CFTimerRecord()
+FoundationConcept::TimerRecord::~TimerRecord()
 {
-    if (timerRef)
-    {
-        CTRACE(event, "Deleting timer:" << timerRef);
-        CFRunLoopTimerInvalidate(timerRef);
-        CFRelease(timerRef);
-        timerRef = nullptr;
-    }
-    timerHandler.reset();
+    stop();
 }
 
-void CFTimerSource::CFTimerRecord::create(CFTimerSource& source)
+void FoundationConcept::TimerRecord::start(FoundationConcept& source)
 {
     CTRACE(event, "Create timer record for source");
-    if (!timerHandler || (timerRef && CFRunLoopTimerIsValid(timerRef)))
+    if (!timer || (timerRef && CFRunLoopTimerIsValid(timerRef)))
     {
         return;
     }
@@ -51,109 +48,83 @@ void CFTimerSource::CFTimerRecord::create(CFTimerSource& source)
         CWARN(event, "recreating timer?!");
         CFRelease(timerRef);
     }
-    CFAbsoluteTime timeout = CFAbsoluteTime(timerHandler->getInterval().count()) / 1000;
+    CFAbsoluteTime timeout = CFAbsoluteTime(timer->getInterval().count()) / 1000;
     CFAbsoluteTime timeToFire = CFAbsoluteTimeGetCurrent() + timeout;
-    CFAbsoluteTime interval = timerHandler->isSingleShot() ? -1 : timeout;
+    CFAbsoluteTime interval = timer->isSingleShot() ? -1 : timeout;
 
     auto proc = [&source, self = this](CFRunLoopTimerRef)
     {
-        if (!self->timerHandler)
+        if (!self->timer)
         {
             return;
         }
 
         lock_guard lock(source.timers);
         CTRACE(event, "Signaling timer" << self->timerRef << "of self[" << self << ']' << source.timers.lockCount());
-        TimerPtr keepAlive = self->timerHandler;
+        auto keepAlive = self->timer;
         keepAlive->signal();
         CTRACE(event, "Timer signaled:" << self->timerRef << "of self[" << self << ']' << source.timers.lockCount());
     };
     timerRef = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, timeToFire, interval, 0, 0, proc);
-    auto foundationLoop = std::dynamic_pointer_cast<FoundationConcept>(source.getRunLoop());
-    foundationLoop->addTimerSource(timerRef);
-    FATAL(CFRunLoopTimerIsValid(timerRef), "Invalid timer created!");
+    CFRunLoopAddTimer(source.runLoop, timerRef, kCFRunLoopCommonModes);
     CTRACE(event, "Timer created with interval:" << interval << ", timeout" << timeout << ", ref:" << timerRef);
 }
 
+void FoundationConcept::TimerRecord::stop()
+{
+    if (timerRef)
+    {
+        CTRACE(event, "Deleting timer:" << timerRef);
+        CFRunLoopTimerInvalidate(timerRef);
+        CFRelease(timerRef);
+        timerRef = nullptr;
+    }
+    timer.reset();
+}
+
 /******************************************************************************
- * TimerSource
+ *
  */
-
-void CFTimerSource::addTimer(TimerRecord& timer)
+void FoundationConcept::activateTimers()
 {
-    auto predicate = [&timer](CFTimerRecordPtr& record)
+    lock_guard lock(*this);
+    auto loop = [self = this](TimerRecordPtr& trec)
     {
-        return record && record->timerHandler.get() == &timer;
-    };
-    lock_guard lock(timers);
-    timers.emplace_back_if(std::make_unique<CFTimerRecord>(timer), predicate);
-}
-
-void CFTimerSource::removeTimer(TimerRecord& timer)
-{
-    auto eraser = [&timer](auto& record)
-    {
-        if (!record || record->timerHandler.get() != &timer)
-        {
-            return false;
-        }
-
-        record->timerHandler.reset();
-        return true;
-    };
-    erase_if(timers, eraser);
-}
-
-void CFTimerSource::detachOverride()
-{
-    auto looper = [](CFTimerRecordPtr& timer)
-    {
-        if (timer && timer->timerHandler)
-        {
-            timer->timerHandler->stop();
-        }
-    };
-    for_each(timers, looper);
-}
-
-size_t CFTimerSource::timerCount() const
-{
-    return timers.size();
-}
-
-void CFTimerSource::activate()
-{
-    auto loop = [self = this](CFTimerRecordPtr& timer)
-    {
-        if (!timer || !timer->timerHandler)
+        if (!trec || !trec->timer)
         {
             return;
         }
 
-        if (!timer->timerHandler->isSingleShot())
+        if (!trec->timer->isSingleShot())
         {
             // Recreate timeRef if invalid.
-            if (!timer->timerRef || !CFRunLoopTimerIsValid(timer->timerRef))
+            if (!trec->timerRef || !CFRunLoopTimerIsValid(trec->timerRef))
             {
                 CTRACE(event, "Recreate repeating timer");
-                timer->create(*self);
+                trec->start(*self);
             }
         }
 
-        if (timer->timerHandler->isSingleShot() && !timer->timerRef)
+        if (trec->timer->isSingleShot() && !trec->timerRef)
         {
-            timer->create(*self);
+            trec->start(*self);
         }
     };
     for_each(timers, loop);
 }
 
-/******************************************************************************
- * Adaptation factory
- */
-TimerSourcePtr Adaptation::createTimerSource(std::string_view name)
+void FoundationConcept::stopTimers()
 {
-    return make_polymorphic_shared<TimerSource, CFTimerSource>(name);
+    lock_guard lock(*this);
+    auto looper = [self = this](TimerRecordPtr& trec)
+    {
+        if (trec && trec->timer)
+        {
+            ScopeRelock re(*self);
+            trec->timer->stop();
+        }
+    };
+    for_each(timers, looper);
 }
 
 }

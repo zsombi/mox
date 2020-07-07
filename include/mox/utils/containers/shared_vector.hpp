@@ -136,12 +136,14 @@ public:
 
     void push_back(Type value)
     {
+        lock_guard guard(*this);
         m_container.push_back(value);
     }
 
     template <typename Predicate>
     bool push_back_if(Type value, Predicate predicate)
     {
+        lock_guard guard(*this);
         auto idx = std::find_if(m_container.begin(), m_container.end(), predicate);
         if (idx != m_container.end())
         {
@@ -153,12 +155,14 @@ public:
 
     void emplace_back(Type&& value)
     {
+        lock_guard guard(*this);
         m_container.emplace_back(std::forward<Type>(value));
     }
 
     template <typename Predicate>
     bool emplace_back_if(Type&& value, Predicate predicate)
     {
+        lock_guard guard(*this);
         auto idx = std::find_if(m_container.begin(), m_container.end(), predicate);
         if (idx != m_container.end())
         {

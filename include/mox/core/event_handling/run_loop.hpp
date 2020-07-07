@@ -62,10 +62,18 @@ public:
     /// Sets the callback invoked when the runloop goes down.
     void setRunLoopDownCallback(DownCallback callback);
 
+    /// Starts a \p timer and adds it to the runloop.
+    /// \param timer The timer to start.
     bool startTimer(TimerCore& timer);
+    /// Removes a timer from the runloop.
+    /// \param timer The timer to remove.
     void removeTimer(TimerCore& timer);
 
+    /// Attaches a socket notifier to the runloop.
+    /// \param notifier The socket notifier to attach.
     bool attachSocketNotifier(SocketNotifierCore& notifier);
+    /// Detaches a socket notifier to the runloop.
+    /// \param notifier The socket notifier to detach.
     void detachSocketNotifier(SocketNotifierCore& notifier);
 
     /// Wake up a suspended runloop, and if the runloop is running, notifies the

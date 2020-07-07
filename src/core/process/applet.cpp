@@ -66,11 +66,4 @@ void Applet::startOverride()
     CTRACE(threads, "boot up applet");
 }
 
-void Applet::quitOverride()
-{
-    D();
-    d->statusProperty = Status::Stopped;
-    CTRACE(threads, "ramp down applet");
-}
-
 }

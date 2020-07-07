@@ -97,25 +97,66 @@ namespace mox
 /******************************************************************************
  * FoundationConcept
  */
-FoundationConcept::FoundationConcept()
-    : runLoop(mac::CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent()))
+FoundationConcept::FoundationConcept(RunLoopBase& runLoopBase)
+    : self(runLoopBase)
+    , runLoop(mac::CFType<CFRunLoopRef>::constructFromGet(CFRunLoopGetCurrent()))
     , modeTracker([[RunLoopModeTracker alloc] init])
+    , runLoopActivitySource(this, &FoundationConcept::processRunLoopActivity, kCFRunLoopAllActivities)
 {
+    runLoopActivitySource.addToMode(kCFRunLoopCommonModes, runLoop);
+    postEventSource.addToMode(kCFRunLoopCommonModes, runLoop);
 }
 
-void FoundationConcept::addSource(CFRunLoopSourceRef source)
+void FoundationConcept::processRunLoopActivity(CFRunLoopActivity activity)
 {
-    CFRunLoopAddSource(runLoop, source, currentMode);
-}
+    switch (activity)
+    {
+        case kCFRunLoopEntry:
+        {
+            CTRACE(event, "Entering runloop");
+            break;
+        }
+        case kCFRunLoopBeforeTimers:
+        {
+            CTRACE(event, "Before timers...");
+            activateTimers();
+            break;
+        }
+        case kCFRunLoopBeforeSources:
+        {
+            CTRACE(event, "Before sources...");
+            enableSocketNotifiers();
+            break;
+        }
+        case kCFRunLoopBeforeWaiting:
+        {
+            CTRACE(event, "RunLoop is about to sleep, run idle tasks");
+            // Run idle tasks
+            if (runIdleTasks() > 0u && (self.getStatus() < RunLoopBase::Status::Exiting))
+            {
+                self.scheduleSources();
+            }
+            break;
+        }
+        case kCFRunLoopAfterWaiting:
+        {
+            CTRACE(event, "After waiting, resumed");
+            break;
+        }
+        case kCFRunLoopExit:
+        {
+            CTRACE(event, "Exiting");
+            clearSocketNotifiers();
+            stopTimers();
 
-void FoundationConcept::addTimerSource(CFRunLoopTimerRef timer)
-{
-    CFRunLoopAddTimer(runLoop, timer, kCFRunLoopCommonModes);
-}
-
-void FoundationConcept::removeSource(CFRunLoopSourceRef source, CFRunLoopMode mode)
-{
-    CFRunLoopRemoveSource(runLoop, source, mode);
+            self.quit();
+            break;
+        }
+        default:
+        {
+            break;
+        }
+    }
 }
 
 /******************************************************************************
@@ -123,14 +164,13 @@ void FoundationConcept::removeSource(CFRunLoopSourceRef source, CFRunLoopMode mo
  */
 void FoundationRunLoop::execute(ProcessFlags flags)
 {
-    if (isExiting() || m_isRunning)
+    if (m_status > Status::Running)
     {
         return;
     }
     if (flags != ProcessFlags::SingleLoop)
     {
-        ScopeValue toggleRunning(m_isRunning, true);
-        currentMode = kCFRunLoopCommonModes;
+        m_status = Status::Running;
         CFRunLoopRun();
     }
 
@@ -139,37 +179,30 @@ void FoundationRunLoop::execute(ProcessFlags flags)
 
 void FoundationRunLoop::stopRunLoop()
 {
+    lock_guard lock(*this);
     CTRACE(event, "Stop run loop");
     CFRunLoopStop(runLoop);
+    m_status = Status::Exiting;
 }
 
 /******************************************************************************
  * FoundationRunLoopHook
  */
-void FoundationRunLoopHook::onEnter()
+FoundationRunLoopHook::FoundationRunLoopHook()
 {
-    currentMode = kCFRunLoopCommonModes;
-    m_isRunning = true;
-}
-
-void FoundationRunLoopHook::onExit()
-{
-    if (m_isRunning)
-    {
-        quit();
-    }
-    m_isRunning = false;
+    m_status = Status::Running;
 }
 
 void FoundationRunLoopHook::stopRunLoop()
 {
+    m_status = Status::Exiting;
     notifyRunLoopDown();
 }
 
 /******************************************************************************
  * Adaptation
  */
-RunLoopSharedPtr Adaptation::createRunLoop(bool main)
+RunLoopPtr Adaptation::createRunLoop(bool main)
 {
     UNUSED(main);
     CTRACE(event, "Run loop for main?" << main);

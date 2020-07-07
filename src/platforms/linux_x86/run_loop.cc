@@ -69,6 +69,7 @@ GlibRunLoopBase::~GlibRunLoopBase()
 GlibRunLoop::GlibRunLoop()
     : BaseClass(nullptr)
 {
+    evLoop = g_main_loop_new(context, false);
 }
 
 // constructor for the threads
@@ -103,16 +104,11 @@ void GlibRunLoop::execute(ProcessFlags flags)
 
 void GlibRunLoop::stopRunLoop()
 {
+    std::unique_lock locker(*this);
     // Stop the loop;
     CTRACE(event, "glib runloop stop");
     g_main_loop_quit(evLoop);
     m_status = Status::Exiting;
-}
-
-void GlibRunLoop::scheduleSourcesOverride()
-{
-    CTRACE(event, "glib runloop context wakeup");
-    g_main_context_wakeup(context);
 }
 
 /******************************************************************************
@@ -135,12 +131,6 @@ GlibRunLoopHook::GlibRunLoopHook()
 
 GlibRunLoopHook::~GlibRunLoopHook()
 {
-}
-
-void GlibRunLoopHook::scheduleSourcesOverride()
-{
-    CTRACE(event, "glib runloophook context wakeup");
-    g_main_context_wakeup(context);
 }
 
 void GlibRunLoopHook::stopRunLoop()

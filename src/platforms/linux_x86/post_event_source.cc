@@ -21,31 +21,40 @@
 namespace mox
 {
 
+void GlibRunLoopBase::PostEventSource::wakeUp()
+{
+    std::unique_lock locker(m_lock);
+    ++m_serialNumber;
+    CTRACE(event, "postevent source wakeUp:" << m_serialNumber << m_lastSerialNumber);
+}
+
 gboolean GlibRunLoopBase::PostEventSource::prepare(GSource* src, gint* timeout)
 {
     auto source = static_cast<PostEventSource*>(src);
+    std::unique_lock locker(source->m_lock);
 
     // if (source->getStatus() == RunLoop::Exiting)
     // {
     //     return false;
     // }
 
-    bool readyToDispatch = source->m_wakeUpCalled.load();
     // If there's no event posted, wait for a second to poll again.
     if (timeout)
     {
-        *timeout = 0;
+        *timeout = -1;
     }
 
-    CTRACE(event, "postevent source ready " << readyToDispatch);
-
-    return readyToDispatch;
+    CTRACE(event, "prepare post event source" << source->m_serialNumber << source->m_lastSerialNumber);
+    return source->m_serialNumber != source->m_lastSerialNumber;
 }
 
 gboolean GlibRunLoopBase::PostEventSource::dispatch(GSource* src, GSourceFunc, gpointer)
 {
     auto source = static_cast<PostEventSource*>(src);
-    source->m_wakeUpCalled.store(false);
+    {
+        std::unique_lock locker(source->m_lock);
+        ++source->m_lastSerialNumber;
+    }
 
     source->m_runLoop->dispatchEvents();
 
@@ -66,7 +75,8 @@ GlibRunLoopBase::PostEventSource* GlibRunLoopBase::PostEventSource::create(GlibR
 
     auto self = reinterpret_cast<PostEventSource*>(g_source_new(&funcs, sizeof(PostEventSource)));
     self->m_runLoop = loop;
-    self->m_wakeUpCalled = false;
+    self->m_serialNumber = 0;
+    self->m_lastSerialNumber = 0;
 
     auto src = static_cast<GSource*>(self);
     // g_source_set_can_recurse(src, true);

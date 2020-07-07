@@ -130,8 +130,6 @@ protected:
     virtual void startOverride() = 0;
     /// Join override for the thread specific join implementations.
     virtual void joinOverride() {}
-    /// Quit override for the thread specific quit functions.
-    virtual void quitOverride() {}
 
 private:
     // Quit event handler.

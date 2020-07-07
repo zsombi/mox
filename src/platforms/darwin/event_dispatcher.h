@@ -34,6 +34,60 @@
 namespace mox
 {
 
+template <class TDerived>
+class RunLoopSource
+{
+    using Self = RunLoopSource<TDerived>;
+
+public:
+    enum RunLoopSourcePriority
+    {
+        kHighestPriority = 0
+    };
+
+    RunLoopSource()
+    {
+        CFRunLoopSourceContext context = {};
+        context.info = this;
+        context.perform = RunLoopSource::process;
+
+        m_source = CFRunLoopSourceCreate(kCFAllocatorDefault, kHighestPriority, &context);
+    }
+
+    virtual ~RunLoopSource()
+    {
+        CFRunLoopSourceInvalidate(m_source);
+        CFRelease(m_source);
+    }
+
+    void addToMode(CFStringRef mode, CFRunLoopRef runLoop = 0)
+    {
+        if (!runLoop)
+        {
+            runLoop = CFRunLoopGetCurrent();
+        }
+
+        CFRunLoopAddSource(runLoop, m_source, mode);
+    }
+
+    void wakeUp()
+    {
+        CFRunLoopSourceSignal(m_source);
+    }
+
+protected:
+    virtual void dispatch() {}
+
+private:
+    static void process(void *info)
+    {
+        Self* self = static_cast<Self*>(info);
+        self->dispatch();
+    }
+
+    CFRunLoopSourceRef m_source;
+};
+
 template <class T>
 class RunLoopObserver
 {
@@ -92,116 +146,95 @@ private:
     CFRunLoopObserverRef m_observerRef;
 };
 
-class CFTimerSource : public TimerSource
+
+
+class FoundationConcept : public Lockable
 {
 public:
-    struct CFTimerRecord
+
+    class PostEventSource : public RunLoopSource<PostEventSource>
     {
-        CFRunLoopTimerRef timerRef = nullptr;
-        TimerSource::TimerPtr timerHandler;
+        RunLoopBase::EventProcessingCallback dispatcher;
 
-        CFTimerRecord(TimerRecord& handler);
-        ~CFTimerRecord();
-
-        void create(CFTimerSource& source);
-    };
-
-    using CFTimerRecordPtr = std::unique_ptr<CFTimerRecord>;
-
-    explicit CFTimerSource(std::string_view name)
-        : TimerSource(name)
-    {
-    }
-
-    void addTimer(TimerRecord& timer) final;
-    void removeTimer(TimerRecord& timer) final;
-    void initialize(void*) final {}
-    void detachOverride() final;
-    size_t timerCount() const final;
-    void activate();
-
-    struct NullTimer
-    {
-        bool operator()(CFTimerRecordPtr const& timer) const
+    public:
+        explicit PostEventSource() = default;
+        void setDispatcher(RunLoopBase::EventProcessingCallback dispatcher)
         {
-            return !timer || timer->timerHandler == nullptr;
+            this->dispatcher = dispatcher;
+        }
+        void dispatch() override
+        {
+            dispatcher();
         }
     };
 
-    using TimerCollection = SharedVector<CFTimerRecordPtr, NullTimer>;
-
-    TimerCollection timers;
-};
-
-class CFPostEventSource : public EventSource
-{
-public:
-    explicit CFPostEventSource(std::string_view name);
-    ~CFPostEventSource() final;
-    void initialize(void* data) final;
-    void detachOverride() final;
-
-    void wakeUp() override;
-
-    CFRunLoopSourceRef sourceRef = nullptr;
-};
-
-class CFSocketNotifierSource : public SocketNotifierSource
-{
-public:
-    explicit CFSocketNotifierSource(std::string_view name);
-    ~CFSocketNotifierSource() final;
-
-    void initialize(void*) final {}
-    void detachOverride() final;
-    void addNotifier(Notifier &notifier) final;
-    void removeNotifier(Notifier &notifier) final;
-
-    void enableSockets();
-
-    // internals
-    struct Socket
+    struct TimerRecord
     {
-        CFSocketNotifierSource& socketSource;
+        TimerCorePtr timer;
+        CFRunLoopTimerRef timerRef = nullptr;
+
+        explicit TimerRecord(TimerCore& timer);
+        ~TimerRecord();
+        void start(FoundationConcept& source);
+        void stop();
+    };
+    using TimerRecordPtr = std::unique_ptr<TimerRecord>;
+
+    // TODO: use RunLoopSource<>
+    struct SocketRecord
+    {
+        static void callback(CFSocketRef s, CFSocketCallBackType callbackType, CFDataRef, const void *, void *info);
+
+        FoundationConcept& concept;
         CFSocketRef cfSocket = nullptr;
         CFRunLoopSourceRef cfSource = nullptr;
-        SharedVector<NotifierPtr> notifiers;
+        SharedVector<SocketNotifierCorePtr> notifiers;
         SocketNotifier::EventTarget handler = -1;
         int readNotifierCount = 0;
         int writeNotifierCount = 0;
 
-        Socket(CFSocketNotifierSource& socketSource, Notifier& notifier);
-        ~Socket();
-        void addNotifier(Notifier& notifier);
+        SocketRecord(FoundationConcept& concept, SocketNotifierCore& notifier);
+        ~SocketRecord();
+        void addNotifier(SocketNotifierCore& notifier);
         // Returns true if the socket is releasable
-        bool removeNotifier(Notifier& notifier);
-
-        static void callback(CFSocketRef s, CFSocketCallBackType callbackType, CFDataRef, const void *, void *info);
+        bool removeNotifier(SocketNotifierCore& notifier);
     };
-    using SocketPtr = std::unique_ptr<Socket>;
+    using SocketRecordPtr = std::unique_ptr<SocketRecord>;
 
-    std::vector<std::unique_ptr<Socket>> sockets;
-};
-
-class FoundationConcept
-{
-public:
-    explicit FoundationConcept();
+    explicit FoundationConcept(RunLoopBase& runLoop);
     virtual ~FoundationConcept() = default;
-
-    void addSource(CFRunLoopSourceRef source);
-    void addTimerSource(CFRunLoopTimerRef timer);
-    void removeSource(CFRunLoopSourceRef source, CFRunLoopMode mode = kCFRunLoopCommonModes);
 
 protected:
     using IdleStack = std::stack<IdleFunction>;
 
     size_t runIdleTasks();
+    void processRunLoopActivity(CFRunLoopActivity activity);
 
-    IdleStack idles;
+    void activateTimers();
+    void stopTimers();
+
+    void enableSocketNotifiers();
+    void clearSocketNotifiers();
+
+    struct NullTimer
+    {
+        bool operator()(TimerRecordPtr const& record) const
+        {
+            return !record || !record->timer;
+        }
+    };
+    using TimerCollection = SharedVector<TimerRecordPtr, NullTimer>;
+
+    RunLoopBase& self;
     mac::CFType<CFRunLoopRef> runLoop;
     RunLoopModeTracker *modeTracker = nullptr;
     CFStringRef currentMode = nullptr;
+
+    RunLoopObserver<FoundationConcept> runLoopActivitySource;
+    PostEventSource postEventSource;
+    TimerCollection timers;
+    std::vector<SocketRecordPtr> sockets;
+    IdleStack idles;
 };
 
 template <class DerivedType, class LoopType>
@@ -213,94 +246,100 @@ class FoundationBase : public LoopType, public FoundationConcept
         return static_cast<DerivedType*>(this);
     }
 
+    void dispatchEvenets()
+    {
+        getThis()->m_processEventsCallback();
+    }
+
 public:
     explicit FoundationBase()
-        : runLoopActivitySource(this, &FoundationBase::processRunLoopActivity, kCFRunLoopAllActivities)
+        : FoundationConcept(static_cast<RunLoopBase&>(*this))
     {
-        runLoopActivitySource.addToMode(kCFRunLoopCommonModes);
+        postEventSource.setDispatcher(std::bind(&ThisType::dispatchEvenets, this));
+        currentMode = kCFRunLoopCommonModes;
     }
 
-    bool isRunningOverride() const final
+protected:
+    void startTimerOverride(TimerCore& timer) final
     {
-        return m_isRunning;
+        lock_guard lock(*getThis());
+        auto predicate = [&timer](TimerRecordPtr& trec)
+        {
+            return trec && trec->timer.get() == &timer;
+        };
+        timers.emplace_back_if(std::make_unique<TimerRecord>(timer), predicate);
     }
 
-    void initialize() final
+    void removeTimerOverride(TimerCore& timer) final
     {
-        auto self = getThis();
-        void* data = (void*)runLoop;
-        self->template forEachSource<AbstractRunLoopSource>(&AbstractRunLoopSource::initialize, data);
+        lock_guard lock(*getThis());
+        auto eraser = [&timer](auto& trec)
+        {
+            if (!trec || trec->timer.get() != &timer)
+            {
+                return false;
+            }
+
+            trec->stop();
+            return true;
+        };
+        erase_if(timers, eraser);
+    }
+
+    void attachSocketNotifierOverride(SocketNotifierCore& notifier) final
+    {
+        lock_guard lock(*getThis());
+        auto lookup = [fd = notifier.handler()](auto& socket)
+        {
+            return socket->handler == fd;
+        };
+        auto it = find_if(sockets, lookup);
+        if (it == sockets.end())
+        {
+            sockets.emplace_back(std::make_unique<SocketRecord>(*getThis(), notifier));
+            CTRACE(event, "Socket::" << getThis()->sockets.back().get());
+        }
+        else
+        {
+
+            // Add this notifier
+            (*it)->addNotifier(notifier);
+        }
+    }
+
+    void detachSocketNotifierOverride(SocketNotifierCore& notifier) final
+    {
+        lock_guard lock(*getThis());
+        auto lookup = [fd = notifier.handler()](auto& socket)
+        {
+            return socket->handler == fd;
+        };
+        auto socket = std::find_if(sockets.begin(), sockets.end(), lookup);
+        if (socket == sockets.end())
+        {
+            return;
+        }
+
+        if ((*socket)->removeNotifier(notifier))
+        {
+            // remove the socket from the pool
+            sockets.erase(socket);
+        }
+    }
+
+    void scheduleSourcesOverride() final
+    {
+        lock_guard lock(*getThis());
+        CTRACE(event, "WakeUp...");
+        CFRunLoopWakeUp(runLoop);
+        postEventSource.wakeUp();
     }
 
     void onIdleOverride(IdleFunction&& idle) final
     {
+        lock_guard lock(*getThis());
         idles.emplace(std::forward<IdleFunction>(idle));
     }
-
-protected:
-    void scheduleSourcesOverride() final
-    {
-        CTRACE(event, "WakeUp...");
-        CFRunLoopWakeUp(runLoop);
-    }
-
-    void processRunLoopActivity(CFRunLoopActivity activity)
-    {
-        auto self = getThis();
-
-        switch (activity)
-        {
-            case kCFRunLoopEntry:
-            {
-                CTRACE(event, "Entering runloop");
-                self->onEnter();
-                break;
-            }
-            case kCFRunLoopBeforeTimers:
-            {
-                CTRACE(event, "Before timers...");
-                self->template forEachSource<CFTimerSource>(&CFTimerSource::activate);
-                break;
-            }
-            case kCFRunLoopBeforeSources:
-            {
-                CTRACE(event, "Before sources...");
-                self->template forEachSource<CFSocketNotifierSource>(&CFSocketNotifierSource::enableSockets);
-                break;
-            }
-            case kCFRunLoopBeforeWaiting:
-            {
-                CTRACE(event, "RunLoop is about to sleep, run idle tasks");
-                // Run idle tasks
-                if (self->isRunning())
-                {
-                    if (self->runIdleTasks() > 0u && !self->isExiting())
-                    {
-                        self->scheduleSources();
-                    }
-                }
-                break;
-            }
-            case kCFRunLoopAfterWaiting:
-            {
-                CTRACE(event, "After waiting, resumed");
-                break;
-            }
-            case kCFRunLoopExit:
-            {
-                CTRACE(event, "Exiting");
-                getThis()->onExit();
-                break;
-            }
-            default:
-            {
-                break;
-            }
-        }
-    }
-
-    RunLoopObserver<ThisType> runLoopActivitySource;
-    std::atomic_bool m_isRunning = false;
 };
 
 class FoundationRunLoop : public FoundationBase<FoundationRunLoop, RunLoop>
@@ -313,9 +352,6 @@ public:
         stopRunLoop();
     }
 
-    void onEnter() {}
-    void onExit() {}
-
     void execute(ProcessFlags flags) final;
     void stopRunLoop() final;
 };
@@ -323,15 +359,12 @@ public:
 class FoundationRunLoopHook : public FoundationBase<FoundationRunLoopHook, RunLoopHook>
 {
 public:
-    explicit FoundationRunLoopHook() = default;
+    explicit FoundationRunLoopHook();
 
     void stop()
     {
         stopRunLoop();
     }
-
-    void onEnter();
-    void onExit();
 
     void stopRunLoop() final;
 };

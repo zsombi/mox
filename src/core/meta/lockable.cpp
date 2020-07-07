@@ -15,7 +15,7 @@ Lockable::Lockable()
 
 Lockable::~Lockable()
 {
-    FATAL(m_value.load() == 0, "Destroying unlocked object! LockCount is " << m_value.load());
+    FATAL(m_value.load() == 0, "Destroying locked object! LockCount is" << m_value.load());
     m_value.store(-999);
 }
 
