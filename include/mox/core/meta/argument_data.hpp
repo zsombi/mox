@@ -28,15 +28,6 @@ public:
     {
     }
 
-//    /// Assignment operator, replaces the data stored.
-//    /// \tparam T The type of the value passed as argument.
-//    /// \param value The value to store.
-//    template <class T>
-//    void operator=(T value)
-//    {
-//        *this = value;
-//    }
-
     /// Cast operator, returns the data stored by an ArgumentData instance.
     /// \tparam T The type of the casted value.
     /// \return The value stored.

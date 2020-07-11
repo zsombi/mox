@@ -19,7 +19,6 @@ class MOX_API Lockable
     mutable std::mutex m_mutex;
 #ifdef DEBUG
     using Base = mox::AtomicRefCounted<int32_t>;
-    mutable std::atomic<std::thread::id> m_owner = std::thread::id();
 #endif
 
 public:

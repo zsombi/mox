@@ -71,6 +71,11 @@ public:
     {
         return this->m_refCounted.try_lock();
     }
+
+    RefLockable* get() const
+    {
+        return &this->m_refCounted;
+    }
 };
 
 /// The template works the opposite to the std::lock_guard class: unlocks the lock on construction

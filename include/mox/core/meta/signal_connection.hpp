@@ -22,7 +22,7 @@ class MethodConnection : public Connection
 
     MethodConnection(SignalCore& sender, Receiver& receiver, Method slot)
         : Connection(sender)
-        , m_locker(&sender, &receiver)
+        , m_locker(sender.get(), &receiver)
         , m_receiver(&receiver)
         , m_slot(slot)
     {

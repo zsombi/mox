@@ -173,9 +173,8 @@ void ThreadInterface::tearDown()
         td::detachFromThread();
 
         d_ptr->runLoop.reset();
-        CTRACE(threads, "Thread is joinable");
-        d_ptr->statusProperty = Status::InactiveOrJoined;
     }
+    d_ptr->statusProperty = Status::InactiveOrJoined;
     // Loop through the child threads and join them all. Once joined, clean the child threads.
     auto joiner = [](auto& thread)
     {
@@ -185,6 +184,7 @@ void ThreadInterface::tearDown()
     for_each(d_ptr->childThreads, joiner);
 
     d_ptr->childThreads.clear();
+    CTRACE(threads, "Thread is joinable");
 }
 
 void ThreadInterface::initialize()

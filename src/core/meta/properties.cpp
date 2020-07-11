@@ -60,13 +60,13 @@ void PropertyCorePrivate::removeBinding(BindingCore& binding)
  * StatusPropertyCore
  */
 StatusPropertyCore::StatusPropertyCore(Lockable& host)
+    : SharedLock<Lockable>(host)
 {
-    UNUSED(host);
 }
 
 void StatusPropertyCore::notifyGet(SignalCore& changedSignal) const
 {
-    lock_guard lock(const_cast<StatusPropertyCore&>(*this));
+//    lock_guard lock(const_cast<StatusPropertyCore&>(*this));
     auto currentBinding = const_cast<BindingCore*>(dynamic_cast<const BindingCore*>(BindingScope::getCurrent().get()));
     if (currentBinding)
     {

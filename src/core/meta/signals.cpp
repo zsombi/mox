@@ -41,7 +41,7 @@ void ConnectionStorage::disconnectSlots()
         auto slot = connection->getDestination();
         if (slot)
         {
-            OrderedRelock<Lockable*> re(p, slot);
+            OrderedRelock<Lockable*> re(p->get(), slot);
             erase(slot->m_slots, connection);
         }
         connection->m_isConnected = false;
@@ -167,8 +167,7 @@ void SlotHolder::disconnectSignals()
         }
 
         auto sender = ConnectionStorage::get(*connection->getSignal());
-//        ScopeRelock reLock(*self);
-        OrderedRelock<Lockable*> re(self, connection->getSignal());
+        OrderedRelock<Lockable*> re(self, connection->getSignal()->get());
         sender->disconnectOne(connection);
     };
     for_each(m_slots, disconnector);
@@ -178,10 +177,10 @@ void SlotHolder::disconnectSignals()
  * SignalCore
  */
 SignalCore::SignalCore(Lockable& host, size_t argCount)
-    : d_ptr(pimpl::make_d_ptr<ConnectionStorage>(*this))
+    : SharedLock<Lockable>(host)
+    , d_ptr(pimpl::make_d_ptr<ConnectionStorage>(*this))
     , m_argumentCount(argCount)
 {
-    UNUSED(host);
 }
 
 SignalCore::~SignalCore()

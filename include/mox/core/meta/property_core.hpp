@@ -21,7 +21,7 @@ class PropertyCore;
 
 /// The StatusPropertyCore class provides the core functionality for the status properties.
 /// Mox status properties are read-only properties.
-class MOX_API StatusPropertyCore : public Lockable
+class MOX_API StatusPropertyCore : public SharedLock<Lockable>
 {
 public:
     /// Destructor.

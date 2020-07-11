@@ -26,7 +26,7 @@ using ConnectionPtr = std::shared_ptr<Connection>;
 /// connections are invoked. Connections created within connections are left out from the signal
 /// activation.
 class ConnectionStorage;
-class MOX_API SignalCore : public Lockable
+class MOX_API SignalCore : public SharedLock<Lockable>
 {
     friend class SlotHolder;
 public:
